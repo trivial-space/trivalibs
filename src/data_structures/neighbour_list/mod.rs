@@ -44,7 +44,7 @@ impl<T: AdjustToNextNeighbour> NeighbourList<T> {
         self
     }
 
-    pub fn adjust_all(mut self) -> Self {
+    pub fn adjust_all(self) -> Self {
         todo!()
     }
 }
