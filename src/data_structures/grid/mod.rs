@@ -1,101 +1,197 @@
-pub struct Grid<T: Default + Clone + Copy> {
-    pub width: u16,
-    pub height: u16,
-    cells: Vec<T>,
+pub trait CoordOps {
+    fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize);
 }
 
-pub struct Vertex<'a, T: Default + Clone + Copy> {
-    pub x: u16,
-    pub y: u16,
+#[derive(Clone, Copy)]
+pub struct DefaultCoordOps;
+impl CoordOps for DefaultCoordOps {
+    fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize) {
+        let w = width as i32;
+        let h = height as i32;
+        (x.min(w - 1) as usize, y.min(h - 1) as usize)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct CircleAllCoordOps;
+impl CoordOps for CircleAllCoordOps {
+    fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize) {
+        let w = width as i32;
+        let h = height as i32;
+        if x < 0 {
+            return self.adjust_coords(x + w, y, width, height);
+        }
+        if y < 0 {
+            return self.adjust_coords(x, y + h, width, height);
+        }
+        if x >= w {
+            return self.adjust_coords(x - w, y, width, height);
+        }
+        if y >= h {
+            return self.adjust_coords(x, y - h, width, height);
+        }
+
+        (x as usize, y as usize)
+    }
+}
+
+pub struct Grid<T, A>
+where
+    T: Clone + Copy,
+    A: CoordOps + Copy + Clone,
+{
+    pub width: usize,
+    pub height: usize,
+    vertices: Vec<Vec<T>>,
+    coord_ops: A,
+}
+
+pub struct Vertex<'a, T, A>
+where
+    T: Clone + Copy,
+    A: CoordOps + Copy + Clone,
+{
+    pub x: usize,
+    pub y: usize,
     pub val: T,
-    frame: &'a Grid<T>,
+    grid: &'a Grid<T, A>,
 }
 
-impl<T: Default + Clone + Copy> Grid<T> {
-    pub fn new(width: u16, height: u16) -> Self {
-        let cells = vec![T::default(); (width * height).into()];
-        let frame = Grid {
-            width,
-            height,
-            cells,
-        };
+impl<T, A> Grid<T, A>
+where
+    T: Clone + Copy,
+    A: CoordOps + Copy + Clone,
+{
+    pub fn new<B: Clone + Copy>() -> Grid<B, DefaultCoordOps> {
+        let cells = vec![];
+        Grid {
+            width: 0,
+            height: 0,
+            vertices: cells,
+            coord_ops: DefaultCoordOps {},
+        }
+    }
 
-        frame
+    pub fn new_with_coord_ops(coord_ops: A) -> Grid<T, A> {
+        let cells = vec![];
+        Grid {
+            width: 0,
+            height: 0,
+            vertices: cells,
+            coord_ops,
+        }
     }
 
     pub fn get(&self, x: i32, y: i32) -> T {
-        let (x, y) = adjust_coords(x, y, self.width, self.height);
+        let (x, y) = self.coord_ops.adjust_coords(x, y, self.width, self.height);
 
-        self.cells[index(y, x, self.height)]
+        self.vertices[x][y]
     }
 
     pub fn set(&mut self, x: i32, y: i32, val: T) {
-        let (x, y) = adjust_coords(x, y, self.width, self.height);
+        let (x, y) = self.coord_ops.adjust_coords(x, y, self.width, self.height);
 
-        self.cells[index(y, x, self.height)] = val
+        self.vertices[x][y] = val;
     }
 
-    pub fn vertex(&self, x: i32, y: i32) -> Vertex<T> {
-        let (x, y) = adjust_coords(x, y, self.width, self.height);
+    pub fn add_col(&mut self, vals: Vec<T>) {
+        if self.height == 0 {
+            self.height = vals.len();
+        } else if self.height > vals.len() {
+            panic!("new column length needs to be at least as big as the grid height.")
+        }
+
+        self.vertices.push(vals);
+        self.width += 1;
+    }
+
+    pub fn add_row(&mut self, vals: Vec<T>) {
+        if self.width == 0 {
+            panic!("grid needs at least one column to add more rows.");
+        } else if self.width > vals.len() {
+            panic!("new row length needs to be at least as big as the grid width.");
+        }
+
+        for i in 0..self.width {
+            self.vertices[i].push(vals[i]);
+        }
+    }
+
+    pub fn vertex(&self, x: i32, y: i32) -> Vertex<T, A> {
+        let (x, y) = self.coord_ops.adjust_coords(x, y, self.width, self.height);
 
         Vertex {
             x,
             y,
-            frame: self,
-            val: self.cells[index(y, x, self.height)],
+            grid: self,
+            val: self.vertices[x][y],
         }
     }
 
-    pub fn map<F>(&self, f: F) -> Self
+    pub fn map<B, F>(&self, f: F) -> Grid<B, A>
     where
-        F: Fn(Vertex<T>) -> T,
+        B: Clone + Copy,
+        F: Fn(Vertex<T, A>) -> B,
     {
-        let mut grid = Grid::new(self.width, self.height);
+        let mut grid = Grid::new_with_coord_ops(self.coord_ops);
         for x in 0..self.width as i32 {
+            let mut col = vec![];
             for y in 0..self.height as i32 {
-                grid.set(x, y, f(self.vertex(x, y)));
+                col.push(f(self.vertex(x, y)));
             }
+            grid.add_col(col);
         }
         grid
     }
 }
 
-impl<T: Default + Clone + Copy> Vertex<'_, T> {
-    pub fn left(&self) -> Self {
-        self.frame.vertex(self.x as i32 - 1, self.y as i32)
+impl<T: Copy, A: CoordOps + Copy> PartialEq for Vertex<'_, T, A> {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
     }
-    pub fn right(&self) -> Self {
-        self.frame.vertex(self.x as i32 + 1, self.y as i32)
-    }
-    pub fn top(&self) -> Self {
-        self.frame.vertex(self.x as i32, self.y as i32 - 1)
-    }
-    pub fn bottom(&self) -> Self {
-        self.frame.vertex(self.x as i32, self.y as i32 + 1)
+
+    fn ne(&self, other: &Self) -> bool {
+        self.x != other.x || self.y != other.y
     }
 }
 
-fn index(y: u16, x: u16, height: u16) -> usize {
-    (y * height + x) as usize
-}
-
-fn adjust_coords(x: i32, y: i32, width: u16, height: u16) -> (u16, u16) {
-    let w = width as i32;
-    let h = height as i32;
-    if x < 0 {
-        return adjust_coords(x + w, y, width, height);
+impl<T, A> Vertex<'_, T, A>
+where
+    T: Clone + Copy,
+    A: CoordOps + Copy + Clone,
+{
+    pub fn left(&self) -> Option<Self> {
+        let vert = self.grid.vertex(self.x as i32 - 1, self.y as i32);
+        if vert != *self {
+            Some(vert)
+        } else {
+            None
+        }
     }
-    if y < 0 {
-        return adjust_coords(x, y + h, width, height);
+    pub fn right(&self) -> Option<Self> {
+        let vert = self.grid.vertex(self.x as i32 + 1, self.y as i32);
+        if vert != *self {
+            Some(vert)
+        } else {
+            None
+        }
     }
-    if x >= w {
-        return adjust_coords(x - w, y, width, height);
+    pub fn top(&self) -> Option<Self> {
+        let vert = self.grid.vertex(self.x as i32, self.y as i32 - 1);
+        if vert != *self {
+            Some(vert)
+        } else {
+            None
+        }
     }
-    if y >= h {
-        return adjust_coords(x, y - h, width, height);
+    pub fn bottom(&self) -> Option<Self> {
+        let vert = self.grid.vertex(self.x as i32, self.y as i32 + 1);
+        if vert != *self {
+            Some(vert)
+        } else {
+            None
+        }
     }
-
-    (x as u16, y as u16)
 }
 
 #[cfg(test)]
