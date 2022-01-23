@@ -57,22 +57,22 @@ where
     grid: &'a Grid<T, A>,
 }
 
+pub fn make_grid<B: Clone + Copy>() -> Grid<B, DefaultCoordOps> {
+    let cells = vec![];
+    Grid {
+        width: 0,
+        height: 0,
+        vertices: cells,
+        coord_ops: DefaultCoordOps {},
+    }
+}
+
 impl<T, A> Grid<T, A>
 where
     T: Clone + Copy,
     A: CoordOps + Copy + Clone,
 {
-    pub fn new<B: Clone + Copy>() -> Grid<B, DefaultCoordOps> {
-        let cells = vec![];
-        Grid {
-            width: 0,
-            height: 0,
-            vertices: cells,
-            coord_ops: DefaultCoordOps {},
-        }
-    }
-
-    pub fn new_with_coord_ops(coord_ops: A) -> Grid<T, A> {
+    pub fn new(coord_ops: A) -> Self {
         let cells = vec![];
         Grid {
             width: 0,
@@ -133,7 +133,7 @@ where
         B: Clone + Copy,
         F: Fn(Vertex<T, A>) -> B,
     {
-        let mut grid = Grid::new_with_coord_ops(self.coord_ops);
+        let mut grid = Grid::new(self.coord_ops);
         for x in 0..self.width as i32 {
             let mut col = vec![];
             for y in 0..self.height as i32 {

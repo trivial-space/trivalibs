@@ -5,23 +5,23 @@ struct Coord(i32, i32);
 
 #[test]
 fn get_set() {
-    let mut f = Grid::new();
+    let mut grid = make_grid();
     for x in 0..3 {
-        let col = vec![];
+        let mut col = vec![];
         for y in 0..3 {
             col.push(Coord(x, y));
         }
-        f.add_col(col);
+        grid.add_col(col);
     }
 
-    assert_eq!(f.get(1, 1), Coord(1, 1));
-    assert_eq!(f.get(4, 4), Coord(2, 2));
-    assert_eq!(f.get(-2, -2), Coord(0, 0));
+    assert_eq!(grid.get(1, 1), Coord(1, 1));
+    assert_eq!(grid.get(4, 4), Coord(2, 2));
+    assert_eq!(grid.get(-2, -2), Coord(0, 0));
 
-    f.set(1, 1, Coord(5, 5));
-    assert_eq!(f.get(1, 1), Coord(5, 5));
-    assert_eq!(f.get(4, 4), Coord(2, 2));
-    assert_eq!(f.get(-2, -2), Coord(0, 0));
+    grid.set(1, 1, Coord(5, 5));
+    assert_eq!(grid.get(1, 1), Coord(5, 5));
+    assert_eq!(grid.get(4, 4), Coord(2, 2));
+    assert_eq!(grid.get(-2, -2), Coord(0, 0));
 }
 
 // #[test]
