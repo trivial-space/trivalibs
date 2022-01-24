@@ -1,16 +1,26 @@
-pub trait CoordOps {
+pub trait CoordOps: Copy + Clone {
     fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize);
 }
 
 #[derive(Clone, Copy)]
-pub struct DefaultCoordOps;
-impl CoordOps for DefaultCoordOps {
+pub struct NoAdjustCoordOps;
+impl CoordOps for NoAdjustCoordOps {
+    fn adjust_coords(&self, x: i32, y: i32, _width: usize, _height: usize) -> (usize, usize) {
+        (x as usize, y as usize)
+    }
+}
+pub static NO_ADJUST_COORD_OPS: NoAdjustCoordOps = NoAdjustCoordOps {};
+
+#[derive(Clone, Copy)]
+pub struct ClampToEdgeCoordOps;
+impl CoordOps for ClampToEdgeCoordOps {
     fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize) {
         let w = width as i32;
         let h = height as i32;
-        (x.min(w - 1) as usize, y.min(h - 1) as usize)
+        (x.min(w - 1).max(0) as usize, y.min(h - 1).max(0) as usize)
     }
 }
+pub static CLAMP_TO_EDGE_COORD_OPS: ClampToEdgeCoordOps = ClampToEdgeCoordOps {};
 
 #[derive(Clone, Copy)]
 pub struct CircleAllCoordOps;
@@ -34,6 +44,7 @@ impl CoordOps for CircleAllCoordOps {
         (x as usize, y as usize)
     }
 }
+pub static CIRCLE_ALL_COORD_OPS: CircleAllCoordOps = CircleAllCoordOps {};
 
 pub struct Grid<T, A>
 where
@@ -49,7 +60,7 @@ where
 pub struct Vertex<'a, T, A>
 where
     T: Clone + Copy,
-    A: CoordOps + Copy + Clone,
+    A: CoordOps,
 {
     pub x: usize,
     pub y: usize,
@@ -57,22 +68,20 @@ where
     grid: &'a Grid<T, A>,
 }
 
-pub fn make_grid<B: Clone + Copy>() -> Grid<B, DefaultCoordOps> {
-    let cells = vec![];
-    Grid {
-        width: 0,
-        height: 0,
-        vertices: cells,
-        coord_ops: DefaultCoordOps {},
-    }
+pub fn make_grid<T: Clone + Copy>() -> Grid<T, NoAdjustCoordOps> {
+    Grid::new(NO_ADJUST_COORD_OPS)
+}
+
+pub fn make_grid_with_coord_ops<T: Copy + Clone, A: CoordOps>(coord_ops: A) -> Grid<T, A> {
+    Grid::new(coord_ops)
 }
 
 impl<T, A> Grid<T, A>
 where
     T: Clone + Copy,
-    A: CoordOps + Copy + Clone,
+    A: CoordOps,
 {
-    pub fn new(coord_ops: A) -> Self {
+    fn new(coord_ops: A) -> Self {
         let cells = vec![];
         Grid {
             width: 0,
@@ -145,7 +154,7 @@ where
     }
 }
 
-impl<T: Copy, A: CoordOps + Copy> PartialEq for Vertex<'_, T, A> {
+impl<T: Copy, A: CoordOps> PartialEq for Vertex<'_, T, A> {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y
     }
@@ -158,7 +167,7 @@ impl<T: Copy, A: CoordOps + Copy> PartialEq for Vertex<'_, T, A> {
 impl<T, A> Vertex<'_, T, A>
 where
     T: Clone + Copy,
-    A: CoordOps + Copy + Clone,
+    A: CoordOps,
 {
     pub fn left(&self) -> Option<Self> {
         let vert = self.grid.vertex(self.x as i32 - 1, self.y as i32);
