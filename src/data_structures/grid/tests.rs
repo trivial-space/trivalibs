@@ -68,55 +68,118 @@ fn get_set_circle_all() {
     assert_eq!(grid.get(1, 1).unwrap(), &Coord(7, 7));
 }
 
-// #[test]
-// fn frame_cells() {
-//     use TestData::*;
+#[test]
+fn fill_grid_rows_cols() {
+    let mut grid1 = make_grid();
+    assert_eq!(grid1.width, 0);
+    assert_eq!(grid1.height, 0);
 
-//     let mut f = Grid::new(3, 3);
-//     let c1 = f.vertex(1, 1);
+    grid1.add_col(vec![Coord(0, 0), Coord(0, 1), Coord(0, 2)]);
+    assert_eq!(grid1.width, 1);
+    assert_eq!(grid1.height, 3);
+    assert_eq!(*grid1.get(0, 2).unwrap(), Coord(0, 2));
 
-//     assert_eq!(c1.val, One);
-//     assert_eq!(c1.x, 1);
-//     assert_eq!(c1.y, 1);
-//     assert_eq!(c1.top().val, One);
-//     assert_eq!(c1.bottom().val, One);
-//     assert_eq!(c1.right().val, One);
-//     assert_eq!(c1.left().val, One);
-//     assert_eq!(c1.right().x, 2);
+    grid1.add_row(vec![Coord(0, 3), Coord(1, 3)]);
+    assert_eq!(grid1.width, 1);
+    assert_eq!(grid1.height, 4);
+    assert_eq!(*grid1.get(0, 3).unwrap(), Coord(0, 3));
+    assert_eq!(grid1.get(1, 3), None);
 
-//     f.set(1, 1, Three);
-//     f.set(0, 1, Two);
-//     f.set(1, 0, Three);
-//     f.set(2, 1, Two);
-//     f.set(1, 2, Three);
-//     let c2 = f.vertex(1, 1);
+    let mut grid2 = make_grid();
+    assert_eq!(grid2.width, 0);
+    assert_eq!(grid2.height, 0);
 
-//     assert_eq!(c2.val, Three);
-//     assert_eq!(c2.top().val, Three);
-//     assert_eq!(c2.bottom().val, Three);
-//     assert_eq!(c2.right().val, Two);
-//     assert_eq!(c2.left().val, Two);
-// }
+    grid2.add_row(vec![Coord(0, 0), Coord(1, 0), Coord(2, 0)]);
+    assert_eq!(grid2.width, 3);
+    assert_eq!(grid2.height, 1);
+    assert_eq!(*grid2.get(1, 0).unwrap(), Coord(1, 0));
+    assert_eq!(*grid2.get(2, 0).unwrap(), Coord(2, 0));
 
-// #[test]
-// fn can_map() {
-//     use TestData::*;
+    grid2.add_col(vec![Coord(3, 0), Coord(3, 1)]);
+    assert_eq!(grid2.width, 4);
+    assert_eq!(grid2.height, 1);
+    assert_eq!(*grid2.get(3, 0).unwrap(), Coord(3, 0));
+    assert_eq!(grid2.get(3, 1), None);
+}
 
-//     let mut f = Grid::new(2, 2);
-//     f.set(0, 0, Three);
-//     f.set(0, 1, Three);
+#[test]
+fn grid_vertices() {
+    let grid = fill_grid(make_grid_with_coord_ops(CIRCLE_ALL_COORD_OPS));
+    let v = grid.vertex(0, 0).unwrap();
 
-//     let f2 = f.map(|cell| if cell.val == Three { One } else { Three });
+    assert_eq!(v.x, 0);
+    assert_eq!(v.y, 0);
+    assert_eq!(v.val, Coord(0, 0));
 
-//     assert_eq!(f2.get(0, 0), One);
-//     assert_eq!(f2.get(0, 1), One);
-//     assert_eq!(f2.get(1, 0), Three);
-//     assert_eq!(f2.get(1, 1), Three);
+    let v = v.right().unwrap();
+    assert_eq!(v.x, 1);
+    assert_eq!(v.y, 0);
+    assert_eq!(v.val, Coord(1, 0));
 
-//     let f3 = f.map(|cell| cell.right().val);
+    let v = v.right().unwrap();
+    assert_eq!(v.x, 2);
+    assert_eq!(v.y, 0);
+    assert_eq!(v.val, Coord(2, 0));
 
-//     assert_eq!(f3.get(0, 0), One);
-//     assert_eq!(f3.get(0, 1), One);
-//     assert_eq!(f3.get(1, 0), Three);
-//     assert_eq!(f3.get(1, 1), Three);
-// }
+    let v = v.right().unwrap();
+    assert_eq!(v.x, 0);
+    assert_eq!(v.y, 0);
+    assert_eq!(v.val, Coord(0, 0));
+
+    let v = v.bottom().unwrap();
+    assert_eq!(v.x, 0);
+    assert_eq!(v.y, 1);
+    assert_eq!(v.val, Coord(0, 1));
+
+    let v = v.bottom().unwrap();
+    assert_eq!(v.x, 0);
+    assert_eq!(v.y, 2);
+    assert_eq!(v.val, Coord(0, 2));
+
+    let v = v.bottom().unwrap();
+    assert_eq!(v.x, 0);
+    assert_eq!(v.y, 0);
+    assert_eq!(v.val, Coord(0, 0));
+
+    let v = v.top().unwrap();
+    assert_eq!(v.x, 0);
+    assert_eq!(v.y, 2);
+    assert_eq!(v.val, Coord(0, 2));
+
+    let v = v.left().unwrap();
+    assert_eq!(v.x, 2);
+    assert_eq!(v.y, 2);
+    assert_eq!(v.val, Coord(2, 2));
+
+    let v = v.top().unwrap();
+    assert_eq!(v.x, 2);
+    assert_eq!(v.y, 1);
+    assert_eq!(v.val, Coord(2, 1));
+
+    let v = v.left().unwrap();
+    assert_eq!(v.x, 1);
+    assert_eq!(v.y, 1);
+    assert_eq!(v.val, Coord(1, 1));
+}
+
+#[test]
+fn test_grid_map() {
+    let grid1 = fill_grid(make_grid());
+    let grid2 = grid1.map(|vert| Coord(vert.val.0 + vert.x as i32, vert.val.1 + vert.y as i32));
+    assert_eq!(*grid2.get(0, 0).unwrap(), Coord(0, 0));
+    assert_eq!(*grid2.get(1, 1).unwrap(), Coord(2, 2));
+    assert_eq!(*grid1.get(1, 1).unwrap(), Coord(1, 1));
+    assert_eq!(*grid2.get(2, 2).unwrap(), Coord(4, 4));
+    assert_eq!(*grid1.get(2, 2).unwrap(), Coord(2, 2));
+    assert_eq!(*grid2.get(2, 1).unwrap(), Coord(4, 2));
+}
+
+#[test]
+fn rows_and_cols() {
+    let grid = fill_grid(make_grid());
+    let col = grid.col(1).unwrap();
+    assert_eq!(*col, vec![Coord(1, 0), Coord(1, 1), Coord(1, 2)]);
+
+    let row = grid.row(1).unwrap();
+    assert_eq!(row, vec![Coord(0, 1), Coord(1, 1), Coord(2, 1)]);
+}

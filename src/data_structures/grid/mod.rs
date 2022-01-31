@@ -109,8 +109,9 @@ where
             panic!("new column length needs to be at least as big as the grid height.")
         }
 
-        self.vertices.push(vals);
         self.width += 1;
+        self.vertices
+            .push(vals.into_iter().take(self.height).collect());
     }
 
     pub fn add_row(&mut self, vals: Vec<T>) {
@@ -152,6 +153,59 @@ where
                 col.push(f(self.vertex(x, y).unwrap()));
             }
             grid.add_col(col);
+        }
+        grid
+    }
+
+    pub fn col(&self, x: usize) -> Option<&Vec<T>> {
+        self.vertices.get(x)
+    }
+
+    pub fn flat_map_cols<B, F>(&self, f: F) -> Grid<B, A>
+    where
+        B: Clone + Copy,
+        F: Fn(Vec<Vertex<T, A>>) -> Vec<Vec<B>>,
+    {
+        let mut grid = make_grid_with_coord_ops(self.coord_ops);
+        for x in 0..self.width {
+            let mut col = vec![];
+            for y in 0..self.height {
+                col.push(self.vertex(x as i32, y as i32).unwrap());
+            }
+            let new_colls = f(col);
+            for i in 0..new_colls.len() {
+                grid.add_col(new_colls[i].to_vec());
+            }
+        }
+        grid
+    }
+
+    pub fn row(&self, y: usize) -> Option<Vec<T>> {
+        if y >= self.height {
+            return None;
+        }
+        let mut row = vec![];
+        for x in 0..self.width {
+            row.push(self.vertices[x][y]);
+        }
+        Some(row)
+    }
+
+    pub fn flat_map_rows<B, F>(&self, f: F) -> Grid<B, A>
+    where
+        B: Clone + Copy,
+        F: Fn(Vec<Vertex<T, A>>) -> Vec<Vec<B>>,
+    {
+        let mut grid = make_grid_with_coord_ops(self.coord_ops);
+        for y in 0..self.height {
+            let mut row = vec![];
+            for x in 0..self.width {
+                row.push(self.vertex(x as i32, y as i32).unwrap());
+            }
+            let new_rows = f(row);
+            for i in 0..new_rows.len() {
+                grid.add_row(new_rows[i].to_vec());
+            }
         }
         grid
     }
