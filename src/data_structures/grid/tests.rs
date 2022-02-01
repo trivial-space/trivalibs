@@ -183,3 +183,70 @@ fn rows_and_cols() {
     let row = grid.row(1).unwrap();
     assert_eq!(row, vec![Coord(0, 1), Coord(1, 1), Coord(2, 1)]);
 }
+
+#[test]
+fn flat_map() {
+    #[derive(Clone, Copy, PartialEq, Debug)]
+    struct CoordF(f32, f32);
+
+    let grid = fill_grid(make_grid_with_coord_ops(CIRCLE_ALL_COORD_OPS));
+    let grid2 = grid.flat_map_cols(|col| {
+        let col2 = col
+            .iter()
+            .map(|vert| {
+                CoordF(
+                    (vert.val.0 as f32 + vert.right().unwrap().val.0 as f32) / 2.0,
+                    vert.val.1 as f32,
+                )
+            })
+            .collect();
+
+        vec![
+            col.into_iter()
+                .map(|vert| CoordF(vert.val.0 as f32, vert.val.1 as f32))
+                .collect(),
+            col2,
+        ]
+    });
+
+    assert_eq!(grid2.width, 6);
+    assert_eq!(grid2.height, 3);
+    for y in 0..grid2.height as i32 {
+        assert_eq!(*grid2.get(0, y).unwrap(), CoordF(0.0, y as f32));
+        assert_eq!(*grid2.get(1, y).unwrap(), CoordF(0.5, y as f32));
+        assert_eq!(*grid2.get(2, y).unwrap(), CoordF(1.0, y as f32));
+        assert_eq!(*grid2.get(3, y).unwrap(), CoordF(1.5, y as f32));
+        assert_eq!(*grid2.get(4, y).unwrap(), CoordF(2.0, y as f32));
+        assert_eq!(*grid2.get(5, y).unwrap(), CoordF(1.0, y as f32));
+    }
+
+    let grid2 = grid.flat_map_rows(|row| {
+        let row2 = row
+            .iter()
+            .map(|vert| {
+                CoordF(
+                    vert.val.0 as f32,
+                    (vert.val.1 as f32 + vert.bottom().unwrap().val.1 as f32) / 2.0,
+                )
+            })
+            .collect();
+
+        vec![
+            row.into_iter()
+                .map(|vert| CoordF(vert.val.0 as f32, vert.val.1 as f32))
+                .collect(),
+            row2,
+        ]
+    });
+
+    assert_eq!(grid2.width, 3);
+    assert_eq!(grid2.height, 6);
+    for x in 0..grid2.width as i32 {
+        assert_eq!(*grid2.get(x, 0).unwrap(), CoordF(x as f32, 0.0));
+        assert_eq!(*grid2.get(x, 1).unwrap(), CoordF(x as f32, 0.5));
+        assert_eq!(*grid2.get(x, 2).unwrap(), CoordF(x as f32, 1.0));
+        assert_eq!(*grid2.get(x, 3).unwrap(), CoordF(x as f32, 1.5));
+        assert_eq!(*grid2.get(x, 4).unwrap(), CoordF(x as f32, 2.0));
+        assert_eq!(*grid2.get(x, 5).unwrap(), CoordF(x as f32, 1.0));
+    }
+}
