@@ -4,16 +4,9 @@ use glam::Vec3;
 
 use super::vertex_index::{VertexIndex, WithVertexIndex};
 
-pub enum Face {
-    Face3 {
-        vertices: [usize; 3],
-        face_normal: Option<Vec3>,
-    },
-
-    Face4 {
-        vertices: [usize; 4],
-        face_normal: Option<Vec3>,
-    },
+pub struct Face {
+    pub vertices: Vec<usize>,
+    pub face_normal: Option<Vec3>,
 }
 
 pub trait VertexPosition3D {
@@ -28,8 +21,8 @@ pub struct VertexData<T: VertexPosition3D> {
 pub struct MeshGeometry3D<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> {
     next_index: usize,
     vertex_indices: HashMap<Idx, usize>,
-    pub vertices: Vec<VertexData<T>>,
-    pub faces: Vec<Face>,
+    vertices: Vec<VertexData<T>>,
+    faces: Vec<Face>,
 }
 
 impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3D<Idx, T> {
@@ -47,10 +40,16 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
         let v2_idx = self.get_index(v2.vertex_index());
         let v3_idx = self.get_index(v3.vertex_index());
 
-        self.faces.push(Face::Face3 {
+        let mut vertices = Vec::with_capacity(3);
+        vertices.push(v1_idx);
+        vertices.push(v2_idx);
+        vertices.push(v3_idx);
+
+        self.faces.push(Face {
             face_normal: None,
-            vertices: [v1_idx, v2_idx, v3_idx],
+            vertices,
         });
+
         let face_idx = self.faces.len() - 1;
 
         self.add_vertex(v1_idx, face_idx, v1);
@@ -64,9 +63,15 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
         let v3_idx = self.get_index(v3.vertex_index());
         let v4_idx = self.get_index(v4.vertex_index());
 
-        self.faces.push(Face::Face4 {
+        let mut vertices = Vec::with_capacity(4);
+        vertices.push(v1_idx);
+        vertices.push(v2_idx);
+        vertices.push(v3_idx);
+        vertices.push(v4_idx);
+
+        self.faces.push(Face {
             face_normal: None,
-            vertices: [v1_idx, v2_idx, v3_idx, v4_idx],
+            vertices,
         });
 
         let face_idx = self.faces.len() - 1;
@@ -85,6 +90,8 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
         &self.faces[i]
     }
 
+    pub fn triangulate(&self) {}
+
     pub fn get_index(&mut self, vert_idx: Idx) -> usize {
         if let Some(idx) = self.vertex_indices.get(&vert_idx) {
             *idx
@@ -96,27 +103,50 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
         }
     }
 
+    pub fn remove_face(&mut self, face_idx: usize) {
+        let face = self.faces.swap_remove(face_idx);
+        face.vertices.into_iter().for_each(|i| {
+            let mut vert = self.vertices.get_mut(i).unwrap();
+            let new_faces = vert
+                .faces
+                .iter()
+                .map(|j| *j)
+                .filter(|j| *j != face_idx)
+                .collect();
+            vert.faces = new_faces;
+        });
+
+        // let len = self.faces.len();
+        // if len > 0 {
+        //     let new_face = &self.faces[face_idx];
+        //     for v in &new_face.vertices {
+        //         let vert = self.vertices.get_mut(*v).unwrap();
+        //         let v_f_idx = vert.faces.iter().position(|i| *i == len).unwrap();
+        //         vert.faces[v_f_idx] = face_idx;
+        //     }
+        // }
+    }
+
     fn add_vertex(&mut self, vertex_idx: usize, face_idx: usize, vertex: T) {
+        // println!(
+        //     "inserting vertex! idx: {0}, position: {1:?}",
+        //     vertex_idx,
+        //     vertex.position()
+        // );
         if let Some(data) = self.vertices.get(vertex_idx) {
             let mut faces = data.faces.to_vec();
             faces.push(face_idx);
-            self.vertices.insert(
-                vertex_idx,
-                VertexData {
-                    vertex,
-                    faces,
-                    vertex_normal: None,
-                },
-            );
+            self.vertices[vertex_idx] = VertexData {
+                vertex,
+                faces,
+                vertex_normal: None,
+            };
         } else {
-            self.vertices.insert(
-                vertex_idx,
-                VertexData {
-                    vertex,
-                    faces: vec![face_idx],
-                    vertex_normal: None,
-                },
-            );
+            self.vertices.push(VertexData {
+                vertex,
+                faces: vec![face_idx],
+                vertex_normal: None,
+            });
         }
     }
 }

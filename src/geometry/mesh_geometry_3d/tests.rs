@@ -1,5 +1,5 @@
 use crate::geometry::{
-    mesh_geometry_3d::{Face::Face3, MeshGeometry3D, VertexPosition3D},
+    mesh_geometry_3d::{Face, MeshGeometry3D, VertexPosition3D},
     vertex_index::{VertIdx3f, WithVertexIndex},
 };
 use glam::{vec3, Vec3};
@@ -35,12 +35,37 @@ fn generate_geometry() {
     assert_eq!(geom.vertex(1).vertex, v2);
     assert_eq!(geom.vertex(2).vertex, v3);
 
-    if let Face3 { vertices, .. } = geom.face(0) {
-        assert_eq!(vertices, &[0, 1, 2]);
-    } else {
-        panic!("not a face3!!")
-    }
+    let Face { vertices, .. } = geom.face(0);
+    assert_eq!(vertices, &[0, 1, 2]);
 
     assert_eq!(geom.faces.len(), 1);
     assert_eq!(geom.vertices.len(), 3);
+
+    assert_eq!(geom.get_index(v2.vertex_index()), 1);
+    assert_eq!(geom.get_index(v3.vertex_index()), 2);
+}
+
+#[test]
+fn remove_face() {
+    let mut geom = MeshGeometry3D::new();
+    let v = vert(1.0, 1.0, 0.0);
+
+    geom.add_face3(v, vert(2.0, 0.0, 0.0), vert(0.0, 0.0, 0.0));
+    geom.add_face3(v, vert(2.0, 2.0, 0.0), vert(2.0, 0.0, 0.0));
+    geom.add_face3(v, vert(0.0, 2.0, 0.0), vert(2.0, 2.0, 0.0));
+    geom.add_face3(v, vert(0.0, 0.0, 0.0), vert(0.0, 2.0, 0.0));
+
+    assert_eq!(geom.faces.len(), 4);
+    assert_eq!(geom.next_index, 5);
+    assert_eq!(geom.vertices.len(), 5);
+    assert_eq!(geom.face(1).vertices, vec![0, 3, 1]);
+    assert_eq!(geom.face(3).vertices, vec![0, 2, 4]);
+    assert_eq!(geom.vertex(0).faces.len(), 4);
+
+    geom.remove_face(1);
+
+    assert_eq!(geom.faces.len(), 3);
+    assert_eq!(geom.vertices.len(), 5);
+    assert_eq!(geom.face(1).vertices, vec![0, 2, 4]);
+    assert_eq!(geom.vertex(0).faces.len(), 3);
 }
