@@ -36,21 +36,13 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
     }
 
     pub fn add_face3(&mut self, v1: T, v2: T, v3: T) {
-        let v1_idx = self.get_index(v1.vertex_index());
-        let v2_idx = self.get_index(v2.vertex_index());
-        let v3_idx = self.get_index(v3.vertex_index());
+        let v1_idx = self.get_vertex_index(v1.vertex_index());
+        let v2_idx = self.get_vertex_index(v2.vertex_index());
+        let v3_idx = self.get_vertex_index(v3.vertex_index());
 
-        let mut vertices = Vec::with_capacity(3);
-        vertices.push(v1_idx);
-        vertices.push(v2_idx);
-        vertices.push(v3_idx);
+        let face_idx = self.faces.len();
 
-        self.faces.push(Face {
-            face_normal: None,
-            vertices,
-        });
-
-        let face_idx = self.faces.len() - 1;
+        self.create_face3(v1_idx, v2_idx, v3_idx, None);
 
         self.add_vertex(v1_idx, face_idx, v1);
         self.add_vertex(v2_idx, face_idx, v2);
@@ -58,23 +50,13 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
     }
 
     pub fn add_face4(&mut self, v1: T, v2: T, v3: T, v4: T) {
-        let v1_idx = self.get_index(v1.vertex_index());
-        let v2_idx = self.get_index(v2.vertex_index());
-        let v3_idx = self.get_index(v3.vertex_index());
-        let v4_idx = self.get_index(v4.vertex_index());
+        let v1_idx = self.get_vertex_index(v1.vertex_index());
+        let v2_idx = self.get_vertex_index(v2.vertex_index());
+        let v3_idx = self.get_vertex_index(v3.vertex_index());
+        let v4_idx = self.get_vertex_index(v4.vertex_index());
 
-        let mut vertices = Vec::with_capacity(4);
-        vertices.push(v1_idx);
-        vertices.push(v2_idx);
-        vertices.push(v3_idx);
-        vertices.push(v4_idx);
-
-        self.faces.push(Face {
-            face_normal: None,
-            vertices,
-        });
-
-        let face_idx = self.faces.len() - 1;
+        let face_idx = self.faces.len();
+        self.create_face4(v1_idx, v2_idx, v3_idx, v4_idx, None);
 
         self.add_vertex(v1_idx, face_idx, v1);
         self.add_vertex(v2_idx, face_idx, v2);
@@ -90,9 +72,33 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
         &self.faces[i]
     }
 
-    pub fn triangulate(&self) {}
+    pub fn triangulate(&mut self) {
+        let quads = self
+            .faces
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| f.vertices.len() == 4)
+            .map(|(i, f)| (i, f.vertices.clone(), f.face_normal))
+            .collect::<Vec<_>>();
 
-    pub fn get_index(&mut self, vert_idx: Idx) -> usize {
+        for (i, verts, normal) in quads {
+            self.remove_face(i);
+
+            let face_idx1 = self.faces.len();
+            self.create_face3(verts[0], verts[1], verts[2], normal);
+            self.update_vertex_face(verts[0], face_idx1);
+            self.update_vertex_face(verts[1], face_idx1);
+            self.update_vertex_face(verts[2], face_idx1);
+
+            let face_idx2 = self.faces.len();
+            self.create_face3(verts[0], verts[2], verts[3], normal);
+            self.update_vertex_face(verts[0], face_idx2);
+            self.update_vertex_face(verts[2], face_idx2);
+            self.update_vertex_face(verts[3], face_idx2);
+        }
+    }
+
+    pub fn get_vertex_index(&mut self, vert_idx: Idx) -> usize {
         if let Some(idx) = self.vertex_indices.get(&vert_idx) {
             *idx
         } else {
@@ -116,37 +122,71 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
             vert.faces = new_faces;
         });
 
-        // let len = self.faces.len();
-        // if len > 0 {
-        //     let new_face = &self.faces[face_idx];
-        //     for v in &new_face.vertices {
-        //         let vert = self.vertices.get_mut(*v).unwrap();
-        //         let v_f_idx = vert.faces.iter().position(|i| *i == len).unwrap();
-        //         vert.faces[v_f_idx] = face_idx;
-        //     }
-        // }
+        let len = self.faces.len();
+        if face_idx != len {
+            let new_face = &self.faces[face_idx];
+            for v in &new_face.vertices {
+                let vert = self.vertices.get_mut(*v).unwrap();
+                let v_f_idx = vert.faces.iter().position(|i| *i == len).unwrap();
+                vert.faces[v_f_idx] = face_idx;
+            }
+        }
+    }
+
+    pub fn set_vertex(&mut self, vertex_idx: usize, vertex: T) {
+        if let Some(data) = self.vertices.get_mut(vertex_idx) {
+            data.vertex = vertex
+        }
     }
 
     fn add_vertex(&mut self, vertex_idx: usize, face_idx: usize, vertex: T) {
-        // println!(
-        //     "inserting vertex! idx: {0}, position: {1:?}",
-        //     vertex_idx,
-        //     vertex.position()
-        // );
-        if let Some(data) = self.vertices.get(vertex_idx) {
-            let mut faces = data.faces.to_vec();
-            faces.push(face_idx);
-            self.vertices[vertex_idx] = VertexData {
-                vertex,
-                faces,
-                vertex_normal: None,
-            };
+        if let Some(data) = self.vertices.get_mut(vertex_idx) {
+            data.vertex = vertex;
         } else {
             self.vertices.push(VertexData {
                 vertex,
-                faces: vec![face_idx],
+                faces: vec![],
                 vertex_normal: None,
             });
+        }
+        self.update_vertex_face(vertex_idx, face_idx);
+    }
+
+    fn create_face3(&mut self, v1_idx: usize, v2_idx: usize, v3_idx: usize, normal: Option<Vec3>) {
+        let mut vertices = Vec::with_capacity(3);
+        vertices.push(v1_idx);
+        vertices.push(v2_idx);
+        vertices.push(v3_idx);
+
+        self.faces.push(Face {
+            face_normal: normal,
+            vertices,
+        });
+    }
+
+    fn create_face4(
+        &mut self,
+        v1_idx: usize,
+        v2_idx: usize,
+        v3_idx: usize,
+        v4_idx: usize,
+        normal: Option<Vec3>,
+    ) {
+        let mut vertices = Vec::with_capacity(4);
+        vertices.push(v1_idx);
+        vertices.push(v2_idx);
+        vertices.push(v3_idx);
+        vertices.push(v4_idx);
+
+        self.faces.push(Face {
+            face_normal: normal,
+            vertices,
+        });
+    }
+
+    fn update_vertex_face(&mut self, vertex_idx: usize, face_idx: usize) {
+        if let Some(v) = self.vertices.get_mut(vertex_idx) {
+            v.faces.push(face_idx);
         }
     }
 }
