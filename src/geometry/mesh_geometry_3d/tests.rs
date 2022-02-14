@@ -1,14 +1,22 @@
-use crate::geometry::{
-    mesh_geometry_3d::{Face, MeshGeometry3D, VertexPosition3D},
-    vertex_index::{VertIdx3f, WithVertexIndex},
+use crate::{
+    geometry::{
+        mesh_geometry_3d::{Face, MeshGeometry, VertexPosition},
+        vertex_index::{VertIdx3f, WithVertexIndex},
+    },
+    rendering::buffered_geometry::BufferedVertexData,
 };
+use bytemuck::{Pod, Zeroable};
 use glam::{vec3, Vec3};
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+use super::MeshVertex;
+
+#[repr(C)]
+#[derive(Debug, PartialEq, Clone, Copy, Pod, Zeroable)]
 struct Vert {
     pos: Vec3,
 }
-impl VertexPosition3D for Vert {
+
+impl VertexPosition for Vert {
     fn position(&self) -> Vec3 {
         self.pos
     }
@@ -18,13 +26,16 @@ impl WithVertexIndex<VertIdx3f> for Vert {
         VertIdx3f::from(self.pos)
     }
 }
+impl BufferedVertexData for Vert {}
+impl MeshVertex<VertIdx3f, Vert> for Vert {}
+
 fn vert(x: f32, y: f32, z: f32) -> Vert {
     Vert { pos: vec3(x, y, z) }
 }
 
 #[test]
 fn generate_geometry() {
-    let mut geom = MeshGeometry3D::new();
+    let mut geom = MeshGeometry::new();
     let v1 = vert(0.0, 0.0, 0.0);
     let v2 = vert(1.0, 0.0, 0.0);
     let v3 = vert(0.0, 1.0, 0.0);
@@ -47,7 +58,7 @@ fn generate_geometry() {
 
 #[test]
 fn remove_face() {
-    let mut geom = MeshGeometry3D::new();
+    let mut geom = MeshGeometry::new();
     let v = vert(1.0, 1.0, 0.0);
 
     geom.add_face3(v, vert(2.0, 0.0, 0.0), vert(0.0, 0.0, 0.0));
@@ -115,7 +126,7 @@ fn remove_face() {
 
 #[test]
 fn triangulate() {
-    let mut geom = MeshGeometry3D::new();
+    let mut geom = MeshGeometry::new();
 
     geom.add_face4(
         vert(0.0, 0.0, 0.0),

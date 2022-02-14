@@ -1,6 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, marker::PhantomData};
 
 use glam::Vec3;
+
+use crate::rendering::buffered_geometry::{
+    BufferedVertexData, ToBufferedGeometry, ToBufferedVertexData,
+};
 
 use super::vertex_index::{VertexIndex, WithVertexIndex};
 
@@ -9,23 +13,49 @@ pub struct Face {
     pub face_normal: Option<Vec3>,
 }
 
-pub trait VertexPosition3D {
+pub trait VertexPosition {
     fn position(&self) -> Vec3;
 }
-pub struct VertexData<T: VertexPosition3D> {
-    pub vertex: T,
+
+pub trait MeshVertex<Idx, BV>:
+    VertexPosition + ToBufferedVertexData<BV> + WithVertexIndex<Idx>
+where
+    Idx: VertexIndex,
+    BV: BufferedVertexData,
+{
+}
+
+pub struct MeshVertexData<Idx, BV, V>
+where
+    Idx: VertexIndex,
+    BV: BufferedVertexData,
+    V: MeshVertex<Idx, BV>,
+{
+    _idx: PhantomData<Idx>,
+    _bv: PhantomData<BV>,
+    pub vertex: V,
     pub faces: Vec<usize>,
     pub vertex_normal: Option<Vec3>,
 }
 
-pub struct MeshGeometry3D<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> {
+pub struct MeshGeometry<Idx, BV, V>
+where
+    Idx: VertexIndex,
+    BV: BufferedVertexData,
+    V: MeshVertex<Idx, BV>,
+{
     next_index: usize,
     vertex_indices: HashMap<Idx, usize>,
-    vertices: Vec<VertexData<T>>,
+    vertices: Vec<MeshVertexData<Idx, BV, V>>,
     faces: Vec<Face>,
 }
 
-impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3D<Idx, T> {
+impl<Idx, BV, V> MeshGeometry<Idx, BV, V>
+where
+    Idx: VertexIndex,
+    BV: BufferedVertexData,
+    V: MeshVertex<Idx, BV>,
+{
     pub fn new() -> Self {
         Self {
             next_index: 0,
@@ -35,7 +65,7 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
         }
     }
 
-    pub fn add_face3(&mut self, v1: T, v2: T, v3: T) {
+    pub fn add_face3(&mut self, v1: V, v2: V, v3: V) {
         let v1_idx = self.get_vertex_index(v1.vertex_index());
         let v2_idx = self.get_vertex_index(v2.vertex_index());
         let v3_idx = self.get_vertex_index(v3.vertex_index());
@@ -49,7 +79,7 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
         self.add_vertex(v3_idx, face_idx, v3);
     }
 
-    pub fn add_face4(&mut self, v1: T, v2: T, v3: T, v4: T) {
+    pub fn add_face4(&mut self, v1: V, v2: V, v3: V, v4: V) {
         let v1_idx = self.get_vertex_index(v1.vertex_index());
         let v2_idx = self.get_vertex_index(v2.vertex_index());
         let v3_idx = self.get_vertex_index(v3.vertex_index());
@@ -64,7 +94,7 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
         self.add_vertex(v4_idx, face_idx, v4);
     }
 
-    pub fn vertex(&self, i: usize) -> &VertexData<T> {
+    pub fn vertex(&self, i: usize) -> &MeshVertexData<Idx, BV, V> {
         &self.vertices[i]
     }
 
@@ -133,20 +163,22 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
         }
     }
 
-    pub fn set_vertex(&mut self, vertex_idx: usize, vertex: T) {
+    pub fn set_vertex(&mut self, vertex_idx: usize, vertex: V) {
         if let Some(data) = self.vertices.get_mut(vertex_idx) {
             data.vertex = vertex
         }
     }
 
-    fn add_vertex(&mut self, vertex_idx: usize, face_idx: usize, vertex: T) {
+    fn add_vertex(&mut self, vertex_idx: usize, face_idx: usize, vertex: V) {
         if let Some(data) = self.vertices.get_mut(vertex_idx) {
             data.vertex = vertex;
         } else {
-            self.vertices.push(VertexData {
+            self.vertices.push(MeshVertexData {
                 vertex,
                 faces: vec![],
                 vertex_normal: None,
+                _idx: PhantomData,
+                _bv: PhantomData,
             });
         }
         self.update_vertex_face(vertex_idx, face_idx);
@@ -188,6 +220,20 @@ impl<Idx: VertexIndex, T: VertexPosition3D + WithVertexIndex<Idx>> MeshGeometry3
         if let Some(v) = self.vertices.get_mut(vertex_idx) {
             v.faces.push(face_idx);
         }
+    }
+}
+
+impl<Idx, BV, V> ToBufferedGeometry for MeshGeometry<Idx, BV, V>
+where
+    Idx: VertexIndex,
+    BV: BufferedVertexData,
+    V: MeshVertex<Idx, BV>,
+{
+    fn to_buffered_geometry(
+        &self,
+        layout: Vec<crate::rendering::buffered_geometry::VertexType>,
+    ) -> crate::rendering::buffered_geometry::BufferedGeometry {
+        todo!()
     }
 }
 

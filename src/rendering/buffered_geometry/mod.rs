@@ -1,3 +1,5 @@
+use bytemuck::Pod;
+
 /// Sync with WebGL type values.
 /// For possible values see: https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
 /// For numeric values see: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
@@ -198,4 +200,17 @@ pub fn create_attribute_layout(layout: Vec<VertexType>) -> Vec<AttributeLayout> 
 
 pub trait ToBufferedGeometry {
     fn to_buffered_geometry(&self, layout: Vec<VertexType>) -> BufferedGeometry;
+}
+
+pub trait ToBufferedVertexData<T: Pod> {
+    fn to_buffered_vertex_data(&self) -> T;
+}
+
+pub trait BufferedVertexData: Pod + Clone + Copy {}
+
+impl<T: BufferedVertexData> ToBufferedVertexData<T> for T {
+    #[inline]
+    fn to_buffered_vertex_data(&self) -> T {
+        self.clone()
+    }
 }
