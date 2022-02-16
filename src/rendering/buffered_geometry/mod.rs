@@ -165,6 +165,7 @@ pub fn vert_type(name: String, format: VertexFormat) -> VertexType {
     VertexType::new(name, format)
 }
 
+#[derive(Clone)]
 pub struct AttributeLayout {
     pub name: String,
     pub size: u32,
@@ -173,9 +174,11 @@ pub struct AttributeLayout {
     pub offset: u32,
 }
 
+#[derive(Clone)]
 pub struct BufferedGeometry {
     pub buffer: Vec<u8>,
     pub indices: Option<Vec<u32>>,
+    pub vertex_size: u32,
     pub vertex_layout: Vec<AttributeLayout>,
 }
 
