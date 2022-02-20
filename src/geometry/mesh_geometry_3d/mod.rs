@@ -1,9 +1,10 @@
 use std::{collections::HashMap, marker::PhantomData};
 
-use glam::Vec3;
+use glam::{vec3, Vec3};
 
 use crate::rendering::buffered_geometry::{
-    BufferedVertexData, ToBufferedGeometry, ToBufferedVertexData,
+    create_attribute_layout, BufferedGeometry, BufferedVertexData, ToBufferedGeometry,
+    ToBufferedVertexData, VertexFormat, VertexType,
 };
 
 use super::vertex_index::{VertexIndex, WithVertexIndex};
@@ -23,6 +24,12 @@ where
     Idx: VertexIndex,
     BV: BufferedVertexData,
 {
+}
+
+pub enum MeshBufferedGeometryType {
+    NoNormals,
+    VertexNormals,
+    FaceNormals,
 }
 
 pub struct MeshVertexData<Idx, BV, V>
@@ -169,6 +176,112 @@ where
         }
     }
 
+    pub fn generate_face_normals(&mut self) -> &Self {
+        for face in self.faces.iter_mut() {
+            let verts = &face.vertices;
+            let pos0 = self.vertices[verts[0]].vertex.position();
+            let pos1 = self.vertices[verts[1]].vertex.position();
+            let pos2 = self.vertices[verts[2]].vertex.position();
+            let normal = (pos1 - pos0).cross(pos2 - pos0);
+            face.face_normal = Some(normal);
+        }
+        self
+    }
+
+    pub fn generate_vertex_normals(&mut self) -> &Self {
+        for vert in self.vertices.iter_mut() {
+            let mut new_normal = vec3(0.0, 0.0, 0.0);
+            for face_idx in &vert.faces {
+                match self.faces[*face_idx].face_normal {
+                    Some(normal) => new_normal += normal,
+                    None => panic!("generate face normals before generating vertex normals"),
+                }
+            }
+            vert.vertex_normal = Some(new_normal.normalize());
+        }
+        self
+    }
+
+    pub fn to_buffered_geometry_by_type(
+        &self,
+        geom_type: MeshBufferedGeometryType,
+        mut layout: Vec<VertexType>,
+    ) -> BufferedGeometry {
+        let mut buffer = vec![];
+        let mut indices = vec![];
+
+        match geom_type {
+            MeshBufferedGeometryType::NoNormals => {
+                for vert_data in self.vertices.iter() {
+                    buffer.extend(bytemuck::bytes_of(
+                        &vert_data.vertex.to_buffered_vertex_data(),
+                    ));
+                }
+                self.fill_buffered_geometry_indices(&mut indices);
+            }
+            MeshBufferedGeometryType::VertexNormals => {
+                for vert_data in self.vertices.iter() {
+                    let normal = match vert_data.vertex_normal {
+                        Some(normal) => normal,
+                        None => panic!("generate vertex normals before generating buffers"),
+                    };
+                    buffer.extend(bytemuck::bytes_of(
+                        &vert_data.vertex.to_buffered_vertex_data(),
+                    ));
+                    buffer.extend(bytemuck::bytes_of(&normal));
+                }
+                self.fill_buffered_geometry_indices(&mut indices);
+                layout.push(VertexType {
+                    name: "normal".to_string(),
+                    format: VertexFormat::Float32x3,
+                })
+            }
+            MeshBufferedGeometryType::FaceNormals => {
+                for face in self.faces.iter() {
+                    if face.vertices.len() != 3 {
+                        panic!("triangulate the geometry before generating buffers");
+                    }
+                    let normal = match face.face_normal {
+                        Some(normal) => normal,
+                        None => panic!("generate face normals before generating buffers"),
+                    };
+                    for v in &face.vertices {
+                        buffer.extend(bytemuck::bytes_of(
+                            &self.vertices[*v].vertex.to_buffered_vertex_data(),
+                        ));
+                        buffer.extend(bytemuck::bytes_of(&normal));
+                    }
+                }
+                layout.push(VertexType {
+                    name: "normal".to_string(),
+                    format: VertexFormat::Float32x3,
+                })
+            }
+        };
+
+        BufferedGeometry {
+            buffer,
+            indices: if indices.len() == 0 {
+                None
+            } else {
+                Some(indices)
+            },
+            vertex_size: std::mem::size_of::<BV>() as u32,
+            vertex_layout: create_attribute_layout(layout),
+        }
+    }
+
+    fn fill_buffered_geometry_indices(&self, indices: &mut Vec<u32>) {
+        for face in self.faces.iter() {
+            if face.vertices.len() != 3 {
+                panic!("triangulate the geometry before generating buffers");
+            }
+            for v in &face.vertices {
+                indices.push(*v as u32)
+            }
+        }
+    }
+
     fn add_vertex(&mut self, vertex_idx: usize, face_idx: usize, vertex: V) {
         if let Some(data) = self.vertices.get_mut(vertex_idx) {
             data.vertex = vertex;
@@ -229,11 +342,8 @@ where
     BV: BufferedVertexData,
     V: MeshVertex<Idx, BV>,
 {
-    fn to_buffered_geometry(
-        &self,
-        layout: Vec<crate::rendering::buffered_geometry::VertexType>,
-    ) -> crate::rendering::buffered_geometry::BufferedGeometry {
-        todo!()
+    fn to_buffered_geometry(&self, layout: Vec<VertexType>) -> BufferedGeometry {
+        self.to_buffered_geometry_by_type(MeshBufferedGeometryType::NoNormals, layout)
     }
 }
 
