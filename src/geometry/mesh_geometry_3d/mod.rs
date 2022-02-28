@@ -176,7 +176,7 @@ where
         }
     }
 
-    pub fn generate_face_normals(&mut self) -> &Self {
+    pub fn generate_face_normals(&mut self) {
         for face in self.faces.iter_mut() {
             let verts = &face.vertices;
             let pos0 = self.vertices[verts[0]].vertex.position();
@@ -185,10 +185,9 @@ where
             let normal = (pos1 - pos0).cross(pos2 - pos0);
             face.face_normal = Some(normal);
         }
-        self
     }
 
-    pub fn generate_vertex_normals(&mut self) -> &Self {
+    pub fn generate_vertex_normals(&mut self) {
         for vert in self.vertices.iter_mut() {
             let mut new_normal = vec3(0.0, 0.0, 0.0);
             for face_idx in &vert.faces {
@@ -199,7 +198,6 @@ where
             }
             vert.vertex_normal = Some(new_normal.normalize());
         }
-        self
     }
 
     pub fn to_buffered_geometry_by_type(
@@ -232,7 +230,7 @@ where
                 }
                 self.fill_buffered_geometry_indices(&mut indices);
                 layout.push(VertexType {
-                    name: "normal".to_string(),
+                    name: "normal",
                     format: VertexFormat::Float32x3,
                 })
             }
@@ -253,7 +251,7 @@ where
                     }
                 }
                 layout.push(VertexType {
-                    name: "normal".to_string(),
+                    name: "normal",
                     format: VertexFormat::Float32x3,
                 })
             }

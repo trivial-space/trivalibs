@@ -19,7 +19,7 @@ impl Hash for VertIdx2U {
 }
 
 #[derive(PartialEq, Eq)]
-pub struct VertIdx2Usize(usize, usize);
+pub struct VertIdx2Usize(pub usize, pub usize);
 impl VertexIndex for VertIdx2Usize {}
 impl Hash for VertIdx2Usize {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {

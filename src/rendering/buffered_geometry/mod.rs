@@ -1,10 +1,11 @@
 use bytemuck::Pod;
+use serde::Serialize;
 
 /// Sync with WebGL type values.
 /// For possible values see: https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
 /// For numeric values see: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Serialize)]
 pub enum AttributeType {
     Byte = 0x1400,
     UnsignedByte = 0x1401,
@@ -151,30 +152,34 @@ impl VertexFormat {
 }
 
 pub struct VertexType {
-    pub name: String,
+    pub name: &'static str,
     pub format: VertexFormat,
 }
 
 impl VertexType {
-    pub fn new(name: String, format: VertexFormat) -> VertexType {
+    pub fn new(name: &'static str, format: VertexFormat) -> VertexType {
         VertexType { name, format }
     }
 }
 
-pub fn vert_type(name: String, format: VertexFormat) -> VertexType {
+pub fn vert_type(name: &'static str, format: VertexFormat) -> VertexType {
     VertexType::new(name, format)
 }
 
-#[derive(Clone)]
+pub trait WithVertexLayout {
+    fn vertex_layout() -> Vec<VertexType>;
+}
+
+#[derive(Clone, Serialize, Debug)]
 pub struct AttributeLayout {
-    pub name: String,
+    pub name: &'static str,
     pub size: u32,
     pub attr_type: AttributeType,
     pub normalized: bool,
     pub offset: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Debug)]
 pub struct BufferedGeometry {
     pub buffer: Vec<u8>,
     pub indices: Option<Vec<u32>>,

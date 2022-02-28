@@ -23,6 +23,40 @@ impl CoordOps for ClampToEdgeCoordOps {
 pub static CLAMP_TO_EDGE_COORD_OPS: ClampToEdgeCoordOps = ClampToEdgeCoordOps {};
 
 #[derive(Clone, Copy)]
+pub struct CircleRowsCoordOps;
+impl CoordOps for CircleRowsCoordOps {
+    fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize) {
+        let h = height as i32;
+        if y < 0 {
+            return self.adjust_coords(x, y + h, width, height);
+        }
+        if y >= h {
+            return self.adjust_coords(x, y - h, width, height);
+        }
+
+        (x as usize, y as usize)
+    }
+}
+pub static CIRCLE_ROWS_COORD_OPS: CircleRowsCoordOps = CircleRowsCoordOps {};
+
+#[derive(Clone, Copy)]
+pub struct CircleColsCoordOps;
+impl CoordOps for CircleColsCoordOps {
+    fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize) {
+        let w = width as i32;
+        if x < 0 {
+            return self.adjust_coords(x + w, y, width, height);
+        }
+        if x >= w {
+            return self.adjust_coords(x - w, y, width, height);
+        }
+
+        (x as usize, y as usize)
+    }
+}
+pub static CIRCLE_COLS_COORD_OPS: CircleColsCoordOps = CircleColsCoordOps {};
+
+#[derive(Clone, Copy)]
 pub struct CircleAllCoordOps;
 impl CoordOps for CircleAllCoordOps {
     fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize) {
