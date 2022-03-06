@@ -1,11 +1,12 @@
 use bytemuck::Pod;
 use serde::Serialize;
+use serde_repr::Serialize_repr;
 
 /// Sync with WebGL type values.
 /// For possible values see: https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
 /// For numeric values see: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
-#[repr(C)]
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Serialize)]
+#[repr(u32)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Serialize_repr)]
 pub enum AttributeType {
     Byte = 0x1400,
     UnsignedByte = 0x1401,
