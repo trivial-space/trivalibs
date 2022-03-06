@@ -134,13 +134,40 @@ fn triangulate() {
         vert(1.0, 1.0, 0.0),
         vert(0.0, 1.0, 0.0),
     );
+    geom.add_face4(
+        vert(0.0, 0.0, 0.0),
+        vert(0.0, 0.0, 1.0),
+        vert(0.0, 1.0, 1.0),
+        vert(0.0, 1.0, 0.0),
+    );
 
-    assert_eq!(geom.faces.len(), 1);
+    assert_eq!(geom.faces.len(), 2);
     assert_eq!(geom.face(0).vertices, [0, 1, 2, 3]);
 
     geom.triangulate();
 
-    assert_eq!(geom.faces.len(), 2);
-    assert_eq!(geom.face(0).vertices, [0, 1, 2]);
-    assert_eq!(geom.face(1).vertices, [0, 2, 3]);
+    assert_eq!(geom.faces.len(), 4);
+    for face in &geom.faces {
+        assert_eq!(face.vertices.len(), 3);
+    }
+    assert!(geom
+        .faces
+        .iter()
+        .find(|f| { f.vertices == [0, 1, 2] })
+        .is_some());
+    assert!(geom
+        .faces
+        .iter()
+        .find(|f| { f.vertices == [0, 2, 3] })
+        .is_some());
+    assert!(geom
+        .faces
+        .iter()
+        .find(|f| { f.vertices == [0, 4, 5] })
+        .is_some());
+    assert!(geom
+        .faces
+        .iter()
+        .find(|f| { f.vertices == [0, 5, 3] })
+        .is_some());
 }

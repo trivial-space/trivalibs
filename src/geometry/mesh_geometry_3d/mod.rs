@@ -3,12 +3,13 @@ use std::{collections::HashMap, marker::PhantomData};
 use glam::{vec3, Vec3};
 
 use crate::rendering::buffered_geometry::{
-    create_attribute_layout, BufferedGeometry, BufferedVertexData, ToBufferedGeometry,
+    create_buffered_geometry_layout, BufferedGeometry, BufferedVertexData, ToBufferedGeometry,
     ToBufferedVertexData, VertexFormat, VertexType,
 };
 
 use super::vertex_index::{VertexIndex, WithVertexIndex};
 
+#[derive(Debug)]
 pub struct Face {
     pub vertices: Vec<usize>,
     pub face_normal: Option<Vec3>,
@@ -53,8 +54,8 @@ where
 {
     next_index: usize,
     vertex_indices: HashMap<Idx, usize>,
-    vertices: Vec<MeshVertexData<Idx, BV, V>>,
-    faces: Vec<Face>,
+    pub vertices: Vec<MeshVertexData<Idx, BV, V>>,
+    pub faces: Vec<Face>,
 }
 
 impl<Idx, BV, V> MeshGeometry<Idx, BV, V>
@@ -116,6 +117,7 @@ where
             .enumerate()
             .filter(|(_, f)| f.vertices.len() == 4)
             .map(|(i, f)| (i, f.vertices.clone(), f.face_normal))
+            .rev()
             .collect::<Vec<_>>();
 
         for (i, verts, normal) in quads {
@@ -257,6 +259,8 @@ where
             }
         };
 
+        let geom_layout = create_buffered_geometry_layout(layout);
+
         BufferedGeometry {
             buffer,
             indices: if indices.len() == 0 {
@@ -264,8 +268,8 @@ where
             } else {
                 Some(indices)
             },
-            vertex_size: std::mem::size_of::<BV>() as u32,
-            vertex_layout: create_attribute_layout(layout),
+            vertex_size: geom_layout.vertex_size,
+            vertex_layout: geom_layout.vertex_layout,
         }
     }
 

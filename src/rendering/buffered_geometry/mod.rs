@@ -187,23 +187,31 @@ pub struct BufferedGeometry {
     pub vertex_layout: Vec<AttributeLayout>,
 }
 
-pub fn create_attribute_layout(layout: Vec<VertexType>) -> Vec<AttributeLayout> {
-    let mut attrib_layout = vec![];
-    let mut offset = 0;
+pub struct BufferedGeometryLayout {
+    pub vertex_size: u32,
+    pub vertex_layout: Vec<AttributeLayout>,
+}
+
+pub fn create_buffered_geometry_layout(layout: Vec<VertexType>) -> BufferedGeometryLayout {
+    let mut vertex_layout = vec![];
+    let mut vertex_size = 0;
 
     for vert_type in layout {
         let format = vert_type.format;
-        attrib_layout.push(AttributeLayout {
+        vertex_layout.push(AttributeLayout {
             name: vert_type.name,
             size: format.count(),
             attr_type: format.attr_type(),
             normalized: format.normalized(),
-            offset,
+            offset: vertex_size,
         });
-        offset += format.byte_size();
+        vertex_size += format.byte_size();
     }
 
-    attrib_layout
+    BufferedGeometryLayout {
+        vertex_layout,
+        vertex_size,
+    }
 }
 
 pub trait ToBufferedGeometry {
