@@ -19,8 +19,8 @@ pub struct NeighbourListNode<T: AdjustToNextNeighbour> {
 
 pub struct NeighbourListIter<'a, T: AdjustToNextNeighbour> {
     list: &'a NeighbourList<T>,
-    next: Option<&'a NeighbourListNode<T>>,
-    next_back: Option<&'a NeighbourListNode<T>>,
+    next: Option<usize>,
+    next_back: Option<usize>,
 }
 
 impl<'a, T: AdjustToNextNeighbour> NeighbourListIter<'a, T> {
@@ -28,8 +28,8 @@ impl<'a, T: AdjustToNextNeighbour> NeighbourListIter<'a, T> {
     pub fn new(list: &'a NeighbourList<T>) -> Self {
         Self {
             list,
-            next: list.first(),
-            next_back: list.last(),
+            next: list.first,
+            next_back: list.last,
         }
     }
 }
@@ -39,8 +39,9 @@ impl<'a, T: AdjustToNextNeighbour> Iterator for NeighbourListIter<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(node) = self.next {
-            self.next = self.list.next(node);
+        if let Some(idx) = self.next {
+            let node = &self.list.nodes[idx];
+            self.next = node.next;
             return Some(node);
         }
         None
@@ -50,8 +51,9 @@ impl<'a, T: AdjustToNextNeighbour> Iterator for NeighbourListIter<'a, T> {
 impl<'a, T: AdjustToNextNeighbour> DoubleEndedIterator for NeighbourListIter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        if let Some(node) = self.next_back {
-            self.next_back = self.list.prev(node);
+        if let Some(idx) = self.next_back {
+            let node = &self.list.nodes[idx];
+            self.next_back = node.prev;
             return Some(node);
         }
         None
@@ -60,8 +62,8 @@ impl<'a, T: AdjustToNextNeighbour> DoubleEndedIterator for NeighbourListIter<'a,
 
 pub struct NeighbourListIterMut<'a, T: AdjustToNextNeighbour> {
     list: &'a mut NeighbourList<T>,
-    next: Option<&'a mut NeighbourListNode<T>>,
-    next_back: Option<&'a mut NeighbourListNode<T>>,
+    next: Option<usize>,
+    next_back: Option<usize>,
 }
 
 impl<'a, T: AdjustToNextNeighbour> NeighbourListIterMut<'a, T> {
@@ -69,19 +71,20 @@ impl<'a, T: AdjustToNextNeighbour> NeighbourListIterMut<'a, T> {
     pub fn new(list: &'a mut NeighbourList<T>) -> Self {
         Self {
             list,
-            next: list.first_mut(),
-            next_back: list.last_mut(),
+            next: list.first,
+            next_back: list.last,
         }
     }
 }
 
 impl<'a, T: AdjustToNextNeighbour> Iterator for NeighbourListIterMut<'a, T> {
-    type Item = &'a mut NeighbourListNode<T>;
+    type Item = &'_ mut NeighbourListNode<T>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(node) = self.next {
-            self.next = self.list.next_mut(node);
+        if let Some(idx) = self.next {
+            let node = &mut self.list.nodes[idx];
+            self.next = node.next;
             return Some(node);
         }
         None
