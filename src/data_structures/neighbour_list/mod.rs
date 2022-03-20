@@ -2,49 +2,185 @@ pub trait AdjustToNextNeighbour {
     fn adjust_to_next(&mut self, next: &Self);
 }
 
+#[derive(Debug)]
 pub struct NeighbourList<T: AdjustToNextNeighbour> {
-    vec: Vec<T>,
+    nodes: Vec<NeighbourListNode<T>>,
+    first: Option<usize>,
+    last: Option<usize>,
 }
 
-pub struct NeighbourListNode<'a, T> {
-    pub prev: Option<&'a T>,
-    pub val: &'a T,
-    pub next: Option<&'a T>,
-    pub index: usize,
+#[derive(Debug)]
+pub struct NeighbourListNode<T: AdjustToNextNeighbour> {
+    pub val: T,
+    index: usize,
+    prev: Option<usize>,
+    next: Option<usize>,
 }
 
-impl<T: AdjustToNextNeighbour> NeighbourList<T> {
-    pub fn new() -> Self {
-        Self { vec: Vec::new() }
+pub struct NeighbourListIter<'a, T: AdjustToNextNeighbour> {
+    list: &'a NeighbourList<T>,
+    next: Option<&'a NeighbourListNode<T>>,
+    next_back: Option<&'a NeighbourListNode<T>>,
+}
+
+impl<'a, T: AdjustToNextNeighbour> NeighbourListIter<'a, T> {
+    #[inline]
+    pub fn new(list: &'a NeighbourList<T>) -> Self {
+        Self {
+            list,
+            next: list.first(),
+            next_back: list.last(),
+        }
     }
+}
 
-    pub fn get(&self, index: usize) -> Option<NeighbourListNode<'_, T>> {
-        if let Some(val) = self.vec.get(index) {
-            return Some(NeighbourListNode {
-                index,
-                val,
-                prev: self.vec.get(index - 1),
-                next: self.vec.get(index + 1),
-            });
+impl<'a, T: AdjustToNextNeighbour> Iterator for NeighbourListIter<'a, T> {
+    type Item = &'a NeighbourListNode<T>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(node) = self.next {
+            self.next = self.list.next(node);
+            return Some(node);
         }
         None
     }
+}
 
-    pub fn push(mut self, val: T) -> Self {
-        let len = self.vec.len();
-        if let Some(prev) = self.vec.get_mut(len - 1) {
-            prev.adjust_to_next(&val);
+impl<'a, T: AdjustToNextNeighbour> DoubleEndedIterator for NeighbourListIter<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if let Some(node) = self.next_back {
+            self.next_back = self.list.prev(node);
+            return Some(node);
         }
-        self.vec.push(val);
+        None
+    }
+}
+
+pub struct NeighbourListIterMut<'a, T: AdjustToNextNeighbour> {
+    list: &'a mut NeighbourList<T>,
+    next: Option<&'a mut NeighbourListNode<T>>,
+    next_back: Option<&'a mut NeighbourListNode<T>>,
+}
+
+impl<'a, T: AdjustToNextNeighbour> NeighbourListIterMut<'a, T> {
+    #[inline]
+    pub fn new(list: &'a mut NeighbourList<T>) -> Self {
+        Self {
+            list,
+            next: list.first_mut(),
+            next_back: list.last_mut(),
+        }
+    }
+}
+
+impl<'a, T: AdjustToNextNeighbour> Iterator for NeighbourListIterMut<'a, T> {
+    type Item = &'a mut NeighbourListNode<T>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(node) = self.next {
+            self.next = self.list.next_mut(node);
+            return Some(node);
+        }
+        None
+    }
+}
+
+impl<'a, T: AdjustToNextNeighbour> DoubleEndedIterator for NeighbourListIterMut<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if let Some(node) = self.next_back {
+            self.next_back = self.list.prev_mut(node);
+            return Some(node);
+        }
+        None
+    }
+}
+
+impl<T: AdjustToNextNeighbour> PartialEq for NeighbourListNode<T> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index
+    }
+}
+
+impl<T: AdjustToNextNeighbour> NeighbourList<T> {
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            nodes: Vec::new(),
+            first: None,
+            last: None,
+        }
+    }
+
+    pub fn append(&mut self, val: T) -> &Self {
+        let new_idx = self.nodes.len();
+        if let Some(last_idx) = self.last {
+            let last_node = &mut self.nodes[last_idx];
+            last_node.next = Some(new_idx);
+            self.nodes.push(NeighbourListNode {
+                prev: Some(last_idx),
+                next: None,
+                val,
+                index: new_idx,
+            });
+        } else {
+            self.first = Some(new_idx);
+            self.nodes.push(NeighbourListNode {
+                prev: None,
+                next: None,
+                val,
+                index: new_idx,
+            });
+        }
+        self.last = Some(new_idx);
         self
     }
 
-    pub fn push_raw(mut self, val: T) -> Self {
-        self.vec.push(val);
-        self
+    #[inline]
+    pub fn next(&self, node: &NeighbourListNode<T>) -> Option<&NeighbourListNode<T>> {
+        node.next.map(|idx| &self.nodes[idx])
+    }
+    #[inline]
+    pub fn prev(&self, node: &NeighbourListNode<T>) -> Option<&NeighbourListNode<T>> {
+        node.prev.map(|idx| &self.nodes[idx])
+    }
+    #[inline]
+    pub fn first(&self) -> Option<&NeighbourListNode<T>> {
+        self.first.map(|idx| &self.nodes[idx])
+    }
+    #[inline]
+    pub fn last(&self) -> Option<&NeighbourListNode<T>> {
+        self.last.map(|idx| &self.nodes[idx])
+    }
+    #[inline]
+    pub fn next_mut(&self, node: &NeighbourListNode<T>) -> Option<&'_ mut NeighbourListNode<T>> {
+        node.next.map(|idx| &mut self.nodes[idx])
+    }
+    #[inline]
+    pub fn prev_mut(&self, node: &NeighbourListNode<T>) -> Option<&'_ mut NeighbourListNode<T>> {
+        node.prev.map(|idx| &mut self.nodes[idx])
+    }
+    #[inline]
+    pub fn first_mut(&self) -> Option<&mut NeighbourListNode<T>> {
+        self.first.map(|idx| &mut self.nodes[idx])
+    }
+    #[inline]
+    pub fn last_mut(&self) -> Option<&mut NeighbourListNode<T>> {
+        self.last.map(|idx| &mut self.nodes[idx])
+    }
+    #[inline]
+    pub fn iter(&self) -> NeighbourListIter<'_, T> {
+        NeighbourListIter::new(&self)
     }
 
     pub fn adjust_all(self) -> Self {
         todo!()
     }
 }
+
+#[cfg(test)]
+mod tests;
