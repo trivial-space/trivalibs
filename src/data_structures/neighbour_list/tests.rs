@@ -17,7 +17,7 @@ fn item(idx: u8) -> Item {
 }
 
 #[test]
-fn create_push_and_iter() {
+fn create_append_and_iter() {
     let mut list = NeighbourList::new();
 
     assert_eq!(list.first(), None);
@@ -68,4 +68,23 @@ fn create_push_and_iter() {
     assert_eq!(list.iter().nth_back(0).unwrap().val, third_item);
     assert_eq!(list.iter().nth_back(1).unwrap().val, second_item);
     assert_eq!(list.iter().nth_back(2).unwrap().val, first_item);
+}
+
+#[test]
+fn mutable_iterator() {
+    let mut list = NeighbourList::new();
+
+    let first_item = item(1);
+    let second_item = item(2);
+    let third_item = item(3);
+    list.append(first_item);
+    list.append(second_item);
+    list.append(third_item);
+
+    for item in list.iter_mut() {
+        item.val.idx *= 2;
+    }
+    assert_eq!(list.iter().nth_back(0).unwrap().val.idx, 6);
+    assert_eq!(list.iter().nth_back(1).unwrap().val.idx, 4);
+    assert_eq!(list.iter().nth_back(2).unwrap().val.idx, 2);
 }

@@ -69,23 +69,27 @@ pub struct NeighbourListIterMut<'a, T: AdjustToNextNeighbour> {
 impl<'a, T: AdjustToNextNeighbour> NeighbourListIterMut<'a, T> {
     #[inline]
     pub fn new(list: &'a mut NeighbourList<T>) -> Self {
+        let first = list.first;
+        let last = list.last;
         Self {
             list,
-            next: list.first,
-            next_back: list.last,
+            next: first,
+            next_back: last,
         }
     }
 }
 
 impl<'a, T: AdjustToNextNeighbour> Iterator for NeighbourListIterMut<'a, T> {
-    type Item = &'_ mut NeighbourListNode<T>;
+    type Item = &'a mut NeighbourListNode<T>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(idx) = self.next {
             let node = &mut self.list.nodes[idx];
             self.next = node.next;
-            return Some(node);
+            unsafe {
+                return Some(std::mem::transmute(node));
+            }
         }
         None
     }
@@ -94,9 +98,12 @@ impl<'a, T: AdjustToNextNeighbour> Iterator for NeighbourListIterMut<'a, T> {
 impl<'a, T: AdjustToNextNeighbour> DoubleEndedIterator for NeighbourListIterMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        if let Some(node) = self.next_back {
-            self.next_back = self.list.prev_mut(node);
-            return Some(node);
+        if let Some(idx) = self.next_back {
+            let node = &mut self.list.nodes[idx];
+            self.next_back = node.prev;
+            unsafe {
+                return Some(std::mem::transmute(node));
+            }
         }
         None
     }
@@ -159,25 +166,30 @@ impl<T: AdjustToNextNeighbour> NeighbourList<T> {
     pub fn last(&self) -> Option<&NeighbourListNode<T>> {
         self.last.map(|idx| &self.nodes[idx])
     }
+
     #[inline]
-    pub fn next_mut(&self, node: &NeighbourListNode<T>) -> Option<&'_ mut NeighbourListNode<T>> {
+    pub fn iter(&self) -> NeighbourListIter<'_, T> {
+        NeighbourListIter::new(self)
+    }
+    #[inline]
+    pub fn next_mut(&mut self, node: &NeighbourListNode<T>) -> Option<&mut NeighbourListNode<T>> {
         node.next.map(|idx| &mut self.nodes[idx])
     }
     #[inline]
-    pub fn prev_mut(&self, node: &NeighbourListNode<T>) -> Option<&'_ mut NeighbourListNode<T>> {
+    pub fn prev_mut(&mut self, node: &NeighbourListNode<T>) -> Option<&mut NeighbourListNode<T>> {
         node.prev.map(|idx| &mut self.nodes[idx])
     }
     #[inline]
-    pub fn first_mut(&self) -> Option<&mut NeighbourListNode<T>> {
+    pub fn first_mut(&mut self) -> Option<&mut NeighbourListNode<T>> {
         self.first.map(|idx| &mut self.nodes[idx])
     }
     #[inline]
-    pub fn last_mut(&self) -> Option<&mut NeighbourListNode<T>> {
+    pub fn last_mut(&mut self) -> Option<&mut NeighbourListNode<T>> {
         self.last.map(|idx| &mut self.nodes[idx])
     }
     #[inline]
-    pub fn iter(&self) -> NeighbourListIter<'_, T> {
-        NeighbourListIter::new(&self)
+    pub fn iter_mut(&mut self) -> NeighbourListIterMut<'_, T> {
+        NeighbourListIterMut::new(self)
     }
 
     pub fn adjust_all(self) -> Self {
