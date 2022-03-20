@@ -25,66 +25,68 @@ fn create_append_and_iter() {
     assert_eq!(list.iter().nth(0), None);
     assert_eq!(list.iter().nth_back(0), None);
 
-    let first_item = item(1);
-    list.append(first_item);
+    let item1 = item(1);
+    list.append(item1);
 
-    assert_eq!(list.first().unwrap().val, first_item);
-    assert_eq!(list.last().unwrap().val, first_item);
-    assert_eq!(list.iter().nth(0).unwrap().val, first_item);
-    assert_eq!(list.iter().nth_back(0).unwrap().val, first_item);
+    assert_eq!(list.first().unwrap().val, item1);
+    assert_eq!(list.last().unwrap().val, item1);
+    assert_eq!(list.iter().nth(0).unwrap().val, item1);
+    assert_eq!(list.iter().nth_back(0).unwrap().val, item1);
 
-    let second_item = item(2);
-    list.append(second_item);
+    let item2 = item(2);
+    list.append(item2);
 
-    assert_eq!(list.first().unwrap().val, first_item);
-    assert_eq!(list.last().unwrap().val, second_item);
+    assert_eq!(list.first().unwrap().val, item1);
+    assert_eq!(list.last().unwrap().val, item2);
 
-    let third_item = item(3);
-    list.append(third_item);
+    let item3 = item(3);
+    list.append(item3);
 
-    assert_eq!(list.first().unwrap().val, first_item);
-    assert_eq!(list.last().unwrap().val, third_item);
+    assert_eq!(list.first().unwrap().val, item1);
+    assert_eq!(list.last().unwrap().val, item3);
 
-    assert_eq!(list.next(list.first().unwrap()).unwrap().val, second_item);
+    assert_eq!(list.next(list.first().unwrap()).unwrap().val, item2);
     assert_eq!(
         list.next(list.next(list.first().unwrap()).unwrap())
             .unwrap()
             .val,
-        third_item
+        item3
     );
 
-    assert_eq!(list.prev(list.last().unwrap()).unwrap().val, second_item);
+    assert_eq!(list.prev(list.last().unwrap()).unwrap().val, item2);
     assert_eq!(
         list.prev(list.prev(list.last().unwrap()).unwrap())
             .unwrap()
             .val,
-        first_item
+        item1
     );
 
-    assert_eq!(list.iter().nth(0).unwrap().val, first_item);
-    assert_eq!(list.iter().nth(1).unwrap().val, second_item);
-    assert_eq!(list.iter().nth(2).unwrap().val, third_item);
+    assert_eq!(list.iter().nth(0).unwrap().val, item1);
+    assert_eq!(list.iter().nth(1).unwrap().val, item2);
+    assert_eq!(list.iter().nth(2).unwrap().val, item3);
 
-    assert_eq!(list.iter().nth_back(0).unwrap().val, third_item);
-    assert_eq!(list.iter().nth_back(1).unwrap().val, second_item);
-    assert_eq!(list.iter().nth_back(2).unwrap().val, first_item);
+    assert_eq!(list.iter().nth_back(0).unwrap().val, item3);
+    assert_eq!(list.iter().nth_back(1).unwrap().val, item2);
+    assert_eq!(list.iter().nth_back(2).unwrap().val, item1);
 }
 
 #[test]
 fn mutable_iterator() {
     let mut list = NeighbourList::new();
 
-    let first_item = item(1);
-    let second_item = item(2);
-    let third_item = item(3);
-    list.append(first_item);
-    list.append(second_item);
-    list.append(third_item);
+    let item1 = item(1);
+    let item2 = item(2);
+    let item3 = item(3);
+
+    list.append(item1);
+    list.append(item2);
+    list.append(item3);
 
     for item in list.iter_mut() {
         item.val.idx *= 2;
     }
-    assert_eq!(list.iter().nth_back(0).unwrap().val.idx, 6);
-    assert_eq!(list.iter().nth_back(1).unwrap().val.idx, 4);
-    assert_eq!(list.iter().nth_back(2).unwrap().val.idx, 2);
+
+    assert_eq!(list.iter().nth(0).unwrap().val.idx, 2);
+    assert_eq!(list.iter().nth(1).unwrap().val.idx, 4);
+    assert_eq!(list.iter().nth(2).unwrap().val.idx, 6);
 }
