@@ -1,2 +1,2 @@
 pub mod grid;
-pub mod neighbour_list;
+pub mod neighbour_collection;
