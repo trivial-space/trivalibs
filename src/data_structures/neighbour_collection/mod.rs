@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{intrinsics::transmute, marker::PhantomData};
 
 use self::traits::{NeighbourCollection, NeighbourCollectionNode};
 
@@ -111,7 +111,7 @@ impl<'a, T: AdjustToNextNeighbour + Clone> Iterator for NeighbourListIterMut<'a,
             let node = &mut self.list.nodes[idx];
             self.next = node.next;
             unsafe {
-                return Some(std::mem::transmute(node));
+                return Some(transmute(node));
             }
         }
         None
@@ -139,7 +139,7 @@ impl<T: AdjustToNextNeighbour + Clone> PartialEq for NeighbourListNodeData<T> {
     }
 }
 
-impl<T: AdjustToNextNeighbour + Clone> NeighbourList<'_, T> {
+impl<'a, T: AdjustToNextNeighbour + Clone> NeighbourList<'a, T> {
     #[inline]
     pub fn new() -> Self {
         Self {
@@ -192,7 +192,7 @@ impl<T: AdjustToNextNeighbour + Clone> NeighbourList<'_, T> {
     }
 
     #[inline]
-    pub fn iter_mut(&mut self) -> NeighbourListIterMut<T> {
+    pub fn iter_mut(&'a mut self) -> NeighbourListIterMut<'a, T> {
         NeighbourListIterMut::new(self)
     }
 
@@ -232,24 +232,28 @@ impl<'a, T: AdjustToNextNeighbour + Clone> NeighbourCollection<T> for NeighbourL
         self
     }
 
-    fn first(&self) -> Option<NeighbourListNode<'a, T>> {
+    fn first(&self) -> Option<Self::Node> {
         self.first.map(|idx| NeighbourListNode {
-            data: &self.nodes[idx],
+            data: unsafe { transmute(&self.nodes[idx]) },
         })
     }
 
     fn last(&self) -> Option<NeighbourListNode<'a, T>> {
         self.last.map(|idx| NeighbourListNode {
-            data: &self.nodes[idx],
+            data: unsafe { transmute(&self.nodes[idx]) },
         })
     }
 
     fn next(&self, curr_idx: usize) -> Option<NeighbourListNode<'a, T>> {
-        self.nodes[curr_idx].next.map(|idx| &self.nodes[idx])
+        self.nodes[curr_idx].next.map(|idx| NeighbourListNode {
+            data: unsafe { transmute(&self.nodes[idx]) },
+        })
     }
 
     fn prev(&self, curr_idx: usize) -> Option<NeighbourListNode<'a, T>> {
-        self.nodes[curr_idx].prev.map(|idx| &self.nodes[idx])
+        self.nodes[curr_idx].prev.map(|idx| NeighbourListNode {
+            data: unsafe { transmute(&self.nodes[idx]) },
+        })
     }
 }
 
