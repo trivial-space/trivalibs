@@ -1,93 +1,47 @@
-pub trait NeighbourCollectionNode<T: Clone> {
-    fn val(&self) -> &T;
-    fn idx(&self) -> usize;
-}
+use std::marker::PhantomData;
 
-pub trait NeighbourCollection<T: Clone> {
-    type Node: NeighbourCollectionNode<T>;
-    fn empty() -> Self;
-    fn append(&mut self, val: T) -> &Self;
+use self::traits::{NeighbourCollection, NeighbourCollectionNode};
 
-    fn first(&self) -> Option<&Self::Node>;
-    fn last(&self) -> Option<&Self::Node>;
-    fn next(&self, idx: usize) -> Option<&Self::Node>;
-    fn prev(&self, idx: usize) -> Option<&Self::Node>;
-
-    fn map_with_prev_next<F: Fn(&T, Option<&T>, Option<&T>) -> T>(&self, f: F) -> Self
-    where
-        Self: Sized,
-    {
-        let mut new_list = Self::empty();
-        let mut node = self.first();
-        while let Some(current) = node {
-            let i = current.idx();
-            new_list.append(f(
-                current.val(),
-                self.prev(i).map(|n| n.val()),
-                self.next(i).map(|n| n.val()),
-            ));
-            node = self.next(i)
-        }
-
-        new_list
-    }
-
-    fn flatmap_with_prev_next<F: Fn(&T, Option<&T>, Option<&T>) -> Vec<T>>(&self, f: F) -> Self
-    where
-        Self: Sized,
-    {
-        let mut new_list = Self::empty();
-        let mut node = self.first();
-        while let Some(current) = node {
-            let i = current.idx();
-            let nodes = f(
-                current.val(),
-                self.prev(i).map(|n| n.val()),
-                self.next(i).map(|n| n.val()),
-            );
-            for j in 0..nodes.len() {
-                new_list.append(nodes[j].clone());
-            }
-            node = self.next(i)
-        }
-
-        new_list
-    }
-}
+mod traits;
 
 pub trait AdjustToNextNeighbour {
     fn adjust_to_next(&mut self, next: &Self);
 }
 
 #[derive(Debug)]
-pub struct NeighbourList<T: AdjustToNextNeighbour + Clone> {
-    nodes: Vec<NeighbourListNode<T>>,
+pub struct NeighbourList<'a, T: AdjustToNextNeighbour + Clone> {
+    nodes: Vec<NeighbourListNodeData<T>>,
     first: Option<usize>,
     last: Option<usize>,
+    _phantom: &'a PhantomData<T>,
 }
 
 #[derive(Debug)]
-pub struct NeighbourListNode<T: AdjustToNextNeighbour + Clone> {
-    pub val: T,
-    pub idx: usize,
+struct NeighbourListNodeData<T: AdjustToNextNeighbour + Clone> {
+    val: T,
+    idx: usize,
     prev: Option<usize>,
     next: Option<usize>,
 }
 
-impl<T: AdjustToNextNeighbour + Clone> NeighbourCollectionNode<T> for NeighbourListNode<T> {
+pub struct NeighbourListNode<'a, T: AdjustToNextNeighbour + Clone> {
+    data: &'a NeighbourListNodeData<T>,
+}
+
+impl<'a, T: AdjustToNextNeighbour + Clone> NeighbourCollectionNode<T> for NeighbourListNode<'a, T> {
     #[inline]
     fn val(&self) -> &T {
-        &self.val
+        &self.data.val
     }
 
     #[inline]
     fn idx(&self) -> usize {
-        self.idx
+        self.data.idx
     }
 }
 
 pub struct NeighbourListIter<'a, T: AdjustToNextNeighbour + Clone> {
-    list: &'a NeighbourList<T>,
+    list: &'a NeighbourList<'a, T>,
     next: Option<usize>,
     next_back: Option<usize>,
 }
@@ -104,7 +58,7 @@ impl<'a, T: AdjustToNextNeighbour + Clone> NeighbourListIter<'a, T> {
 }
 
 impl<'a, T: AdjustToNextNeighbour + Clone> Iterator for NeighbourListIter<'a, T> {
-    type Item = &'a NeighbourListNode<T>;
+    type Item = &'a NeighbourListNodeData<T>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -130,14 +84,14 @@ impl<'a, T: AdjustToNextNeighbour + Clone> DoubleEndedIterator for NeighbourList
 }
 
 pub struct NeighbourListIterMut<'a, T: AdjustToNextNeighbour + Clone> {
-    list: &'a mut NeighbourList<T>,
+    list: &'a mut NeighbourList<'a, T>,
     next: Option<usize>,
     next_back: Option<usize>,
 }
 
 impl<'a, T: AdjustToNextNeighbour + Clone> NeighbourListIterMut<'a, T> {
     #[inline]
-    pub fn new(list: &'a mut NeighbourList<T>) -> Self {
+    pub fn new(list: &'a mut NeighbourList<'a, T>) -> Self {
         let first = list.first;
         let last = list.last;
         Self {
@@ -149,7 +103,7 @@ impl<'a, T: AdjustToNextNeighbour + Clone> NeighbourListIterMut<'a, T> {
 }
 
 impl<'a, T: AdjustToNextNeighbour + Clone> Iterator for NeighbourListIterMut<'a, T> {
-    type Item = &'a mut NeighbourListNode<T>;
+    type Item = &'a mut NeighbourListNodeData<T>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -178,20 +132,21 @@ impl<'a, T: AdjustToNextNeighbour + Clone> DoubleEndedIterator for NeighbourList
     }
 }
 
-impl<T: AdjustToNextNeighbour + Clone> PartialEq for NeighbourListNode<T> {
+impl<T: AdjustToNextNeighbour + Clone> PartialEq for NeighbourListNodeData<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.idx == other.idx
     }
 }
 
-impl<T: AdjustToNextNeighbour + Clone> NeighbourList<T> {
+impl<T: AdjustToNextNeighbour + Clone> NeighbourList<'_, T> {
     #[inline]
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
             first: None,
             last: None,
+            _phantom: &PhantomData,
         }
     }
 
@@ -200,7 +155,7 @@ impl<T: AdjustToNextNeighbour + Clone> NeighbourList<T> {
         if let Some(next_idx) = node.next {
             let prev_idx = node.idx;
             let new_idx = self.nodes.len();
-            self.nodes.push(NeighbourListNode {
+            self.nodes.push(NeighbourListNodeData {
                 idx: new_idx,
                 next: Some(next_idx),
                 prev: Some(prev_idx),
@@ -220,24 +175,24 @@ impl<T: AdjustToNextNeighbour + Clone> NeighbourList<T> {
         NeighbourListIter::new(self)
     }
 
-    pub fn first_mut(&mut self) -> Option<&mut NeighbourListNode<T>> {
+    pub fn first_mut(&mut self) -> Option<&mut NeighbourListNodeData<T>> {
         self.first.map(|idx| &mut self.nodes[idx])
     }
 
-    pub fn last_mut(&mut self) -> Option<&mut NeighbourListNode<T>> {
+    pub fn last_mut(&mut self) -> Option<&mut NeighbourListNodeData<T>> {
         self.last.map(|idx| &mut self.nodes[idx])
     }
 
-    pub fn next_mut(&mut self, curr_idx: usize) -> Option<&mut NeighbourListNode<T>> {
+    pub fn next_mut(&mut self, curr_idx: usize) -> Option<&mut NeighbourListNodeData<T>> {
         self.nodes[curr_idx].next.map(|idx| &mut self.nodes[idx])
     }
 
-    pub fn prev_mut(&mut self, curr_idx: usize) -> Option<&mut NeighbourListNode<T>> {
+    pub fn prev_mut(&mut self, curr_idx: usize) -> Option<&mut NeighbourListNodeData<T>> {
         self.nodes[curr_idx].prev.map(|idx| &mut self.nodes[idx])
     }
 
     #[inline]
-    pub fn iter_mut(&mut self) -> NeighbourListIterMut<'_, T> {
+    pub fn iter_mut(&mut self) -> NeighbourListIterMut<T> {
         NeighbourListIterMut::new(self)
     }
 
@@ -246,8 +201,8 @@ impl<T: AdjustToNextNeighbour + Clone> NeighbourList<T> {
     }
 }
 
-impl<T: AdjustToNextNeighbour + Clone> NeighbourCollection<T> for NeighbourList<T> {
-    type Node = NeighbourListNode<T>;
+impl<'a, T: AdjustToNextNeighbour + Clone> NeighbourCollection<T> for NeighbourList<'a, T> {
+    type Node = NeighbourListNode<'a, T>;
 
     #[inline]
     fn empty() -> Self {
@@ -257,7 +212,7 @@ impl<T: AdjustToNextNeighbour + Clone> NeighbourCollection<T> for NeighbourList<
     fn append(&mut self, val: T) -> &Self {
         let new_idx = self.nodes.len();
         if let Some(last_idx) = self.last {
-            self.nodes.push(NeighbourListNode {
+            self.nodes.push(NeighbourListNodeData {
                 prev: Some(last_idx),
                 next: None,
                 val,
@@ -266,7 +221,7 @@ impl<T: AdjustToNextNeighbour + Clone> NeighbourCollection<T> for NeighbourList<
             self.nodes[last_idx].next = Some(new_idx);
         } else {
             self.first = Some(new_idx);
-            self.nodes.push(NeighbourListNode {
+            self.nodes.push(NeighbourListNodeData {
                 prev: None,
                 next: None,
                 val,
@@ -277,19 +232,23 @@ impl<T: AdjustToNextNeighbour + Clone> NeighbourCollection<T> for NeighbourList<
         self
     }
 
-    fn first(&self) -> Option<&NeighbourListNode<T>> {
-        self.first.map(|idx| &self.nodes[idx])
+    fn first(&self) -> Option<NeighbourListNode<'a, T>> {
+        self.first.map(|idx| NeighbourListNode {
+            data: &self.nodes[idx],
+        })
     }
 
-    fn last(&self) -> Option<&NeighbourListNode<T>> {
-        self.last.map(|idx| &self.nodes[idx])
+    fn last(&self) -> Option<NeighbourListNode<'a, T>> {
+        self.last.map(|idx| NeighbourListNode {
+            data: &self.nodes[idx],
+        })
     }
 
-    fn next(&self, curr_idx: usize) -> Option<&NeighbourListNode<T>> {
+    fn next(&self, curr_idx: usize) -> Option<NeighbourListNode<'a, T>> {
         self.nodes[curr_idx].next.map(|idx| &self.nodes[idx])
     }
 
-    fn prev(&self, curr_idx: usize) -> Option<&NeighbourListNode<T>> {
+    fn prev(&self, curr_idx: usize) -> Option<NeighbourListNode<'a, T>> {
         self.nodes[curr_idx].prev.map(|idx| &self.nodes[idx])
     }
 }
