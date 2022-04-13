@@ -1,4 +1,4 @@
-use super::{AdjustToNextNeighbour, NeighbourCollection, NeighbourCollectionNode, NeighbourList};
+use super::{AdjustToNextNeighbour, NeighbourList};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 struct Item {
