@@ -1,5 +1,3 @@
-use std::{intrinsics::transmute, marker::PhantomData};
-
 mod traits;
 
 pub trait AdjustToNextNeighbour {
@@ -7,15 +5,14 @@ pub trait AdjustToNextNeighbour {
 }
 
 #[derive(Debug)]
-pub struct NeighbourList<'a, T: AdjustToNextNeighbour + Clone> {
+pub struct NeighbourList<T: AdjustToNextNeighbour + Clone> {
     nodes: Vec<NeighbourListNode<T>>,
     first: Option<usize>,
     last: Option<usize>,
-    _phantom: &'a PhantomData<T>,
 }
 
 #[derive(Debug)]
-struct NeighbourListNode<T: AdjustToNextNeighbour + Clone> {
+pub struct NeighbourListNode<T: AdjustToNextNeighbour + Clone> {
     pub val: T,
     pub idx: usize,
     prev: Option<usize>,
@@ -23,7 +20,7 @@ struct NeighbourListNode<T: AdjustToNextNeighbour + Clone> {
 }
 
 pub struct NeighbourListIter<'a, T: AdjustToNextNeighbour + Clone> {
-    list: &'a NeighbourList<'a, T>,
+    list: &'a NeighbourList<T>,
     next: Option<usize>,
     next_back: Option<usize>,
 }
@@ -66,14 +63,14 @@ impl<'a, T: AdjustToNextNeighbour + Clone> DoubleEndedIterator for NeighbourList
 }
 
 pub struct NeighbourListIterMut<'a, T: AdjustToNextNeighbour + Clone> {
-    list: &'a mut NeighbourList<'a, T>,
+    list: &'a mut NeighbourList<T>,
     next: Option<usize>,
     next_back: Option<usize>,
 }
 
 impl<'a, T: AdjustToNextNeighbour + Clone> NeighbourListIterMut<'a, T> {
     #[inline]
-    pub fn new(list: &'a mut NeighbourList<'a, T>) -> Self {
+    pub fn new(list: &'a mut NeighbourList<T>) -> Self {
         let first = list.first;
         let last = list.last;
         Self {
@@ -93,7 +90,7 @@ impl<'a, T: AdjustToNextNeighbour + Clone> Iterator for NeighbourListIterMut<'a,
             let node = &mut self.list.nodes[idx];
             self.next = node.next;
             unsafe {
-                return Some(transmute(node));
+                return Some(std::mem::transmute(node));
             }
         }
         None
@@ -121,14 +118,13 @@ impl<T: AdjustToNextNeighbour + Clone> PartialEq for NeighbourListNode<T> {
     }
 }
 
-impl<'a, T: AdjustToNextNeighbour + Clone> NeighbourList<'a, T> {
+impl<T: AdjustToNextNeighbour + Clone> NeighbourList<T> {
     #[inline]
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
             first: None,
             last: None,
-            _phantom: &PhantomData,
         }
     }
 
@@ -174,7 +170,7 @@ impl<'a, T: AdjustToNextNeighbour + Clone> NeighbourList<'a, T> {
     }
 
     #[inline]
-    pub fn iter_mut(&'a mut self) -> NeighbourListIterMut<'a, T> {
+    pub fn iter_mut(&mut self) -> NeighbourListIterMut<'_, T> {
         NeighbourListIterMut::new(self)
     }
 
@@ -205,28 +201,24 @@ impl<'a, T: AdjustToNextNeighbour + Clone> NeighbourList<'a, T> {
         self
     }
 
-    fn first(&self) -> Option<NeighbourListNode<'a, T>> {
-        self.first.map(|idx| NeighbourListNode {
-            data: unsafe { transmute(&self.nodes[idx]) },
-        })
+    pub fn first(&self) -> Option<&NeighbourListNode<T>> {
+        self.first.and_then(|idx| self.nodes.get(idx))
     }
 
-    fn last(&self) -> Option<NeighbourListNode<'a, T>> {
-        self.last.map(|idx| NeighbourListNode {
-            data: unsafe { transmute(&self.nodes[idx]) },
-        })
+    pub fn last(&self) -> Option<&NeighbourListNode<T>> {
+        self.last.and_then(|idx| self.nodes.get(idx))
     }
 
-    fn next(&self, curr_idx: usize) -> Option<NeighbourListNode<'a, T>> {
-        self.nodes[curr_idx].next.map(|idx| NeighbourListNode {
-            data: unsafe { transmute(&self.nodes[idx]) },
-        })
+    pub fn next(&self, curr_idx: usize) -> Option<&NeighbourListNode<T>> {
+        self.nodes[curr_idx]
+            .next
+            .and_then(|idx| self.nodes.get(idx))
     }
 
-    fn prev(&self, curr_idx: usize) -> Option<NeighbourListNode<'a, T>> {
-        self.nodes[curr_idx].prev.map(|idx| NeighbourListNode {
-            data: unsafe { transmute(&self.nodes[idx]) },
-        })
+    pub fn prev(&self, curr_idx: usize) -> Option<&NeighbourListNode<T>> {
+        self.nodes[curr_idx]
+            .prev
+            .and_then(|idx| self.nodes.get(idx))
     }
 }
 
