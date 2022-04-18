@@ -85,8 +85,8 @@ fn create_append_and_iter() {
 
     let v = list
         .iter()
-        .map(|n| &n.val.number)
-        .map_with_prev_next(|curr, prev, next| curr + prev.unwrap_or(&0) + next.unwrap_or(&0))
+        .map(|n| n.val.number)
+        .map_with_prev_next(|curr, prev, next| curr + prev.unwrap_or(0) + next.unwrap_or(0))
         .collect::<Vec<_>>();
     assert_eq!(v, [3, 6, 5]);
 }

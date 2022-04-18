@@ -1,15 +1,15 @@
-pub struct NeighbourMap<'a, T, I, F>
+pub struct NeighbourMap<I, F>
 where
     I: Iterator,
 {
-    prev: Option<&'a T>,
-    next: Option<&'a T>,
-    curr: Option<&'a T>,
+    prev: Option<I::Item>,
+    next: Option<I::Item>,
+    curr: Option<I::Item>,
     iter: I,
     f: F,
 }
 
-impl<'a, T, I: Iterator, F> NeighbourMap<'a, T, I, F> {
+impl<'a, I: Iterator, F> NeighbourMap<I, F> {
     fn new(iter: I, f: F) -> Self {
         Self {
             prev: None,
@@ -21,9 +21,9 @@ impl<'a, T, I: Iterator, F> NeighbourMap<'a, T, I, F> {
     }
 }
 
-impl<'a, T, I, F, B> Iterator for NeighbourMap<'a, T, I, F>
+impl<T: Clone, I, F, B> Iterator for NeighbourMap<I, F>
 where
-    I: Iterator<Item = &'a T>,
+    I: Iterator<Item = T>,
     F: FnMut(I::Item, Option<I::Item>, Option<I::Item>) -> B,
 {
     type Item = B;
@@ -33,13 +33,13 @@ where
             self.curr = self.iter.next();
             self.next = self.iter.next();
         } else {
-            self.prev = self.curr;
-            self.curr = self.next;
+            self.prev = self.curr.clone();
+            self.curr = self.next.clone();
             self.next = self.iter.next();
         }
-        if let Some(r) = self.curr {
+        if let Some(r) = self.curr.clone() {
             let f = &mut self.f;
-            Some(f(r, self.prev, self.next))
+            Some(f(r, self.prev.clone(), self.next.clone()))
         } else {
             None
         }
@@ -47,7 +47,7 @@ where
 }
 
 pub trait NeighbourMapTransform: Iterator + Sized {
-    fn map_with_prev_next<'a, T, F, B>(self, f: F) -> NeighbourMap<'a, T, Self, F>
+    fn map_with_prev_next<F, B>(self, f: F) -> NeighbourMap<Self, F>
     where
         F: FnMut(Self::Item, Option<Self::Item>, Option<Self::Item>) -> B;
 }
@@ -56,7 +56,7 @@ impl<I> NeighbourMapTransform for I
 where
     I: Iterator,
 {
-    fn map_with_prev_next<'a, T, F, B>(self, f: F) -> NeighbourMap<'a, T, I, F>
+    fn map_with_prev_next<F, B>(self, f: F) -> NeighbourMap<I, F>
     where
         F: FnMut(I::Item, Option<I::Item>, Option<I::Item>) -> B,
     {
