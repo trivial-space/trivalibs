@@ -24,7 +24,7 @@ impl<'a, I: Iterator, F> NeighbourMap<I, F> {
 impl<T: Clone, I, F, B> Iterator for NeighbourMap<I, F>
 where
     I: Iterator<Item = T>,
-    F: FnMut(I::Item, Option<I::Item>, Option<I::Item>) -> B,
+    F: Fn(I::Item, Option<I::Item>, Option<I::Item>) -> B,
 {
     type Item = B;
 
@@ -38,7 +38,7 @@ where
             self.next = self.iter.next();
         }
         if let Some(r) = self.curr.clone() {
-            let f = &mut self.f;
+            let f = &self.f;
             Some(f(r, self.prev.clone(), self.next.clone()))
         } else {
             None
@@ -49,7 +49,7 @@ where
 pub trait NeighbourMapTransform: Iterator + Sized {
     fn map_with_prev_next<F, B>(self, f: F) -> NeighbourMap<Self, F>
     where
-        F: FnMut(Self::Item, Option<Self::Item>, Option<Self::Item>) -> B;
+        F: Fn(Self::Item, Option<Self::Item>, Option<Self::Item>) -> B;
 }
 
 impl<I> NeighbourMapTransform for I
@@ -58,7 +58,7 @@ where
 {
     fn map_with_prev_next<F, B>(self, f: F) -> NeighbourMap<I, F>
     where
-        F: FnMut(I::Item, Option<I::Item>, Option<I::Item>) -> B,
+        F: Fn(I::Item, Option<I::Item>, Option<I::Item>) -> B,
     {
         NeighbourMap::new(self, f)
     }
@@ -68,7 +68,7 @@ where
 pub trait NeighbourFlatMapTransform: Iterator {
     fn flatmap_with_prev_next<F, T, B, I: Iterator<Item = B>>(self, f: F) -> I
     where
-        F: FnMut(&Self::Item, Option<&Self::Item>, Option<&Self::Item>) -> Vec<Self::Item>;
+        F: Fn(&Self::Item, Option<&Self::Item>, Option<&Self::Item>) -> Vec<Self::Item>;
 }
 
 #[cfg(test)]
