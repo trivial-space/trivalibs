@@ -71,28 +71,76 @@ pub trait NeighbourFlatMapTransform: Iterator {
         F: FnMut(&Self::Item, Option<&Self::Item>, Option<&Self::Item>) -> Vec<Self::Item>;
 }
 
-#[test]
-fn test_map_with_prev_next() {
-    let v = vec![1, 2, 3];
+#[cfg(test)]
+mod tests {
+    use super::NeighbourMapTransform;
 
-    let res = v
-        .iter()
-        .map_with_prev_next(|curr, prev, next| curr + prev.unwrap_or(&0) + next.unwrap_or(&0))
-        .collect::<Vec<_>>();
+    #[test]
+    fn test_map_with_prev_next() {
+        let v = vec![1, 2, 3];
 
-    assert_eq!(res, [3, 6, 5]);
+        let res = v
+            .iter()
+            .map_with_prev_next(|curr, prev, next| curr + prev.unwrap_or(&0) + next.unwrap_or(&0))
+            .collect::<Vec<_>>();
 
-    let res = v
-        .iter()
-        .map_with_prev_next(|curr, prev, next| (prev.map(|x| *x), *curr, next.map(|x| *x)))
-        .collect::<Vec<_>>();
+        assert_eq!(res, [3, 6, 5]);
 
-    assert_eq!(
-        res,
-        [
-            (None, 1, Some(2)),
-            (Some(1), 2, Some(3)),
-            (Some(2), 3, None)
-        ]
-    );
+        let res = v
+            .iter()
+            .map_with_prev_next(|curr, prev, next| (prev.map(|x| *x), *curr, next.map(|x| *x)))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            res,
+            [
+                (None, 1, Some(2)),
+                (Some(1), 2, Some(3)),
+                (Some(2), 3, None)
+            ]
+        );
+    }
+
+    #[derive(Default, PartialEq, Debug)]
+    struct SomeBox {
+        val: usize,
+        count: usize,
+    }
+
+    // impl Clone for SomeBox {
+    //     fn clone(&self) -> Self {
+    //         Self {
+    //             val: self.val.clone(),
+    //             count: self.count.clone() + 1,
+    //         }
+    //     }
+    // }
+
+    fn make_box(val: usize) -> SomeBox {
+        SomeBox { val, count: 0 }
+    }
+
+    #[test]
+    fn test_does_not_clone_ref_values() {
+        let v = vec![make_box(1), make_box(2), make_box(3)];
+
+        let res = v
+            .iter()
+            .map_with_prev_next(|curr, prev, next| SomeBox {
+                val: curr.val
+                    + prev.unwrap_or(&Default::default()).val
+                    + next.unwrap_or(&Default::default()).val,
+                count: curr.count,
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            res,
+            [
+                SomeBox { val: 3, count: 0 },
+                SomeBox { val: 6, count: 0 },
+                SomeBox { val: 5, count: 0 }
+            ]
+        )
+    }
 }
