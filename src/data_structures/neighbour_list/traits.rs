@@ -1,5 +1,67 @@
 use std::iter::Flatten;
 
+// With Neighbour iterator
+
+pub struct WithNeighbours<I>
+where
+    I: Iterator,
+{
+    prev: Option<I::Item>,
+    next: Option<I::Item>,
+    curr: Option<I::Item>,
+    iter: I,
+}
+
+impl<I: Iterator> WithNeighbours<I> {
+    #[inline]
+    fn new(iter: I) -> Self {
+        Self {
+            prev: None,
+            next: None,
+            curr: None,
+            iter,
+        }
+    }
+}
+
+impl<T, I> Iterator for WithNeighbours<I>
+where
+    T: Clone,
+    I: Iterator<Item = T>,
+{
+    type Item = (Option<T>, T, Option<T>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.prev.is_none() && self.curr.is_none() {
+            self.curr = self.iter.next();
+            self.next = self.iter.next();
+        } else {
+            self.prev = self.curr.clone();
+            self.curr = self.next.clone();
+            self.next = self.iter.next();
+        }
+        if let Some(r) = self.curr.clone() {
+            Some((self.prev.clone(), r, self.next.clone()))
+        } else {
+            None
+        }
+    }
+}
+
+pub trait WithNeighboursTransform: Iterator + Sized {
+    fn with_neighbours(self) -> WithNeighbours<Self>;
+}
+
+impl<I> WithNeighboursTransform for I
+where
+    I: Iterator,
+{
+    #[inline]
+    fn with_neighbours(self) -> WithNeighbours<Self> {
+        WithNeighbours::new(self)
+    }
+}
+
 // Map iterator
 
 pub struct NeighbourMap<I, F>
@@ -14,6 +76,7 @@ where
 }
 
 impl<'a, I: Iterator, F> NeighbourMap<I, F> {
+    #[inline]
     fn new(iter: I, f: F) -> Self {
         Self {
             prev: None,
@@ -137,7 +200,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{NeighbourFlatMapTransform, NeighbourMapTransform};
+    use super::{NeighbourFlatMapTransform, NeighbourMapTransform, WithNeighboursTransform};
 
     #[test]
     fn test_map_with_prev_next() {
@@ -228,5 +291,22 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(res, [1, 2, 1, 2, 3, 2, 3])
+    }
+
+    #[test]
+    fn with_neighbours() {
+        let v = vec![1, 2, 3, 4];
+
+        let res = v.iter().with_neighbours().collect::<Vec<_>>();
+
+        assert_eq!(
+            res,
+            [
+                (None, &1, Some(&2)),
+                (Some(&1), &2, Some(&3)),
+                (Some(&2), &3, Some(&4)),
+                (Some(&3), &4, None)
+            ]
+        );
     }
 }
