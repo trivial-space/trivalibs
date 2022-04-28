@@ -1,3 +1,7 @@
+use std::iter::Flatten;
+
+// Map iterator
+
 pub struct NeighbourMap<I, F>
 where
     I: Iterator,
@@ -21,8 +25,9 @@ impl<'a, I: Iterator, F> NeighbourMap<I, F> {
     }
 }
 
-impl<T: Clone, I, F, B> Iterator for NeighbourMap<I, F>
+impl<T, I, F, B> Iterator for NeighbourMap<I, F>
 where
+    T: Clone,
     I: Iterator<Item = T>,
     F: Fn(I::Item, Option<I::Item>, Option<I::Item>) -> B,
 {
@@ -64,16 +69,75 @@ where
     }
 }
 
-// TODO: Flatmap on iterator
-pub trait NeighbourFlatMapTransform: Iterator {
-    fn flatmap_with_prev_next<F, T, B, I: Iterator<Item = B>>(self, f: F) -> I
-    where
-        F: Fn(&Self::Item, Option<&Self::Item>, Option<&Self::Item>) -> Vec<Self::Item>;
+// Flatmap on iterator
+
+pub struct NeighbourFlatMap<T, I, U, F>
+where
+    T: Clone,
+    U: IntoIterator,
+    I: Iterator<Item = T>,
+    F: Fn(I::Item, Option<I::Item>, Option<I::Item>) -> U,
+{
+    inner: Flatten<NeighbourMap<I, F>>,
 }
+
+impl<T, I, U, F> NeighbourFlatMap<T, I, U, F>
+where
+    T: Clone,
+    I: Iterator<Item = T>,
+    U: IntoIterator,
+    F: Fn(I::Item, Option<I::Item>, Option<I::Item>) -> U,
+{
+    #[inline]
+    pub fn new(iter: I, f: F) -> NeighbourFlatMap<T, I, U, F> {
+        NeighbourFlatMap {
+            inner: NeighbourMap::new(iter, f).flatten(),
+        }
+    }
+}
+
+impl<T, I, U, F> Iterator for NeighbourFlatMap<T, I, U, F>
+where
+    T: Clone,
+    U: IntoIterator,
+    I: Iterator<Item = T>,
+    F: Fn(I::Item, Option<I::Item>, Option<I::Item>) -> U,
+{
+    type Item = U::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+pub trait NeighbourFlatMapTransform: Iterator + Sized {
+    fn flat_map_with_prev_next<F, U>(self, f: F) -> NeighbourFlatMap<Self::Item, Self, U, F>
+    where
+        Self::Item: Clone,
+        U: IntoIterator,
+        F: Fn(Self::Item, Option<Self::Item>, Option<Self::Item>) -> U;
+}
+
+impl<T, I> NeighbourFlatMapTransform for I
+where
+    T: Clone,
+    I: Iterator<Item = T>,
+{
+    fn flat_map_with_prev_next<F, U>(self, f: F) -> NeighbourFlatMap<I::Item, I, U, F>
+    where
+        U: IntoIterator,
+        F: Fn(I::Item, Option<I::Item>, Option<I::Item>) -> U,
+    {
+        NeighbourFlatMap::new(self, f)
+    }
+}
+
+// Tests
 
 #[cfg(test)]
 mod tests {
-    use super::NeighbourMapTransform;
+    use super::{NeighbourFlatMapTransform, NeighbourMapTransform};
 
     #[test]
     fn test_map_with_prev_next() {
@@ -107,14 +171,14 @@ mod tests {
         count: usize,
     }
 
-    // impl Clone for SomeBox {
-    //     fn clone(&self) -> Self {
-    //         Self {
-    //             val: self.val.clone(),
-    //             count: self.count.clone() + 1,
-    //         }
-    //     }
-    // }
+    impl Clone for SomeBox {
+        fn clone(&self) -> Self {
+            Self {
+                val: self.val.clone(),
+                count: self.count.clone() + 1,
+            }
+        }
+    }
 
     fn make_box(val: usize) -> SomeBox {
         SomeBox { val, count: 0 }
@@ -142,5 +206,27 @@ mod tests {
                 SomeBox { val: 5, count: 0 }
             ]
         )
+    }
+
+    #[test]
+    fn test_flat_map() {
+        let v = vec![1, 2, 3];
+
+        let res = v
+            .iter()
+            .flat_map_with_prev_next(|curr, prev, next| {
+                let mut vs = vec![];
+                if let Some(i) = prev {
+                    vs.push(*i);
+                }
+                vs.push(*curr);
+                if let Some(i) = next {
+                    vs.push(*i);
+                }
+                vs
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(res, [1, 2, 1, 2, 3, 2, 3])
     }
 }
