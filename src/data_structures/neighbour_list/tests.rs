@@ -15,6 +15,9 @@ impl AdjustToNextNeighbour for Item {
 fn item(idx: u8) -> Item {
     Item { idx, next: 0 }
 }
+fn with_next(idx: u8) -> Item {
+    Item { idx, next: idx + 1 }
+}
 
 #[test]
 fn create_append_and_iter() {
@@ -36,16 +39,16 @@ fn create_append_and_iter() {
     let item2 = item(2);
     list.append(item2);
 
-    assert_eq!(list.first().unwrap().val, item1);
+    assert_eq!(list.first().unwrap().val, with_next(1));
     assert_eq!(list.last().unwrap().val, item2);
 
     let item3 = item(3);
     list.append(item3);
 
-    assert_eq!(list.first().unwrap().val, item1);
+    assert_eq!(list.first().unwrap().val, with_next(1));
     assert_eq!(list.last().unwrap().val, item3);
 
-    assert_eq!(list.next(list.first().unwrap()).unwrap().val, item2);
+    assert_eq!(list.next(list.first().unwrap()).unwrap().val, with_next(2));
     assert_eq!(
         list.next(list.next(list.first().unwrap()).unwrap())
             .unwrap()
@@ -53,21 +56,21 @@ fn create_append_and_iter() {
         item3
     );
 
-    assert_eq!(list.prev(list.last().unwrap()).unwrap().val, item2);
+    assert_eq!(list.prev(list.last().unwrap()).unwrap().val, with_next(2));
     assert_eq!(
         list.prev(list.prev(list.last().unwrap()).unwrap())
             .unwrap()
             .val,
-        item1
+        with_next(1)
     );
 
-    assert_eq!(list.iter().nth(0).unwrap().val, item1);
-    assert_eq!(list.iter().nth(1).unwrap().val, item2);
+    assert_eq!(list.iter().nth(0).unwrap().val, with_next(1));
+    assert_eq!(list.iter().nth(1).unwrap().val, with_next(2));
     assert_eq!(list.iter().nth(2).unwrap().val, item3);
 
     assert_eq!(list.iter().nth_back(0).unwrap().val, item3);
-    assert_eq!(list.iter().nth_back(1).unwrap().val, item2);
-    assert_eq!(list.iter().nth_back(2).unwrap().val, item1);
+    assert_eq!(list.iter().nth_back(1).unwrap().val, with_next(2));
+    assert_eq!(list.iter().nth_back(2).unwrap().val, with_next(1));
 }
 
 #[test]

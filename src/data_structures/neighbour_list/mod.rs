@@ -12,7 +12,7 @@ pub struct NeighbourList<T: AdjustToNextNeighbour> {
 #[derive(Debug)]
 pub struct NeighbourListNode<T: AdjustToNextNeighbour> {
     pub val: T,
-    index: usize,
+    pub idx: usize,
     prev: Option<usize>,
     next: Option<usize>,
 }
@@ -112,7 +112,7 @@ impl<'a, T: AdjustToNextNeighbour> DoubleEndedIterator for NeighbourListIterMut<
 impl<T: AdjustToNextNeighbour> PartialEq for NeighbourListNode<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.index == other.index
+        self.idx == other.idx
     }
 }
 
@@ -127,26 +127,28 @@ impl<T: AdjustToNextNeighbour> NeighbourList<T> {
     }
 
     pub fn append(&mut self, val: T) -> &Self {
-        let new_idx = self.nodes.len();
+        let idx = self.nodes.len();
         if let Some(last_idx) = self.last {
-            let last_node = &mut self.nodes[last_idx];
-            last_node.next = Some(new_idx);
-            self.nodes.push(NeighbourListNode {
+            let new_node = NeighbourListNode {
                 prev: Some(last_idx),
                 next: None,
                 val,
-                index: new_idx,
-            });
+                idx,
+            };
+            let last_node = &mut self.nodes[last_idx];
+            last_node.next = Some(idx);
+            last_node.val.adjust_to_next(&new_node.val);
+            self.nodes.push(new_node);
         } else {
-            self.first = Some(new_idx);
+            self.first = Some(idx);
             self.nodes.push(NeighbourListNode {
                 prev: None,
                 next: None,
                 val,
-                index: new_idx,
+                idx,
             });
         }
-        self.last = Some(new_idx);
+        self.last = Some(idx);
         self
     }
 
@@ -194,6 +196,16 @@ impl<T: AdjustToNextNeighbour> NeighbourList<T> {
 
     pub fn adjust_all(self) -> Self {
         todo!()
+    }
+}
+
+impl<T: AdjustToNextNeighbour> FromIterator<T> for NeighbourList<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut list = Self::new();
+        for item in iter {
+            list.append(item);
+        }
+        list
     }
 }
 
