@@ -1,3 +1,5 @@
+mod traits;
+
 pub trait AdjustToNextNeighbour {
     fn adjust_to_next(&mut self, next: &Self);
 }
@@ -126,7 +128,7 @@ impl<T: AdjustToNextNeighbour> NeighbourList<T> {
         }
     }
 
-    pub fn append(&mut self, val: T) -> &Self {
+    fn append(&mut self, val: T) -> &Self {
         let idx = self.nodes.len();
         if let Some(last_idx) = self.last {
             let new_node = NeighbourListNode {
@@ -135,9 +137,11 @@ impl<T: AdjustToNextNeighbour> NeighbourList<T> {
                 val,
                 idx,
             };
+
             let last_node = &mut self.nodes[last_idx];
-            last_node.next = Some(idx);
             last_node.val.adjust_to_next(&new_node.val);
+            last_node.next = Some(idx);
+
             self.nodes.push(new_node);
         } else {
             self.first = Some(idx);
@@ -152,46 +156,80 @@ impl<T: AdjustToNextNeighbour> NeighbourList<T> {
         self
     }
 
-    #[inline]
-    pub fn next(&self, node: &NeighbourListNode<T>) -> Option<&NeighbourListNode<T>> {
-        node.next.map(|idx| &self.nodes[idx])
-    }
-    #[inline]
-    pub fn prev(&self, node: &NeighbourListNode<T>) -> Option<&NeighbourListNode<T>> {
-        node.prev.map(|idx| &self.nodes[idx])
-    }
-    #[inline]
-    pub fn first(&self) -> Option<&NeighbourListNode<T>> {
-        self.first.map(|idx| &self.nodes[idx])
-    }
-    #[inline]
-    pub fn last(&self) -> Option<&NeighbourListNode<T>> {
-        self.last.map(|idx| &self.nodes[idx])
+    pub fn append_at(&mut self, curr_idx: usize, val: T) -> &Self {
+        let node = &self.nodes[curr_idx];
+        if let Some(next_idx) = node.next {
+            let prev_idx = node.idx;
+            let idx = self.nodes.len();
+
+            let mut new_node = NeighbourListNode {
+                val,
+                idx,
+                next: Some(next_idx),
+                prev: Some(prev_idx),
+            };
+
+            let next_node = &mut self.nodes[next_idx];
+            next_node.prev = Some(idx);
+
+            new_node.val.adjust_to_next(&next_node.val);
+
+            let prev_node = &mut self.nodes[prev_idx];
+            prev_node.next = Some(idx);
+
+            prev_node.val.adjust_to_next(&new_node.val);
+
+            self.nodes.push(new_node);
+        } else {
+            return self.append(val);
+        }
+        self
     }
 
     #[inline]
     pub fn iter(&self) -> NeighbourListIter<'_, T> {
         NeighbourListIter::new(self)
     }
-    #[inline]
-    pub fn next_mut(&mut self, node: &NeighbourListNode<T>) -> Option<&mut NeighbourListNode<T>> {
-        node.next.map(|idx| &mut self.nodes[idx])
-    }
-    #[inline]
-    pub fn prev_mut(&mut self, node: &NeighbourListNode<T>) -> Option<&mut NeighbourListNode<T>> {
-        node.prev.map(|idx| &mut self.nodes[idx])
-    }
-    #[inline]
-    pub fn first_mut(&mut self) -> Option<&mut NeighbourListNode<T>> {
-        self.first.map(|idx| &mut self.nodes[idx])
-    }
-    #[inline]
-    pub fn last_mut(&mut self) -> Option<&mut NeighbourListNode<T>> {
-        self.last.map(|idx| &mut self.nodes[idx])
-    }
+
     #[inline]
     pub fn iter_mut(&mut self) -> NeighbourListIterMut<'_, T> {
         NeighbourListIterMut::new(self)
+    }
+
+    pub fn first(&self) -> Option<&NeighbourListNode<T>> {
+        self.first.and_then(|idx| self.nodes.get(idx))
+    }
+
+    pub fn last(&self) -> Option<&NeighbourListNode<T>> {
+        self.last.and_then(|idx| self.nodes.get(idx))
+    }
+
+    pub fn next(&self, curr_idx: usize) -> Option<&NeighbourListNode<T>> {
+        self.nodes[curr_idx]
+            .next
+            .and_then(|idx| self.nodes.get(idx))
+    }
+
+    pub fn prev(&self, curr_idx: usize) -> Option<&NeighbourListNode<T>> {
+        self.nodes[curr_idx]
+            .prev
+            .and_then(|idx| self.nodes.get(idx))
+    }
+
+    pub fn first_mut(&mut self) -> Option<&mut NeighbourListNode<T>> {
+        self.first.map(|idx| &mut self.nodes[idx])
+    }
+
+    pub fn last_mut(&mut self) -> Option<&mut NeighbourListNode<T>> {
+        self.last.map(|idx| &mut self.nodes[idx])
+    }
+
+    pub fn next_mut(&mut self, curr_idx: usize) -> Option<&mut NeighbourListNode<T>> {
+        self.nodes[curr_idx].next.map(|idx| &mut self.nodes[idx])
+    }
+
+    pub fn prev_mut(&mut self, curr_idx: usize) -> Option<&mut NeighbourListNode<T>> {
+        self.nodes[curr_idx].prev.map(|idx| &mut self.nodes[idx])
     }
 
     pub fn adjust_all(self) -> Self {
