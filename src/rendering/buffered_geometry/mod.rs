@@ -226,7 +226,6 @@ pub trait ToBufferedVertexData<T: Pod> {
 pub trait BufferedVertexData: Pod + Clone + Copy {}
 
 impl<T: BufferedVertexData> ToBufferedVertexData<T> for T {
-    #[inline]
     fn to_buffered_vertex_data(&self) -> T {
         self.clone()
     }

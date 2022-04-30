@@ -25,7 +25,6 @@ impl Default for LineVertex {
 }
 
 impl LineVertex {
-    #[inline]
     fn new(pos: Vec2) -> Self {
         LineVertex { pos, ..default() }
     }
@@ -40,18 +39,15 @@ impl LineVertex {
 }
 
 impl AdjustToNextNeighbour for LineVertex {
-    #[inline]
     fn adjust_to_next(&mut self, next: &Self) {
         self.point_to(&next.pos);
     }
 }
 
-#[inline]
 pub fn line_vert(pos: Vec2) -> LineVertex {
     LineVertex::new(pos)
 }
 
-#[inline]
 pub fn line_vert_w(pos: Vec2, width: f32) -> LineVertex {
     LineVertex {
         pos,
@@ -68,7 +64,7 @@ pub struct Line {
 impl<'a> IntoIterator for &'a Line {
     type Item = &'a LineVertex;
     type IntoIter = NeighbourListValsIter<'a, LineVertex>;
-    #[inline]
+
     fn into_iter(self) -> Self::IntoIter {
         self.list.into_iter()
     }

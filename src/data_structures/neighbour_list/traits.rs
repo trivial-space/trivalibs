@@ -13,7 +13,6 @@ where
 }
 
 impl<I: Iterator> WithNeighbours<I> {
-    #[inline]
     fn new(iter: I) -> Self {
         Self {
             prev: None,
@@ -56,7 +55,6 @@ impl<I> WithNeighboursTransform for I
 where
     I: Iterator,
 {
-    #[inline]
     fn with_neighbours(self) -> WithNeighbours<Self> {
         WithNeighbours::new(self)
     }
@@ -76,7 +74,6 @@ where
 }
 
 impl<'a, I: Iterator, F> NeighbourMap<I, F> {
-    #[inline]
     fn new(iter: I, f: F) -> Self {
         Self {
             prev: None,
@@ -151,7 +148,6 @@ where
     U: IntoIterator,
     F: Fn(I::Item, Option<I::Item>, Option<I::Item>) -> U,
 {
-    #[inline]
     pub fn new(iter: I, f: F) -> NeighbourFlatMap<T, I, U, F> {
         NeighbourFlatMap {
             inner: NeighbourMap::new(iter, f).flatten(),
@@ -168,7 +164,6 @@ where
 {
     type Item = U::Item;
 
-    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next()
     }
