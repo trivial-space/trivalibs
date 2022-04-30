@@ -58,7 +58,55 @@ pub fn line_vert_w(pos: Vec2, width: f32) -> LineVertex {
 
 pub struct Line {
     list: NeighbourList<LineVertex>,
-    len: usize,
+    len: f32,
+    default_width: f32,
+}
+
+impl Line {
+    pub fn new(width: f32) -> Self {
+        Line {
+            list: NeighbourList::new(),
+            len: 0.0,
+            default_width: width,
+        }
+    }
+
+    fn from_vecs<T: IntoIterator<Item = Vec2>>(line_width: f32, iter: T) -> Self {
+        let mut line = Line::new(line_width);
+        for vert in iter {
+            line.add(vert);
+        }
+        line
+    }
+
+    pub fn line_length(&self) -> f32 {
+        self.len
+    }
+
+    pub fn vert_count(&self) -> usize {
+        self.list.len()
+    }
+
+    pub fn add(&mut self, pos: Vec2) {
+        self.add_vert(line_vert_w(pos, self.default_width));
+    }
+
+    pub fn add_width(&mut self, pos: Vec2, width: f32) {
+        self.add_vert(line_vert_w(pos, width));
+    }
+
+    pub fn add_vert(&mut self, vert: LineVertex) {
+        self.list.append(vert);
+
+        let prev = self.list.prev(self.list.last().unwrap().idx);
+        if let Some(node) = prev {
+            self.len += node.val.len;
+        }
+    }
+
+    pub fn iter(&self) -> NeighbourListValsIter<'_, LineVertex> {
+        self.list.vals()
+    }
 }
 
 impl<'a> IntoIterator for &'a Line {
@@ -70,19 +118,14 @@ impl<'a> IntoIterator for &'a Line {
     }
 }
 
-impl Line {
-    pub fn new() -> Self {
-        Line {
-            list: NeighbourList::new(),
-            len: 0,
+impl FromIterator<LineVertex> for Line {
+    fn from_iter<T: IntoIterator<Item = LineVertex>>(iter: T) -> Self {
+        let mut line = Line::new(1.0);
+        for vert in iter {
+            line.add_vert(vert);
         }
+        line
     }
-
-    pub fn len(&self) -> usize {
-        self.len
-    }
-
-    pub fn add(pos: Vec2) {}
 }
 
 #[cfg(test)]

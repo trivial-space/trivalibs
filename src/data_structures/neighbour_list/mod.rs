@@ -145,24 +145,6 @@ impl<'a, T: AdjustToNextNeighbour> DoubleEndedIterator for NeighbourListIterMut<
     }
 }
 
-impl<'a, T> IntoIterator for &'a NeighbourList<T>
-where
-    T: AdjustToNextNeighbour,
-{
-    type Item = &'a T;
-    type IntoIter = NeighbourListValsIter<'a, T>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.vals()
-    }
-}
-
-impl<T: AdjustToNextNeighbour> PartialEq for NeighbourListNode<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.idx == other.idx
-    }
-}
-
 impl<T: AdjustToNextNeighbour> NeighbourList<T> {
     pub fn new() -> Self {
         Self {
@@ -172,7 +154,7 @@ impl<T: AdjustToNextNeighbour> NeighbourList<T> {
         }
     }
 
-    fn append(&mut self, val: T) -> &Self {
+    pub fn append(&mut self, val: T) -> &Self {
         let idx = self.nodes.len();
         if let Some(last_idx) = self.last {
             let new_node = NeighbourListNode {
@@ -230,6 +212,10 @@ impl<T: AdjustToNextNeighbour> NeighbourList<T> {
         self
     }
 
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
+
     pub fn iter(&self) -> NeighbourListIter<'_, T> {
         NeighbourListIter::new(self)
     }
@@ -280,6 +266,24 @@ impl<T: AdjustToNextNeighbour> NeighbourList<T> {
 
     pub fn adjust_all(self) -> Self {
         todo!()
+    }
+}
+
+impl<T: AdjustToNextNeighbour> PartialEq for NeighbourListNode<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.idx == other.idx
+    }
+}
+
+impl<'a, T> IntoIterator for &'a NeighbourList<T>
+where
+    T: AdjustToNextNeighbour,
+{
+    type Item = &'a T;
+    type IntoIter = NeighbourListValsIter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.vals()
     }
 }
 
