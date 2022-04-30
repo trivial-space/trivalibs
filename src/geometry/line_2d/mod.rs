@@ -1,11 +1,16 @@
-use crate::{data_structures::neighbour_list::AdjustToNextNeighbour, prelude::*};
+use crate::{
+    data_structures::neighbour_list::{
+        AdjustToNextNeighbour, NeighbourList, NeighbourListValsIter,
+    },
+    prelude::*,
+};
 use glam::Vec2;
 
 pub struct LineVertex {
-    pos: Vec2,
-    width: f32,
-    len: f32,
-    dir: Vec2,
+    pub pos: Vec2,
+    pub width: f32,
+    pub len: f32,
+    pub dir: Vec2,
 }
 
 impl Default for LineVertex {
@@ -54,3 +59,35 @@ pub fn line_vert_w(pos: Vec2, width: f32) -> LineVertex {
         ..default()
     }
 }
+
+pub struct Line {
+    list: NeighbourList<LineVertex>,
+    len: usize,
+}
+
+impl<'a> IntoIterator for &'a Line {
+    type Item = &'a LineVertex;
+    type IntoIter = NeighbourListValsIter<'a, LineVertex>;
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.list.into_iter()
+    }
+}
+
+impl Line {
+    pub fn new() -> Self {
+        Line {
+            list: NeighbourList::new(),
+            len: 0,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn add(pos: Vec2) {}
+}
+
+#[cfg(test)]
+mod tests;

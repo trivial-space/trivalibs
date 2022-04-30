@@ -62,6 +62,49 @@ impl<'a, T: AdjustToNextNeighbour> DoubleEndedIterator for NeighbourListIter<'a,
     }
 }
 
+pub struct NeighbourListValsIter<'a, T: AdjustToNextNeighbour> {
+    list: &'a NeighbourList<T>,
+    next: Option<usize>,
+    next_back: Option<usize>,
+}
+
+impl<'a, T: AdjustToNextNeighbour> NeighbourListValsIter<'a, T> {
+    #[inline]
+    pub fn new(list: &'a NeighbourList<T>) -> Self {
+        Self {
+            list,
+            next: list.first,
+            next_back: list.last,
+        }
+    }
+}
+
+impl<'a, T: AdjustToNextNeighbour> Iterator for NeighbourListValsIter<'a, T> {
+    type Item = &'a T;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(idx) = self.next {
+            let node = &self.list.nodes[idx];
+            self.next = node.next;
+            return Some(&node.val);
+        }
+        None
+    }
+}
+
+impl<'a, T: AdjustToNextNeighbour> DoubleEndedIterator for NeighbourListValsIter<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if let Some(idx) = self.next_back {
+            let node = &self.list.nodes[idx];
+            self.next_back = node.prev;
+            return Some(&node.val);
+        }
+        None
+    }
+}
+
 pub struct NeighbourListIterMut<'a, T: AdjustToNextNeighbour> {
     list: &'a mut NeighbourList<T>,
     next: Option<usize>,
@@ -108,6 +151,19 @@ impl<'a, T: AdjustToNextNeighbour> DoubleEndedIterator for NeighbourListIterMut<
             }
         }
         None
+    }
+}
+
+impl<'a, T> IntoIterator for &'a NeighbourList<T>
+where
+    T: AdjustToNextNeighbour,
+{
+    type Item = &'a T;
+    type IntoIter = NeighbourListValsIter<'a, T>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.vals()
     }
 }
 
@@ -189,6 +245,11 @@ impl<T: AdjustToNextNeighbour> NeighbourList<T> {
     #[inline]
     pub fn iter(&self) -> NeighbourListIter<'_, T> {
         NeighbourListIter::new(self)
+    }
+
+    #[inline]
+    pub fn vals(&self) -> NeighbourListValsIter<'_, T> {
+        NeighbourListValsIter::new(self)
     }
 
     #[inline]

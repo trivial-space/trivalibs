@@ -168,3 +168,21 @@ fn from_iter() {
         [20, 30, 0]
     );
 }
+
+#[test]
+fn into_iter_and_vals() {
+    let mut list = NeighbourList::new();
+
+    list.append(item(1));
+    list.append(item(2));
+    list.append(item(3));
+
+    let mut vec = vec![];
+    for i in &list {
+        vec.push(i.number);
+    }
+    assert_eq!(vec, [1, 2, 3]);
+
+    let vec = list.vals().map(|i| i.number).collect::<Vec<_>>();
+    assert_eq!(vec, [1, 2, 3])
+}
