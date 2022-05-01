@@ -1,10 +1,6 @@
-use crate::{
-    data_structures::neighbour_list::{
-        AdjustToNextNeighbour, NeighbourList, NeighbourListValsIter,
-    },
-    prelude::*,
-};
+use crate::prelude::*;
 use glam::Vec2;
+use std::slice::Iter;
 
 pub struct LineVertex {
     pub pos: Vec2,
@@ -38,12 +34,6 @@ impl LineVertex {
     }
 }
 
-impl AdjustToNextNeighbour for LineVertex {
-    fn adjust_to_next(&mut self, next: &Self) {
-        self.point_to(&next.pos);
-    }
-}
-
 pub fn line_vert(pos: Vec2) -> LineVertex {
     LineVertex::new(pos)
 }
@@ -57,7 +47,7 @@ pub fn line_vert_w(pos: Vec2, width: f32) -> LineVertex {
 }
 
 pub struct Line {
-    list: NeighbourList<LineVertex>,
+    list: Vec<LineVertex>,
     len: f32,
     default_width: f32,
 }
@@ -65,13 +55,13 @@ pub struct Line {
 impl Line {
     pub fn new(width: f32) -> Self {
         Line {
-            list: NeighbourList::new(),
+            list: Vec::new(),
             len: 0.0,
             default_width: width,
         }
     }
 
-    fn from_vecs<T: IntoIterator<Item = Vec2>>(line_width: f32, iter: T) -> Self {
+    pub fn from_vecs<T: IntoIterator<Item = Vec2>>(line_width: f32, iter: T) -> Self {
         let mut line = Line::new(line_width);
         for vert in iter {
             line.add(vert);
@@ -95,26 +85,40 @@ impl Line {
         self.add_vert(line_vert_w(pos, width));
     }
 
-    pub fn add_vert(&mut self, vert: LineVertex) {
-        self.list.append(vert);
+    pub fn add_vert(&mut self, mut vert: LineVertex) {
+        let curr_len = self.list.len();
 
-        let prev = self.list.prev(self.list.last().unwrap().idx);
-        if let Some(node) = prev {
-            self.len += node.val.len;
+        if curr_len > 0 {
+            let idx = curr_len - 1;
+            let prev = &mut self.list[idx];
+            prev.point_to(&vert.pos);
+
+            self.len += prev.len;
+            vert.dir = prev.dir;
         }
+
+        self.list.push(vert);
     }
 
-    pub fn iter(&self) -> NeighbourListValsIter<'_, LineVertex> {
-        self.list.vals()
+    pub fn iter(&self) -> Iter<'_, LineVertex> {
+        self.list.iter()
+    }
+
+    pub fn get(&self, i: usize) -> &LineVertex {
+        &self.list[i]
+    }
+
+    pub fn last(&self) -> &LineVertex {
+        &self.list[self.list.len() - 1]
     }
 }
 
 impl<'a> IntoIterator for &'a Line {
     type Item = &'a LineVertex;
-    type IntoIter = NeighbourListValsIter<'a, LineVertex>;
+    type IntoIter = Iter<'a, LineVertex>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.list.into_iter()
+        self.iter()
     }
 }
 
