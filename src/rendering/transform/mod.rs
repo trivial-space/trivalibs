@@ -1,10 +1,11 @@
 use glam::{const_vec3, Mat3, Mat4, Quat, Vec3};
+use serde::Serialize;
 use std::ops::Mul;
 
 /// Describe the position of an entity.
 /// To place or move an entity, you should set its [`Transform`].
 /// Copied from Bevy Engine Transform (version 0.7)
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize)]
 pub struct Transform {
     /// Position of the entity. In 2d, the last value of the `Vec3` is used for z-ordering.
     pub translation: Vec3,

@@ -1,7 +1,8 @@
 use super::transform::Transform;
 use glam::{Mat4, Vec2, Vec3};
+use serde::Serialize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PerspectiveCamera {
     pub fov: f32,
     pub aspect_ratio: f32,
