@@ -69,7 +69,7 @@ impl Scene {
         f(&mut self.camera);
     }
 
-    pub fn update_obj<F: Fn(&mut SceneObject)>(&mut self, obj: &'static str, f: F) {
-        f(self.objects.get_mut(obj).unwrap())
+    pub fn update_obj_transform<F: Fn(&mut Transform)>(&mut self, obj: &'static str, f: F) {
+        f(&mut self.objects.get_mut(obj).unwrap().transform)
     }
 }
