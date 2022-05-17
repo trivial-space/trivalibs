@@ -1,7 +1,6 @@
+use super::{buffered_geometry::BufferedGeometry, camera::PerspectiveCamera, transform::Transform};
 use glam::Mat4;
 use serde::Serialize;
-
-use super::{buffered_geometry::BufferedGeometry, camera::PerspectiveCamera, transform::Transform};
 use std::collections::HashMap;
 
 #[derive(Default, Serialize)]
@@ -18,6 +17,14 @@ pub struct Scene {
 }
 
 impl Scene {
+    pub fn geom(&self, key: &'static str) -> &BufferedGeometry {
+        self.geometries.get(key).unwrap()
+    }
+
+    pub fn obj(&self, key: &'static str) -> &SceneObject {
+        self.objects.get(key).unwrap()
+    }
+
     pub fn proj_mat(&self) -> &Mat4 {
         &self.camera.proj
     }

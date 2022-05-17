@@ -31,7 +31,7 @@ impl PerspectiveCamera {
         }
     }
 
-    pub fn update_projection_matrix(&mut self) {
+    pub fn recalculate_proj_mat(&mut self) {
         self.proj = Mat4::perspective_rh(self.fov, self.aspect_ratio, self.near, self.far);
     }
 
