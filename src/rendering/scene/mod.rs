@@ -1,5 +1,5 @@
 use super::{buffered_geometry::BufferedGeometry, camera::PerspectiveCamera, transform::Transform};
-use glam::Mat4;
+use glam::{Mat3, Mat4};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -17,6 +17,10 @@ pub struct Scene {
 }
 
 impl Scene {
+    pub fn new() -> Self {
+        Scene::default()
+    }
+
     pub fn geom(&self, key: &'static str) -> &BufferedGeometry {
         self.geometries.get(key).unwrap()
     }
@@ -44,11 +48,14 @@ impl Scene {
         *self.proj_mat() * self.model_view_mat(obj)
     }
 
-    pub fn model_normal_mat(&self, obj: &'static str) -> Mat4 {
-        self.model_mat(obj).inverse().transpose()
+    pub fn model_normal_mat(&self, obj: &'static str) -> Mat3 {
+        Mat3::from_mat4(self.model_mat(obj)).inverse().transpose()
     }
-    pub fn view_normal_mat(&self, obj: &'static str) -> Mat4 {
-        self.model_view_mat(obj).inverse().transpose()
+
+    pub fn view_normal_mat(&self, obj: &'static str) -> Mat3 {
+        Mat3::from_mat4(self.model_view_mat(obj))
+            .inverse()
+            .transpose()
     }
 
     pub fn set_obj(&mut self, key: &'static str, geometry: &'static str, transform: Transform) {
