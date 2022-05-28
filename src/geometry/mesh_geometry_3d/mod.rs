@@ -195,14 +195,11 @@ where
             let v3_len_0 = (v2 / v2_len).dot(v1 / v1_len).abs() > 0.999;
 
             if (v1_len_0 || v2_len_0 || v3_len_0) && face.vertices.len() > 3 {
-                if v1_len_0 {
-                    v1 = self.vertices[verts[3]].vertex.position() - pos0;
-                } else if v2_len_0 {
+                if v2_len_0 {
                     v2 = pos1 - self.vertices[verts[3]].vertex.position();
                 } else {
                     v1 = self.vertices[verts[3]].vertex.position() - pos0;
                 }
-                // panic!("cannot create face normal!");
             }
 
             let normal = v1.cross(v2);
