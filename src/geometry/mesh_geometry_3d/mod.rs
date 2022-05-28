@@ -184,8 +184,29 @@ where
             let pos0 = self.vertices[verts[0]].vertex.position();
             let pos1 = self.vertices[verts[1]].vertex.position();
             let pos2 = self.vertices[verts[2]].vertex.position();
-            let normal = (pos1 - pos0).cross(pos2 - pos0);
-            face.face_normal = Some(normal);
+
+            let mut v1 = pos2 - pos0;
+            let mut v2 = pos1 - pos0;
+
+            let v1_len = v1.length();
+            let v2_len = v2.length();
+            let v1_len_0 = v1_len < 0.001;
+            let v2_len_0 = v2_len < 0.001;
+            let v3_len_0 = (v2 / v2_len).dot(v1 / v1_len).abs() > 0.999;
+
+            if (v1_len_0 || v2_len_0 || v3_len_0) && face.vertices.len() > 3 {
+                if v1_len_0 {
+                    v1 = self.vertices[verts[3]].vertex.position() - pos0;
+                } else if v2_len_0 {
+                    v2 = pos1 - self.vertices[verts[3]].vertex.position();
+                } else {
+                    v1 = self.vertices[verts[3]].vertex.position() - pos0;
+                }
+                // panic!("cannot create face normal!");
+            }
+
+            let normal = v1.cross(v2);
+            face.face_normal = Some(normal.normalize());
         }
     }
 
@@ -219,6 +240,7 @@ where
                 }
                 self.fill_buffered_geometry_indices(&mut indices);
             }
+
             MeshBufferedGeometryType::VertexNormals => {
                 for vert_data in self.vertices.iter() {
                     let normal = match vert_data.vertex_normal {
@@ -236,6 +258,7 @@ where
                     format: VertexFormat::Float32x3,
                 })
             }
+
             MeshBufferedGeometryType::FaceNormals => {
                 for face in self.faces.iter() {
                     if face.vertices.len() != 3 {
@@ -261,14 +284,22 @@ where
 
         let geom_layout = create_buffered_geometry_layout(layout);
 
+        let buffer_len = buffer.len() as u32;
+        let indices_len = indices.len() as u32;
+
         BufferedGeometry {
             buffer,
-            indices: if indices.len() == 0 {
+            indices: if indices_len == 0 {
                 None
             } else {
                 Some(indices)
             },
             vertex_size: geom_layout.vertex_size,
+            vertex_count: if indices_len > 0 {
+                indices_len
+            } else {
+                buffer_len / geom_layout.vertex_size
+            },
             vertex_layout: geom_layout.vertex_layout,
         }
     }

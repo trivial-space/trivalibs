@@ -1,17 +1,15 @@
-use super::{buffered_geometry::BufferedGeometry, camera::PerspectiveCamera, transform::Transform};
+use super::{camera::PerspectiveCamera, transform::Transform};
 use glam::{Mat3, Mat4};
 use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Default, Serialize)]
 pub struct SceneObject {
-    geometry: &'static str,
     transform: Transform,
 }
 
 #[derive(Default, Serialize)]
 pub struct Scene {
-    geometries: HashMap<&'static str, BufferedGeometry>,
     objects: HashMap<&'static str, SceneObject>,
     camera: PerspectiveCamera,
 }
@@ -19,10 +17,6 @@ pub struct Scene {
 impl Scene {
     pub fn new() -> Self {
         Scene::default()
-    }
-
-    pub fn geom(&self, key: &'static str) -> &BufferedGeometry {
-        self.geometries.get(key).unwrap()
     }
 
     pub fn obj(&self, key: &'static str) -> &SceneObject {
@@ -58,18 +52,8 @@ impl Scene {
             .transpose()
     }
 
-    pub fn set_obj(&mut self, key: &'static str, geometry: &'static str, transform: Transform) {
-        self.objects.insert(
-            key,
-            SceneObject {
-                geometry,
-                transform,
-            },
-        );
-    }
-
-    pub fn set_geometry(&mut self, key: &'static str, geometry: BufferedGeometry) {
-        self.geometries.insert(key, geometry);
+    pub fn set_obj(&mut self, key: &'static str, transform: Transform) {
+        self.objects.insert(key, SceneObject { transform });
     }
 
     pub fn update_cam<F: Fn(&mut PerspectiveCamera)>(&mut self, f: F) {
