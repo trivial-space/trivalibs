@@ -3,7 +3,7 @@ use crate::{
         mesh_geometry_3d::{Face, MeshGeometry, VertexPosition},
         vertex_index::{VertIdx3f, WithVertexIndex},
     },
-    rendering::buffered_geometry::BufferedVertexData,
+    rendering::buffered_geometry::{BufferedVertexData, VertexType},
 };
 use bytemuck::{Pod, Zeroable};
 use glam::{vec3, Vec3};
@@ -26,7 +26,11 @@ impl WithVertexIndex<VertIdx3f> for Vert {
         VertIdx3f::from(self.pos)
     }
 }
-impl BufferedVertexData for Vert {}
+impl BufferedVertexData for Vert {
+    fn vertex_layout() -> Vec<VertexType> {
+        todo!()
+    }
+}
 impl MeshVertex<VertIdx3f, Vert> for Vert {}
 
 fn vert(x: f32, y: f32, z: f32) -> Vert {

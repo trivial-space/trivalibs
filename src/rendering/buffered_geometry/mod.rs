@@ -167,10 +167,6 @@ pub fn vert_type(name: &'static str, format: VertexFormat) -> VertexType {
     VertexType::new(name, format)
 }
 
-pub trait WithVertexLayout {
-    fn vertex_layout() -> Vec<VertexType>;
-}
-
 #[derive(Clone, Serialize, Debug)]
 pub struct AttributeLayout {
     pub name: &'static str,
@@ -224,7 +220,9 @@ pub trait ToBufferedVertexData<T: Pod> {
     fn to_buffered_vertex_data(&self) -> T;
 }
 
-pub trait BufferedVertexData: Pod + Clone + Copy {}
+pub trait BufferedVertexData: Pod + Clone + Copy {
+    fn vertex_layout() -> Vec<VertexType>;
+}
 
 impl<T: BufferedVertexData> ToBufferedVertexData<T> for T {
     fn to_buffered_vertex_data(&self) -> T {
