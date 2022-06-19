@@ -3,8 +3,8 @@ use std::{collections::HashMap, marker::PhantomData};
 use glam::{vec3, Vec3};
 
 use crate::rendering::buffered_geometry::{
-    create_buffered_geometry_layout, BufferedGeometry, BufferedVertexData, ToBufferedGeometry,
-    ToBufferedVertexData, VertexFormat, VertexType,
+    create_buffered_geometry_layout, BufferedGeometry, BufferedVertexData, RenderingPrimitive,
+    ToBufferedGeometry, VertexFormat, VertexType,
 };
 
 use super::vertex_index::{VertexIndex, WithVertexIndex};
@@ -19,12 +19,20 @@ pub trait VertexPosition {
     fn position(&self) -> Vec3;
 }
 
-pub trait MeshVertex<Idx, BV>:
-    VertexPosition + ToBufferedVertexData<BV> + WithVertexIndex<Idx>
+pub trait MeshVertex<Idx, BV>: VertexPosition + WithVertexIndex<Idx>
 where
     Idx: VertexIndex,
     BV: BufferedVertexData,
 {
+    fn to_buffered_vertex_data(&self) -> BV;
+}
+
+impl<Idx: VertexIndex, BV: BufferedVertexData + VertexPosition + WithVertexIndex<Idx>>
+    MeshVertex<Idx, BV> for BV
+{
+    fn to_buffered_vertex_data(&self) -> BV {
+        self.clone()
+    }
 }
 
 pub enum MeshBufferedGeometryType {
@@ -223,10 +231,10 @@ where
     pub fn to_buffered_geometry_by_type(
         &self,
         geom_type: MeshBufferedGeometryType,
-        mut layout: Vec<VertexType>,
     ) -> BufferedGeometry {
         let mut buffer = vec![];
         let mut indices = vec![];
+        let mut layout: Vec<VertexType> = BV::vertex_layout();
 
         match geom_type {
             MeshBufferedGeometryType::NoNormals => {
@@ -286,6 +294,7 @@ where
 
         BufferedGeometry {
             buffer,
+            rendering_primitive: RenderingPrimitive::Triangles,
             indices: if indices_len == 0 {
                 None
             } else {
@@ -372,8 +381,8 @@ where
     BV: BufferedVertexData,
     V: MeshVertex<Idx, BV>,
 {
-    fn to_buffered_geometry(&self, layout: Vec<VertexType>) -> BufferedGeometry {
-        self.to_buffered_geometry_by_type(MeshBufferedGeometryType::NoNormals, layout)
+    fn to_buffered_geometry(&self) -> BufferedGeometry {
+        self.to_buffered_geometry_by_type(MeshBufferedGeometryType::NoNormals)
     }
 }
 

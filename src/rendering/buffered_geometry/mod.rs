@@ -16,6 +16,25 @@ pub enum AttributeType {
     HalfFloat = 0x140B,
 }
 
+/// For numeric values see: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
+#[repr(u32)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Serialize_repr)]
+pub enum RenderingPrimitive {
+    Points = 0x0000,
+    Lines = 0x0001,
+    LineLoop = 0x0002,
+    LineStrip = 0x0003,
+    Triangles = 0x0004,
+    TriangleStrip = 0x0005,
+    TriangleFan = 0x0006,
+}
+
+impl Default for RenderingPrimitive {
+    fn default() -> Self {
+        Self::Triangles
+    }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum VertexFormat {
@@ -182,6 +201,7 @@ pub struct BufferedGeometry {
     pub indices: Option<Vec<u32>>,
     pub vertex_size: u32,
     pub vertex_count: u32,
+    pub rendering_primitive: RenderingPrimitive,
     pub vertex_layout: Vec<AttributeLayout>,
 }
 
@@ -213,19 +233,9 @@ pub fn create_buffered_geometry_layout(layout: Vec<VertexType>) -> BufferedGeome
 }
 
 pub trait ToBufferedGeometry {
-    fn to_buffered_geometry(&self, layout: Vec<VertexType>) -> BufferedGeometry;
-}
-
-pub trait ToBufferedVertexData<T: Pod> {
-    fn to_buffered_vertex_data(&self) -> T;
+    fn to_buffered_geometry(&self) -> BufferedGeometry;
 }
 
 pub trait BufferedVertexData: Pod + Clone + Copy {
     fn vertex_layout() -> Vec<VertexType>;
-}
-
-impl<T: BufferedVertexData> ToBufferedVertexData<T> for T {
-    fn to_buffered_vertex_data(&self) -> T {
-        self.clone()
-    }
 }

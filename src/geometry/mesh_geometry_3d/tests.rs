@@ -8,8 +8,6 @@ use crate::{
 use bytemuck::{Pod, Zeroable};
 use glam::{vec3, Vec3};
 
-use super::MeshVertex;
-
 #[repr(C)]
 #[derive(Debug, PartialEq, Clone, Copy, Pod, Zeroable)]
 struct Vert {
@@ -31,7 +29,6 @@ impl BufferedVertexData for Vert {
         todo!()
     }
 }
-impl MeshVertex<VertIdx3f, Vert> for Vert {}
 
 fn vert(x: f32, y: f32, z: f32) -> Vert {
     Vert { pos: vec3(x, y, z) }
