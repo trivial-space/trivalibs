@@ -11,3 +11,4 @@ serde_repr = "0.1"
 bytemuck = { version = "1.7.3", features = ["derive"] }
 glam = { version = "0.20.2", features = ["bytemuck", "serde"] }
 js-sys = "0.3"
+lerp = "0.4"
