@@ -1,6 +1,8 @@
+use crate::data_structures::neighbour_list::traits::NeighbourFlatMapTransform;
 use crate::prelude::*;
 use glam::Vec2;
 use lerp::Lerp;
+use std::cell::Cell;
 use std::slice::Iter;
 
 #[derive(Clone, Copy)]
@@ -159,6 +161,69 @@ impl Line {
         lines.push(line);
         lines
     }
+
+    pub fn cleanup_vertices(
+        &self,
+        min_len_wid_ratio: f32,
+        width_threshold: f32,
+        angle_threshold: f32,
+        angle_distance_len_wid_ratio: f32,
+    ) {
+        let travelled_min_length_cell = Cell::new(0.0_f32);
+
+        self.iter().flat_map_with_prev_next(|curr, prev, next| {
+            if prev.is_none() || next.is_none() {
+                return vec![curr.clone()];
+            }
+
+            let prev = prev.unwrap();
+            let next = next.unwrap();
+            let travelled_min_length = travelled_min_length_cell.get();
+            let len = prev.len + curr.len + travelled_min_length;
+            let avg_width = (prev.width + curr.width * 2.0 + next.width) / 4.0;
+
+            // handle min length, and skip vertices in between
+
+            let min_len = f32::max(avg_width * min_len_wid_ratio, 1.0);
+
+            if len < min_len {
+                travelled_min_length_cell.set(travelled_min_length + prev.len);
+                return vec![];
+            }
+
+            // TODO: Check if this is right!
+            if prev.len + travelled_min_length < min_len {
+                let dist = curr.len - (len - min_len);
+                let ratio = dist / curr.len;
+                travelled_min_length_cell.set(-dist);
+                return vec![line_vert_w(
+                    curr.pos.lerp(next.pos, ratio),
+                    curr.width.lerp(next.width, ratio),
+                )];
+            }
+
+            travelled_min_length_cell.set(0.0);
+
+            // handle unneeded vertices when similar width
+            // and similar direction as prev and next
+
+            let width_delta_prev = (1.0 - prev.width / curr.width).abs();
+            let width_delta_next = (1.0 - next.width / curr.width).abs();
+
+            let dot = 1.0 - prev.dir.dot(curr.dir);
+            let angle_distance = angle_distance_len_wid_ratio * avg_width;
+            let dist_ratio = (len / angle_distance).powf(0.25);
+
+            if width_delta_next < width_threshold
+                && width_delta_prev < width_threshold
+                && dot < angle_threshold / dist_ratio
+            {
+                return vec![];
+            }
+
+            return vec![curr.clone()];
+        });
+    }
 }
 
 impl<'a> IntoIterator for &'a Line {
@@ -180,6 +245,6 @@ impl FromIterator<LineVertex> for Line {
     }
 }
 
+mod buffered_geometry;
 #[cfg(test)]
 mod tests;
-mod buffer_geometry;

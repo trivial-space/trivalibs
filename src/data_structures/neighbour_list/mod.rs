@@ -1,4 +1,4 @@
-mod traits;
+pub mod traits;
 
 pub trait AdjustToNextNeighbour {
     fn adjust_to_next(&mut self, next: &Self);
