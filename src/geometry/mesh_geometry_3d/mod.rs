@@ -27,8 +27,10 @@ where
     fn to_buffered_vertex_data(&self) -> BV;
 }
 
-impl<Idx: VertexIndex, BV: BufferedVertexData + VertexPosition + WithVertexIndex<Idx>>
-    MeshVertex<Idx, BV> for BV
+impl<Idx, BV> MeshVertex<Idx, BV> for BV
+where
+    Idx: VertexIndex,
+    BV: BufferedVertexData + VertexPosition + WithVertexIndex<Idx>,
 {
     fn to_buffered_vertex_data(&self) -> BV {
         self.clone()

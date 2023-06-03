@@ -167,11 +167,11 @@ impl Line {
         min_len_wid_ratio: f32,
         width_threshold: f32,
         angle_threshold: f32,
-        angle_distance_len_wid_ratio: f32,
-    ) {
+        // angle_distance_len_wid_ratio: f32,
+    ) -> Self {
         let travelled_min_length_cell = Cell::new(0.0_f32);
 
-        self.iter().flat_map_with_prev_next(|curr, prev, next| {
+        let new_vertices = self.iter().flat_map_with_prev_next(|curr, prev, next| {
             if prev.is_none() || next.is_none() {
                 return vec![curr.clone()];
             }
@@ -211,18 +211,22 @@ impl Line {
             let width_delta_next = (1.0 - next.width / curr.width).abs();
 
             let dot = 1.0 - prev.dir.dot(curr.dir);
-            let angle_distance = angle_distance_len_wid_ratio * avg_width;
-            let dist_ratio = (len / angle_distance).powf(0.25);
+            // TODO: Why is this here?
+            // let angle_distance = angle_distance_len_wid_ratio * avg_width;
+            // let dist_ratio = (len / angle_distance).powf(0.25);
 
             if width_delta_next < width_threshold
                 && width_delta_prev < width_threshold
-                && dot < angle_threshold / dist_ratio
+                && dot < angle_threshold
+            // / dist_ratio
             {
                 return vec![];
             }
 
             return vec![curr.clone()];
         });
+
+        Line::from_iter(new_vertices)
     }
 }
 

@@ -50,3 +50,19 @@ fn from_vecs() {
     assert_eq!(line.line_length(), 5.0);
     assert_eq!(line.vert_count(), 4);
 }
+
+#[test]
+fn cleanup_vertices() {
+    let line1 = Line::from_vecs(
+        2.0,
+        [
+            vec2(0.0, 0.0),
+            vec2(1.0, 0.0),
+            vec2(2.0, 0.0),
+            vec2(3.0, 0.0),
+        ],
+    );
+
+    let cleaned1 = line1.cleanup_vertices(0.5, 0.001, 0.001);
+    assert_eq!(cleaned1.vert_count(), 2);
+}

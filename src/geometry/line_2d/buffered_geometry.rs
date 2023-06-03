@@ -61,7 +61,7 @@ impl Default for LineGeometryOpts {
             smouth_edge_depth: 2,
             smouth_edge_threshold: 0.05,
             cleanup_vertex_angle_threshold: 0.01,
-            cleanup_vertex_len_wid_ratio: 10.0,
+            cleanup_vertex_len_wid_ratio: 0.5,
             cap_width_length_ratio: 1.0,
         }
     }
