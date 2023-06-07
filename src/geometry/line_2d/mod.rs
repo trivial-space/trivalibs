@@ -162,6 +162,16 @@ impl Line {
         lines
     }
 
+    pub fn flat_map_with_prev_next<
+        F: Fn(&LineVertex, Option<&LineVertex>, Option<&LineVertex>) -> Vec<LineVertex>,
+    >(
+        &self,
+        f: F,
+    ) -> Self {
+        let new_vertices = self.iter().flat_map_with_prev_next(f);
+        Line::from_iter(new_vertices)
+    }
+
     pub fn cleanup_vertices(
         &self,
         min_len_wid_ratio: f32,
@@ -171,7 +181,7 @@ impl Line {
     ) -> Self {
         let travelled_min_length_cell = Cell::new(0.0_f32);
 
-        let new_vertices = self.iter().flat_map_with_prev_next(|curr, prev, next| {
+        self.flat_map_with_prev_next(|curr, prev, next| {
             if prev.is_none() || next.is_none() {
                 return vec![curr.clone()];
             }
@@ -207,26 +217,18 @@ impl Line {
             // handle unneeded vertices when similar width
             // and similar direction as prev and next
 
-            let width_delta_prev = (1.0 - prev.width / curr.width).abs();
-            let width_delta_next = (1.0 - next.width / curr.width).abs();
+            let is_same_width_prev =
+                prev.width == curr.width || (1.0 - prev.width / curr.width).abs() < width_threshold;
+            let is_same_width_next =
+                curr.width == next.width || (1.0 - next.width / curr.width).abs() < width_threshold;
+            let is_same_direction = 1.0 - prev.dir.dot(curr.dir) < angle_threshold;
 
-            let dot = 1.0 - prev.dir.dot(curr.dir);
-            // TODO: Why is this here?
-            // let angle_distance = angle_distance_len_wid_ratio * avg_width;
-            // let dist_ratio = (len / angle_distance).powf(0.25);
-
-            if width_delta_next < width_threshold
-                && width_delta_prev < width_threshold
-                && dot < angle_threshold
-            // / dist_ratio
-            {
+            if is_same_width_next && is_same_width_prev && is_same_direction {
                 return vec![];
             }
 
             return vec![curr.clone()];
-        });
-
-        Line::from_iter(new_vertices)
+        })
     }
 }
 
