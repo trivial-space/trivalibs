@@ -64,6 +64,7 @@ pub struct Line {
     list: Vec<LineVertex>,
     len: f32,
     default_width: f32,
+    len_offset: f32,
 }
 
 impl Line {
@@ -72,6 +73,7 @@ impl Line {
             list: Vec::new(),
             len: 0.0,
             default_width: width,
+            len_offset: 0.0,
         }
     }
 
@@ -143,15 +145,19 @@ impl Line {
         let mut line = Line::new(self.default_width);
         let mut prev: Option<&LineVertex> = None;
         let cos_threshold = f32::cos(angle_threshold);
+        let mut len_offset = 0.0;
 
         for v in self {
+            line.add_vert_raw(*v);
+
             if let Some(prev) = prev {
                 let dot = v.dir.dot(prev.dir);
-                line.add_vert_raw(*v);
 
                 if dot <= cos_threshold {
+                    len_offset += line.len;
                     lines.push(line);
                     line = Line::new(self.default_width);
+                    line.len_offset = len_offset;
                     line.add_vert_raw(*v);
                 }
             }
@@ -177,7 +183,6 @@ impl Line {
         min_len_wid_ratio: f32,
         width_threshold: f32,
         angle_threshold: f32,
-        // angle_distance_len_wid_ratio: f32,
     ) -> Self {
         let travelled_min_length_cell = Cell::new(0.0_f32);
 

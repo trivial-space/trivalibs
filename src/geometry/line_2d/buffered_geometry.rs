@@ -1,4 +1,4 @@
-use super::Line;
+use super::{Line, LineVertex};
 use crate::{
     rendering::buffered_geometry::{
         vert_type, BufferedGeometry, BufferedVertexData, ToBufferedGeometry,
@@ -48,6 +48,7 @@ pub struct LineGeometryOpts {
     pub cleanup_vertex_len_wid_ratio: f32,
 
     pub cap_width_length_ratio: f32,
+    pub swap_texture_orientation: bool,
 }
 
 impl Default for LineGeometryOpts {
@@ -63,6 +64,7 @@ impl Default for LineGeometryOpts {
             cleanup_vertex_angle_threshold: 0.01,
             cleanup_vertex_len_wid_ratio: 0.5,
             cap_width_length_ratio: 1.0,
+            swap_texture_orientation: false,
         }
     }
 }
@@ -73,9 +75,64 @@ impl ToBufferedGeometry for Line {
     }
 }
 
+// export function lineMitterPositions(node: LineNode, thickness?: number) {
+// 	if (!node.prev && !node.next) {
+// 		throw 'incomplete Line'
+// 	}
+// 	const point = node.val
+// 	thickness = point.width || thickness || 1
+// 	if (!node.prev) {
+// 		const tangent = getTangent(point.direction)
+// 		return linePositions(point.vertex, tangent, thickness)
+// 	}
+// 	if (!node.next) {
+// 		const tangent = getTangent(node.prev.val.direction)
+// 		return linePositions(point.vertex, tangent, thickness)
+// 	}
+
+// 	const nextTangent = getTangent(node.val.direction)
+// 	const prevTangent = getTangent(node.prev.val.direction)
+// 	const tangent = normalize(add(nextTangent, prevTangent))
+// 	let mitterLenght = thickness / dot(tangent, prevTangent)
+// 	mitterLenght = Math.min(mitterLenght, thickness * 5)
+// 	return linePositions(node.val.vertex, tangent as Vec2D, mitterLenght)
+// }
+fn line_mitter_positions(node: LineVertex, thickness: f32) -> [Vec2; 2] {
+    // for math see
+    // https://mattdesl.svbtle.com/drawing-lines-is-hard
+    // https://cesium.com/blog/2013/04/22/robust-polyline-rendering-with-webgl/ "Vertex Shader Details"
+    // https://www.npmjs.com/package/polyline-normals
+    //
+    todo!();
+}
+
 impl Line {
     pub fn to_buffered_geometry_with(&self, opts: LineGeometryOpts) -> BufferedGeometry {
-        let line_parts = self.split_at_angle(opts.split_angle_threshold);
+        let mut top_line = Line::new(self.default_width);
+        let mut bottom_line = Line::new(self.default_width);
+        let mut opt_prev = None;
+
+        for (i, v) in self.iter().enumerate() {
+            let v = *v;
+
+            if i == 0 {
+                top_line.add_width(v.pos, v.width);
+                bottom_line.add_width(v.pos, v.width);
+            }
+
+            let prev = opt_prev.unwrap();
+
+            let new_points = line_mitter_positions(v, v.width);
+
+            top_line.add_width(new_points[0], v.width);
+            bottom_line.add_width(new_points[1], v.width);
+
+            if i == self.vert_count() - 1 {
+                top_line.add_width(v.pos, v.width);
+                bottom_line.add_width(v.pos, v.width);
+            }
+            opt_prev = Some(v);
+        }
         todo!()
     }
 }
