@@ -121,7 +121,7 @@ impl Line {
 
         if curr_len > 0 {
             let idx = curr_len - 1;
-            let prev = &mut self.list[idx];
+            let prev = &self.list[idx];
             self.len += prev.len;
         }
 

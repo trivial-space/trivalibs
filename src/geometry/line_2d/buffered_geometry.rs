@@ -1,5 +1,6 @@
 use super::{Line, LineVertex};
 use crate::{
+    data_structures::neighbour_list::traits::WithNeighboursTransform,
     rendering::buffered_geometry::{
         vert_type, BufferedGeometry, BufferedVertexData, ToBufferedGeometry,
         VertexFormat::{Float32, Float32x2},
@@ -75,63 +76,55 @@ impl ToBufferedGeometry for Line {
     }
 }
 
-// export function lineMitterPositions(node: LineNode, thickness?: number) {
-// 	if (!node.prev && !node.next) {
-// 		throw 'incomplete Line'
-// 	}
-// 	const point = node.val
-// 	thickness = point.width || thickness || 1
-// 	if (!node.prev) {
-// 		const tangent = getTangent(point.direction)
-// 		return linePositions(point.vertex, tangent, thickness)
-// 	}
-// 	if (!node.next) {
-// 		const tangent = getTangent(node.prev.val.direction)
-// 		return linePositions(point.vertex, tangent, thickness)
-// 	}
+fn get_normal(direction: &Vec2) -> Vec2 {
+    Vec2::new(direction.y, -direction.x)
+}
 
-// 	const nextTangent = getTangent(node.val.direction)
-// 	const prevTangent = getTangent(node.prev.val.direction)
-// 	const tangent = normalize(add(nextTangent, prevTangent))
-// 	let mitterLenght = thickness / dot(tangent, prevTangent)
-// 	mitterLenght = Math.min(mitterLenght, thickness * 5)
-// 	return linePositions(node.val.vertex, tangent as Vec2D, mitterLenght)
-// }
-fn line_mitter_positions(node: LineVertex, thickness: f32) -> [Vec2; 2] {
+fn line_positions(vertex: Vec2, normal: Vec2, width: f32) -> [Vec2; 2] {
+    let p1 = normal * width + vertex;
+    let p2 = normal * -width + vertex;
+    [p1, p2]
+}
+
+fn line_mitter_positions(pos: &Vec2, dir: &Vec2, width: f32, prev_dir: Option<&Vec2>) -> [Vec2; 2] {
     // for math see
     // https://mattdesl.svbtle.com/drawing-lines-is-hard
     // https://cesium.com/blog/2013/04/22/robust-polyline-rendering-with-webgl/ "Vertex Shader Details"
     // https://www.npmjs.com/package/polyline-normals
     //
-    todo!();
+    let next_normal = get_normal(dir);
+
+    if prev_dir.is_none() || dir == prev_dir.unwrap() {
+        return line_positions(*pos, next_normal, width);
+    }
+
+    let prev_normal = get_normal(prev_dir.unwrap());
+    let normal = (next_normal + prev_normal).normalize();
+    let mitter_length = width / normal.dot(prev_normal);
+    let mitter_length = mitter_length.min(width * 5.0);
+    line_positions(*pos, normal, mitter_length)
 }
 
 impl Line {
     pub fn to_buffered_geometry_with(&self, opts: LineGeometryOpts) -> BufferedGeometry {
         let mut top_line = Line::new(self.default_width);
         let mut bottom_line = Line::new(self.default_width);
-        let mut opt_prev = None;
 
-        for (i, v) in self.iter().enumerate() {
-            let v = *v;
-
-            if i == 0 {
+        for (prev, v, next) in self.iter().with_neighbours() {
+            if prev.is_none() {
                 top_line.add_width(v.pos, v.width);
                 bottom_line.add_width(v.pos, v.width);
             }
 
-            let prev = opt_prev.unwrap();
-
-            let new_points = line_mitter_positions(v, v.width);
+            let new_points = line_mitter_positions(&v.pos, &v.dir, v.width, prev.map(|x| &x.dir));
 
             top_line.add_width(new_points[0], v.width);
             bottom_line.add_width(new_points[1], v.width);
 
-            if i == self.vert_count() - 1 {
+            if next.is_none() {
                 top_line.add_width(v.pos, v.width);
                 bottom_line.add_width(v.pos, v.width);
             }
-            opt_prev = Some(v);
         }
         todo!()
     }
