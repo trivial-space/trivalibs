@@ -2,7 +2,8 @@ use super::{Line, LineData};
 use crate::{
     data_structures::neighbour_list::traits::WithNeighboursTransform,
     rendering::buffered_geometry::{
-        vert_type, BufferedGeometry, BufferedVertexData, ToBufferedGeometry,
+        create_buffered_geometry_layout, vert_type, BufferedGeometry, BufferedVertexData,
+        RenderingPrimitive, ToBufferedGeometry,
         VertexFormat::{Float32, Float32x2},
         VertexType,
     },
@@ -10,7 +11,6 @@ use crate::{
 };
 use bytemuck::{Pod, Zeroable};
 use glam::Vec2;
-use std::f32::consts::PI;
 
 #[repr(C)]
 #[derive(Pod, Copy, Clone, Zeroable)]
@@ -35,18 +35,13 @@ impl BufferedVertexData for VertexData {
 }
 
 pub struct LineGeometryOpts {
-    pub min_length: f32,
-    pub min_len_wid_ratio: f32,
-    pub split_angle_threshold: f32,
+    pub total_length: Option<f32>,
+    pub prev_direction: Option<Vec2>,
+    pub next_direction: Option<Vec2>,
 
-    pub smouth_edge_depth: u8,
-    pub smouth_edge_threshold: f32,
-
-    pub smouth_width_depth: u8,
-    pub smouth_width_threshold: f32,
-
-    pub cleanup_vertex_angle_threshold: f32,
-    pub cleanup_vertex_len_wid_ratio: f32,
+    pub smouth_depth: u8,
+    pub smouth_angle_threshold: f32,
+    pub smouth_min_length: f32,
 
     pub cap_width_length_ratio: f32,
     pub swap_texture_orientation: bool,
@@ -55,17 +50,16 @@ pub struct LineGeometryOpts {
 impl Default for LineGeometryOpts {
     fn default() -> Self {
         Self {
-            min_length: 1.0,
-            min_len_wid_ratio: 0.25,
-            split_angle_threshold: PI * 0.666,
-            smouth_width_depth: 2,
-            smouth_width_threshold: 1.0,
-            smouth_edge_depth: 2,
-            smouth_edge_threshold: 0.05,
-            cleanup_vertex_angle_threshold: 0.01,
-            cleanup_vertex_len_wid_ratio: 0.5,
+            smouth_depth: 2,
+            smouth_min_length: 3.0,
+            smouth_angle_threshold: 0.05,
+
             cap_width_length_ratio: 1.0,
             swap_texture_orientation: false,
+
+            total_length: None,
+            prev_direction: None,
+            next_direction: None,
         }
     }
 }
@@ -129,6 +123,55 @@ impl Line {
 
             line_length += v.len;
         }
-        todo!()
+
+        let mut buffer = vec![];
+        let mut indices = vec![];
+
+        let total_length = opts.total_length.unwrap_or(line_length);
+
+        let n = usize::max(top_line.vert_count(), bottom_line.vert_count());
+
+        for i in 0..n {
+            let top = top_line.get(i);
+            let bottom = bottom_line.get(i);
+
+            let top_uv = Vec2::new(top.data / total_length, 0.0);
+            let bottom_uv = Vec2::new(bottom.data / total_length, 1.0);
+
+            let top_local_uv = Vec2::new(top.data / self.len, 0.0);
+            let bottom_local_uv = Vec2::new(top.data / self.len, 1.0);
+
+            let top_vertex = VertexData {
+                position: top.pos,
+                width: top.width,
+                length: top.data,
+                uv: top_uv,
+                local_uv: top_local_uv,
+            };
+
+            let bottom_vertex = VertexData {
+                position: bottom.pos,
+                width: bottom.width,
+                length: bottom.data,
+                uv: bottom_uv,
+                local_uv: bottom_local_uv,
+            };
+
+            buffer.extend(bytemuck::bytes_of(&top_vertex));
+            buffer.extend(bytemuck::bytes_of(&bottom_vertex));
+        }
+
+        let indices_len = indices.len();
+
+        let geom_layout = create_buffered_geometry_layout(VertexData::vertex_layout());
+
+        BufferedGeometry {
+            buffer,
+            rendering_primitive: RenderingPrimitive::TriangleStrip,
+            indices: Some(indices),
+            vertex_size: geom_layout.vertex_size,
+            vertex_count: indices_len as u32,
+            vertex_layout: geom_layout.vertex_layout,
+        }
     }
 }
