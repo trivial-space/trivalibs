@@ -218,7 +218,7 @@ where
                 if dot <= cos_threshold {
                     len_offset += line.len;
                     lines.push(line);
-                    line = LineData::<T>::new(self.default_width);
+                    line = LineData::new(self.default_width);
                     line.len_offset = len_offset;
                     line.add_vert_raw(*v);
                 }
@@ -241,7 +241,7 @@ where
         f: F,
     ) -> Self {
         let new_vertices = self.iter().flat_map_with_prev_next(f);
-        LineData::<T>::from_iter(new_vertices)
+        LineData::from_iter(new_vertices)
     }
 
     pub fn cleanup_vertices(
@@ -317,7 +317,7 @@ where
     T: Default + Copy + Clone + Lerp<f32>,
 {
     fn from_iter<I: IntoIterator<Item = LineVertexData<T>>>(iter: I) -> Self {
-        let mut line = LineData::<T>::new(1.0);
+        let mut line = LineData::new(1.0);
         for vert in iter {
             line.add_vert(vert);
         }
