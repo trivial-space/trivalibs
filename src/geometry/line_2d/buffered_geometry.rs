@@ -1,4 +1,4 @@
-use super::{Line, LineVertex};
+use super::{Line, LineData};
 use crate::{
     data_structures::neighbour_list::traits::WithNeighboursTransform,
     rendering::buffered_geometry::{
@@ -14,7 +14,7 @@ use std::f32::consts::PI;
 
 #[repr(C)]
 #[derive(Pod, Copy, Clone, Zeroable)]
-pub struct LineVertexData {
+pub struct VertexData {
     position: Vec2,
     width: f32,
     length: f32,
@@ -22,7 +22,7 @@ pub struct LineVertexData {
     local_uv: Vec2,
 }
 
-impl BufferedVertexData for LineVertexData {
+impl BufferedVertexData for VertexData {
     fn vertex_layout() -> Vec<VertexType> {
         vec![
             vert_type("position", Float32x2),
@@ -107,24 +107,27 @@ fn line_mitter_positions(pos: &Vec2, dir: &Vec2, width: f32, prev_dir: Option<&V
 
 impl Line {
     pub fn to_buffered_geometry_with(&self, opts: LineGeometryOpts) -> BufferedGeometry {
-        let mut top_line = Line::new(self.default_width);
-        let mut bottom_line = Line::new(self.default_width);
+        let mut top_line = LineData::<f32>::new(self.default_width);
+        let mut bottom_line = LineData::<f32>::new(self.default_width);
+        let mut line_length = self.len_offset;
 
         for (prev, v, next) in self.iter().with_neighbours() {
             if prev.is_none() {
-                top_line.add_width(v.pos, v.width);
-                bottom_line.add_width(v.pos, v.width);
+                top_line.add_width_data(v.pos, v.width, line_length);
+                bottom_line.add_width_data(v.pos, v.width, line_length);
             }
 
             let new_points = line_mitter_positions(&v.pos, &v.dir, v.width, prev.map(|x| &x.dir));
 
-            top_line.add_width(new_points[0], v.width);
-            bottom_line.add_width(new_points[1], v.width);
+            top_line.add_width_data(new_points[0], v.width, line_length);
+            bottom_line.add_width_data(new_points[1], v.width, line_length);
 
             if next.is_none() {
-                top_line.add_width(v.pos, v.width);
-                bottom_line.add_width(v.pos, v.width);
+                top_line.add_width_data(v.pos, v.width, line_length);
+                bottom_line.add_width_data(v.pos, v.width, line_length);
             }
+
+            line_length += v.len;
         }
         todo!()
     }

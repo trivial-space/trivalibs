@@ -6,27 +6,53 @@ use std::cell::Cell;
 use std::slice::Iter;
 
 #[derive(Clone, Copy)]
-pub struct LineVertex {
+pub struct EmptyData {}
+impl Default for EmptyData {
+    fn default() -> Self {
+        EmptyData {}
+    }
+}
+impl<F> Lerp<F> for EmptyData {
+    fn lerp(self, _: Self, _: F) -> Self {
+        EmptyData {}
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct LineVertexData<T>
+where
+    T: Default + Copy + Clone + Lerp<f32>,
+{
     pub pos: Vec2,
     pub width: f32,
     pub len: f32,
     pub dir: Vec2,
+    pub data: T,
 }
 
-impl Default for LineVertex {
+pub type LineVertex = LineVertexData<EmptyData>;
+
+impl<T> Default for LineVertexData<T>
+where
+    T: Default + Copy + Clone + Lerp<f32>,
+{
     fn default() -> Self {
         Self {
             pos: Vec2::ZERO,
             width: 1.0,
             len: 0.0,
             dir: Vec2::ZERO,
+            data: T::default(),
         }
     }
 }
 
-impl LineVertex {
+impl<T> LineVertexData<T>
+where
+    T: Default + Copy + Clone + Lerp<f32>,
+{
     fn new(pos: Vec2) -> Self {
-        LineVertex { pos, ..default() }
+        LineVertexData { pos, ..default() }
     }
 
     fn point_to(&mut self, point: &Vec2) {
@@ -39,37 +65,68 @@ impl LineVertex {
 
     pub fn smouth_edge(&self, prev: &Self, next: &Self, ratio: f32) -> Vec<Self> {
         let p1 = prev.pos.lerp(self.pos, 1.0 - ratio);
-        let v1 = line_vert_w(p1, prev.width.lerp(self.width, 1.0 - ratio));
+        let v1 = line_vert_w_d(
+            p1,
+            prev.width.lerp(self.width, 1.0 - ratio),
+            prev.data.lerp(self.data, 1.0 - ratio),
+        );
 
         let p2 = self.pos.lerp(next.pos, ratio);
-        let v2 = line_vert_w(p2, self.width.lerp(next.width, ratio));
+        let v2 = line_vert_w_d(
+            p2,
+            self.width.lerp(next.width, ratio),
+            self.data.lerp(next.data, ratio),
+        );
 
         vec![v1, v2]
     }
 }
 
-pub fn line_vert(pos: Vec2) -> LineVertex {
-    LineVertex::new(pos)
+pub fn line_vert<T: Default + Copy + Clone + Lerp<f32>>(pos: Vec2) -> LineVertexData<T> {
+    LineVertexData::new(pos)
 }
 
-pub fn line_vert_w(pos: Vec2, width: f32) -> LineVertex {
-    LineVertex {
+pub fn line_vert_w<T: Default + Copy + Clone + Lerp<f32>>(
+    pos: Vec2,
+    width: f32,
+) -> LineVertexData<T> {
+    LineVertexData {
         pos,
         width,
         ..default()
     }
 }
+pub fn line_vert_w_d<T: Default + Copy + Clone + Lerp<f32>>(
+    pos: Vec2,
+    width: f32,
+    data: T,
+) -> LineVertexData<T> {
+    LineVertexData {
+        pos,
+        width,
+        data,
+        ..default()
+    }
+}
 
-pub struct Line {
-    list: Vec<LineVertex>,
+pub struct LineData<T>
+where
+    T: Default + Copy + Clone + Lerp<f32>,
+{
+    list: Vec<LineVertexData<T>>,
     len: f32,
     default_width: f32,
     len_offset: f32,
 }
 
-impl Line {
+pub type Line = LineData<EmptyData>;
+
+impl<T> LineData<T>
+where
+    T: Default + Copy + Clone + Lerp<f32>,
+{
     pub fn new(width: f32) -> Self {
-        Line {
+        LineData::<T> {
             list: Vec::new(),
             len: 0.0,
             default_width: width,
@@ -77,8 +134,8 @@ impl Line {
         }
     }
 
-    pub fn from_vecs<T: IntoIterator<Item = Vec2>>(line_width: f32, iter: T) -> Self {
-        let mut line = Line::new(line_width);
+    pub fn from_vecs<I: IntoIterator<Item = Vec2>>(line_width: f32, iter: I) -> Self {
+        let mut line = LineData::<T>::new(line_width);
         for vert in iter {
             line.add(vert);
         }
@@ -101,7 +158,11 @@ impl Line {
         self.add_vert(line_vert_w(pos, width));
     }
 
-    pub fn add_vert(&mut self, mut vert: LineVertex) {
+    pub fn add_width_data(&mut self, pos: Vec2, width: f32, data: T) {
+        self.add_vert(line_vert_w_d(pos, width, data));
+    }
+
+    pub fn add_vert(&mut self, mut vert: LineVertexData<T>) {
         let curr_len = self.list.len();
 
         if curr_len > 0 {
@@ -116,7 +177,7 @@ impl Line {
         self.list.push(vert);
     }
 
-    pub fn add_vert_raw(&mut self, vert: LineVertex) {
+    pub fn add_vert_raw(&mut self, vert: LineVertexData<T>) {
         let curr_len = self.list.len();
 
         if curr_len > 0 {
@@ -128,22 +189,22 @@ impl Line {
         self.list.push(vert);
     }
 
-    pub fn iter(&self) -> Iter<'_, LineVertex> {
+    pub fn iter(&self) -> Iter<'_, LineVertexData<T>> {
         self.list.iter()
     }
 
-    pub fn get(&self, i: usize) -> &LineVertex {
+    pub fn get(&self, i: usize) -> &LineVertexData<T> {
         &self.list[i]
     }
 
-    pub fn last(&self) -> &LineVertex {
+    pub fn last(&self) -> &LineVertexData<T> {
         &self.list[self.list.len() - 1]
     }
 
     pub fn split_at_angle(&self, angle_threshold: f32) -> Vec<Self> {
         let mut lines = vec![];
-        let mut line = Line::new(self.default_width);
-        let mut prev: Option<&LineVertex> = None;
+        let mut line = LineData::<T>::new(self.default_width);
+        let mut prev: Option<&LineVertexData<T>> = None;
         let cos_threshold = f32::cos(angle_threshold);
         let mut len_offset = 0.0;
 
@@ -156,7 +217,7 @@ impl Line {
                 if dot <= cos_threshold {
                     len_offset += line.len;
                     lines.push(line);
-                    line = Line::new(self.default_width);
+                    line = LineData::<T>::new(self.default_width);
                     line.len_offset = len_offset;
                     line.add_vert_raw(*v);
                 }
@@ -169,13 +230,17 @@ impl Line {
     }
 
     pub fn flat_map_with_prev_next<
-        F: Fn(&LineVertex, Option<&LineVertex>, Option<&LineVertex>) -> Vec<LineVertex>,
+        F: Fn(
+            &LineVertexData<T>,
+            Option<&LineVertexData<T>>,
+            Option<&LineVertexData<T>>,
+        ) -> Vec<LineVertexData<T>>,
     >(
         &self,
         f: F,
     ) -> Self {
         let new_vertices = self.iter().flat_map_with_prev_next(f);
-        Line::from_iter(new_vertices)
+        LineData::<T>::from_iter(new_vertices)
     }
 
     pub fn cleanup_vertices(
@@ -211,9 +276,10 @@ impl Line {
                 let dist = curr.len - (len - min_len);
                 let ratio = dist / curr.len;
                 travelled_min_length_cell.set(-dist);
-                return vec![line_vert_w(
+                return vec![line_vert_w_d(
                     curr.pos.lerp(next.pos, ratio),
                     curr.width.lerp(next.width, ratio),
+                    curr.data.lerp(next.data, ratio),
                 )];
             }
 
@@ -237,18 +303,24 @@ impl Line {
     }
 }
 
-impl<'a> IntoIterator for &'a Line {
-    type Item = &'a LineVertex;
-    type IntoIter = Iter<'a, LineVertex>;
+impl<'a, T> IntoIterator for &'a LineData<T>
+where
+    T: Default + Copy + Clone + Lerp<f32>,
+{
+    type Item = &'a LineVertexData<T>;
+    type IntoIter = Iter<'a, LineVertexData<T>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-impl FromIterator<LineVertex> for Line {
-    fn from_iter<T: IntoIterator<Item = LineVertex>>(iter: T) -> Self {
-        let mut line = Line::new(1.0);
+impl<T> FromIterator<LineVertexData<T>> for LineData<T>
+where
+    T: Default + Copy + Clone + Lerp<f32>,
+{
+    fn from_iter<I: IntoIterator<Item = LineVertexData<T>>>(iter: I) -> Self {
+        let mut line = LineData::<T>::new(1.0);
         for vert in iter {
             line.add_vert(vert);
         }
