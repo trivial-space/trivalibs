@@ -157,8 +157,8 @@ impl Line {
                 local_uv: bottom_local_uv,
             };
 
-            buffer.extend(bytemuck::bytes_of(&top_vertex));
-            buffer.extend(bytemuck::bytes_of(&bottom_vertex));
+            buffer.push(top_vertex);
+            buffer.push(bottom_vertex);
         }
 
         let indices_len = indices.len();
@@ -166,7 +166,7 @@ impl Line {
         let geom_layout = create_buffered_geometry_layout(VertexData::vertex_layout());
 
         BufferedGeometry {
-            buffer,
+            buffer: Vec::from(bytemuck::cast_slice(&buffer)),
             rendering_primitive: RenderingPrimitive::TriangleStrip,
             indices: Some(indices),
             vertex_size: geom_layout.vertex_size,

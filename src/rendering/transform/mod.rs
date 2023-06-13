@@ -1,4 +1,4 @@
-use glam::{const_vec3, Mat3, Mat4, Quat, Vec3};
+use glam::{vec3, Mat3, Mat4, Quat, Vec3};
 use serde::Serialize;
 use std::ops::Mul;
 
@@ -20,7 +20,7 @@ impl Transform {
     /// is used for z-ordering elements: higher `z`-value will be in front of lower
     /// `z`-value.
     pub const fn from_xyz(x: f32, y: f32, z: f32) -> Self {
-        Self::from_translation(const_vec3!([x, y, z]))
+        Self::from_translation(vec3(x, y, z))
     }
 
     /// Creates a new identity [`Transform`], with no translation, rotation, and a scale of 1 on

@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
-bytemuck = { version = "1.7.3", features = ["derive"] }
-glam = { version = "0.20.2", features = ["bytemuck", "serde"] }
-js-sys = "0.3"
+bytemuck = { version = "1.13.1", features = ["derive"] }
+glam = { version = "0.24.0", features = ["bytemuck", "serde"] }
+js-sys = "0.3.64"
 lerp = "0.4"
