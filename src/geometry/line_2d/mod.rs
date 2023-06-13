@@ -46,6 +46,18 @@ where
         }
     }
 }
+impl<T> Lerp<f32> for LineVertexData<T>
+where
+    T: Default + Copy + Clone + Lerp<f32>,
+{
+    fn lerp(self, other: Self, t: f32) -> Self {
+        line_vert_w_d(
+            self.pos.lerp(other.pos, t),
+            self.width.lerp(other.width, t),
+            self.data.lerp(other.data, t),
+        )
+    }
+}
 
 impl<T> LineVertexData<T>
 where
@@ -64,19 +76,8 @@ where
     }
 
     pub fn smouth_edge(&self, prev: &Self, next: &Self, ratio: f32) -> Vec<Self> {
-        let p1 = prev.pos.lerp(self.pos, 1.0 - ratio);
-        let v1 = line_vert_w_d(
-            p1,
-            prev.width.lerp(self.width, 1.0 - ratio),
-            prev.data.lerp(self.data, 1.0 - ratio),
-        );
-
-        let p2 = self.pos.lerp(next.pos, ratio);
-        let v2 = line_vert_w_d(
-            p2,
-            self.width.lerp(next.width, ratio),
-            self.data.lerp(next.data, ratio),
-        );
+        let v1 = prev.lerp(*self, 1.0 - ratio);
+        let v2 = self.lerp(*next, ratio);
 
         vec![v1, v2]
     }
@@ -276,11 +277,7 @@ where
                 let dist = curr.len - (len - min_len);
                 let ratio = dist / curr.len;
                 travelled_min_length_cell.set(-dist);
-                return vec![line_vert_w_d(
-                    curr.pos.lerp(next.pos, ratio),
-                    curr.width.lerp(next.width, ratio),
-                    curr.data.lerp(next.data, ratio),
-                )];
+                return vec![curr.lerp(*next, ratio)];
             }
 
             travelled_min_length_cell.set(0.0);
