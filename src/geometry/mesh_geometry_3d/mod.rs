@@ -304,7 +304,7 @@ where
             },
             vertex_size: geom_layout.vertex_size,
             vertex_count: if indices_len > 0 {
-                indices_len
+                indices_len / 4 // 4 bytes per u32 index
             } else {
                 buffer_len / geom_layout.vertex_size
             },
@@ -312,13 +312,14 @@ where
         }
     }
 
-    fn fill_buffered_geometry_indices(&self, indices: &mut Vec<u32>) {
+    fn fill_buffered_geometry_indices(&self, indices: &mut Vec<u8>) {
         for face in self.faces.iter() {
             if face.vertices.len() != 3 {
                 panic!("triangulate the geometry before generating buffers");
             }
             for v in &face.vertices {
-                indices.push(*v as u32)
+                let i = *v as u32;
+                indices.extend(bytemuck::bytes_of(&i))
             }
         }
     }

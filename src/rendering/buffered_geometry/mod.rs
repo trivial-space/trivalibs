@@ -197,8 +197,14 @@ pub struct AttributeLayout {
 
 #[derive(Clone, Serialize, Debug)]
 pub struct BufferedGeometry {
+    #[serde(with = "serde_bytes")]
     pub buffer: Vec<u8>,
-    pub indices: Option<Vec<u32>>,
+
+    /// u32 indices converted to bytes, so they can be serialized efficiently.
+    /// 4 bytes per index.
+    #[serde(with = "serde_bytes")]
+    pub indices: Option<Vec<u8>>,
+
     pub vertex_size: u32,
     pub vertex_count: u32,
     pub rendering_primitive: RenderingPrimitive,
