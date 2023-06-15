@@ -4,7 +4,7 @@ use std::ops::Mul;
 
 /// Describe the position of an entity.
 /// To place or move an entity, you should set its [`Transform`].
-/// Copied from Bevy Engine Transform (version 0.7)
+/// Copied from Bevy Engine Transform (version 0.10)
 #[derive(Debug, PartialEq, Clone, Copy, Serialize)]
 pub struct Transform {
     /// Position of the entity. In 2d, the last value of the `Vec3` is used for z-ordering.
@@ -195,46 +195,30 @@ impl Transform {
     }
 
     /// Rotates this [`Transform`] by the given rotation.
-    ///
-    /// If this [`Transform`] has a parent, the `rotation` is relative to the rotation of the parent.
-    ///
-    /// # Examples
-    ///
-    /// - [`3d_rotation`]
-    ///
-    /// [`3d_rotation`]: https://github.com/bevyengine/bevy/blob/latest/examples/transforms/3d_rotation.rs
     #[inline]
     pub fn rotate(&mut self, rotation: Quat) {
         self.rotation = rotation * self.rotation;
     }
 
     /// Rotates this [`Transform`] around the given `axis` by `angle` (in radians).
-    ///
-    /// If this [`Transform`] has a parent, the `axis` is relative to the rotation of the parent.
     #[inline]
     pub fn rotate_axis(&mut self, axis: Vec3, angle: f32) {
         self.rotate(Quat::from_axis_angle(axis, angle));
     }
 
     /// Rotates this [`Transform`] around the `X` axis by `angle` (in radians).
-    ///
-    /// If this [`Transform`] has a parent, the axis is relative to the rotation of the parent.
     #[inline]
     pub fn rotate_x(&mut self, angle: f32) {
         self.rotate(Quat::from_rotation_x(angle));
     }
 
     /// Rotates this [`Transform`] around the `Y` axis by `angle` (in radians).
-    ///
-    /// If this [`Transform`] has a parent, the axis is relative to the rotation of the parent.
     #[inline]
     pub fn rotate_y(&mut self, angle: f32) {
         self.rotate(Quat::from_rotation_y(angle));
     }
 
     /// Rotates this [`Transform`] around the `Z` axis by `angle` (in radians).
-    ///
-    /// If this [`Transform`] has a parent, the axis is relative to the rotation of the parent.
     #[inline]
     pub fn rotate_z(&mut self, angle: f32) {
         self.rotate(Quat::from_rotation_z(angle));
@@ -273,16 +257,12 @@ impl Transform {
     }
 
     /// Translates this [`Transform`] around a `point` in space.
-    ///
-    /// If this [`Transform`] has a parent, the `point` is relative to the [`Transform`] of the parent.
     #[inline]
     pub fn translate_around(&mut self, point: Vec3, rotation: Quat) {
         self.translation = point + rotation * (self.translation - point);
     }
 
     /// Rotates this [`Transform`] around a `point` in space.
-    ///
-    /// If this [`Transform`] has a parent, the `point` is relative to the [`Transform`] of the parent.
     #[inline]
     pub fn rotate_around(&mut self, point: Vec3, rotation: Quat) {
         self.translate_around(point, rotation);
@@ -336,15 +316,6 @@ impl Transform {
     }
 
     /// Transforms the given `point`, applying scale, rotation and translation.
-    ///
-    /// If this [`Transform`] has a parent, this will transform a `point` that is
-    /// relative to the parent's [`Transform`] into one relative to this [`Transform`].
-    ///
-    /// If this [`Transform`] does not have a parent, this will transform a `point`
-    /// that is in global space into one relative to this [`Transform`].
-    ///
-    /// If you want to transform a `point` in global space to the local space of this [`Transform`],
-    /// consider using [`GlobalTransform::transform_point()`] instead.
     #[inline]
     pub fn transform_point(&self, mut point: Vec3) -> Vec3 {
         point = self.scale * point;
