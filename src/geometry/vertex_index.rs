@@ -13,7 +13,7 @@ pub struct VertIdx2U(u32, u32);
 impl VertexIndex for VertIdx2U {}
 impl Hash for VertIdx2U {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let hash_val: u64 = self.0 as u64 + self.1 as u64 * 10_000_000;
+        let hash_val: u64 = self.0 as u64 + self.1 as u64 * 100_000_000;
         hash_val.hash(state)
     }
 }
@@ -23,7 +23,7 @@ pub struct VertIdx2Usize(pub usize, pub usize);
 impl VertexIndex for VertIdx2Usize {}
 impl Hash for VertIdx2Usize {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let hash_val: u64 = self.0 as u64 + self.1 as u64 * 10_000_000;
+        let hash_val: u64 = self.0 as u64 + self.1 as u64 * 100_000_000;
         hash_val.hash(state)
     }
 }

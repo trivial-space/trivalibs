@@ -1,32 +1,39 @@
 use crate::{
     geometry::{
-        mesh_geometry_3d::{Face, MeshGeometry, VertexPosition},
-        vertex_index::{VertIdx3f, WithVertexIndex},
+        mesh_geometry_3d::{Face, MeshGeometry},
+        vertex_index::VertIdx3f,
     },
-    rendering::buffered_geometry::{BufferedVertexData, VertexType},
+    rendering::buffered_geometry::{BufferedVertexData, OverrideWith, VertexType},
 };
 use bytemuck::{Pod, Zeroable};
 use glam::{vec3, Vec3};
+
+use super::MeshVertex;
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Clone, Copy, Pod, Zeroable)]
 struct Vert {
     pos: Vec3,
 }
-
-impl VertexPosition for Vert {
-    fn position(&self) -> Vec3 {
-        self.pos
-    }
-}
-impl WithVertexIndex<VertIdx3f> for Vert {
-    fn vertex_index(&self) -> VertIdx3f {
-        VertIdx3f::from(self.pos)
-    }
-}
 impl BufferedVertexData for Vert {
     fn vertex_layout() -> Vec<VertexType> {
         todo!()
+    }
+}
+impl OverrideWith for Vert {
+    fn override_with(&self, _attribs: &Self) -> Self {
+        *self
+    }
+}
+impl MeshVertex<VertIdx3f, Vert> for Vert {
+    fn position(&self) -> Vec3 {
+        self.pos
+    }
+    fn vertex_index(&self) -> VertIdx3f {
+        VertIdx3f::from(self.pos)
+    }
+    fn to_buffered_vertex_data(&self) -> Self {
+        *self
     }
 }
 

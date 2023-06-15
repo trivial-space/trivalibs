@@ -125,7 +125,7 @@ impl Line {
         }
 
         let mut buffer = vec![];
-        let mut indices = vec![];
+        let indices = vec![];
 
         let total_length = opts.total_length.unwrap_or(line_length);
 

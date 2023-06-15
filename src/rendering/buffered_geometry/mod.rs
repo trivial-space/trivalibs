@@ -245,6 +245,7 @@ pub trait ToBufferedGeometry {
 pub trait BufferedVertexData: Pod + Clone + Copy {
     fn vertex_layout() -> Vec<VertexType>;
 }
-pub trait WithAttribsOf: BufferedVertexData {
-    fn with_attribs_of(&self, other: &Self) -> Self;
+
+pub trait OverrideWith: BufferedVertexData {
+    fn override_with(&self, other: &Self) -> Self;
 }
