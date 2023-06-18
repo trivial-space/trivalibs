@@ -3,7 +3,7 @@ use crate::{
         mesh_geometry_3d::{Face, MeshGeometry},
         vertex_index::VertIdx3f,
     },
-    rendering::buffered_geometry::{BufferedVertexData, OverrideWith, VertexType},
+    rendering::buffered_geometry::{BufferedVertexData, NoAttributeOverride, VertexType},
 };
 use bytemuck::{Pod, Zeroable};
 use glam::{vec3, Vec3};
@@ -17,12 +17,7 @@ struct Vert {
 }
 impl BufferedVertexData for Vert {
     fn vertex_layout() -> Vec<VertexType> {
-        todo!()
-    }
-}
-impl OverrideWith for Vert {
-    fn override_with(&self, _attribs: &Self) -> Self {
-        *self
+        vec![]
     }
 }
 impl Position3D for Vert {
@@ -30,6 +25,7 @@ impl Position3D for Vert {
         self.pos
     }
 }
+impl NoAttributeOverride for Vert {}
 
 fn vert(x: f32, y: f32, z: f32) -> MeshVertex<VertIdx3f, Vert> {
     MeshVertex {

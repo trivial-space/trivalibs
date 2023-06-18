@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use glam::{vec3, Vec3};
 
 use crate::rendering::buffered_geometry::{
-    create_buffered_geometry_layout, BufferedGeometry, BufferedVertexData, OverrideWith,
+    create_buffered_geometry_layout, BufferedGeometry, BufferedVertexData, OverrideAttributesWith,
     RenderingPrimitive, ToBufferedGeometry, VertexFormat, VertexType,
 };
 
@@ -12,7 +12,7 @@ use super::vertex_index::VertexIndex;
 #[derive(Debug)]
 pub struct Face<BV>
 where
-    BV: BufferedVertexData + OverrideWith,
+    BV: BufferedVertexData + OverrideAttributesWith,
 {
     pub vertices: Vec<usize>,
     pub face_normal: Option<Vec3>,
@@ -27,7 +27,7 @@ pub trait Position3D: BufferedVertexData {
 pub struct MeshVertex<Idx, BV>
 where
     Idx: VertexIndex,
-    BV: BufferedVertexData + OverrideWith + Position3D,
+    BV: BufferedVertexData + OverrideAttributesWith + Position3D,
 {
     pub vertex_index: Idx,
     pub data: BV,
@@ -36,7 +36,7 @@ where
 impl<Idx, BV> PartialEq for MeshVertex<Idx, BV>
 where
     Idx: VertexIndex,
-    BV: BufferedVertexData + OverrideWith + Position3D,
+    BV: BufferedVertexData + OverrideAttributesWith + Position3D,
 {
     fn eq(&self, other: &Self) -> bool {
         self.vertex_index == other.vertex_index
@@ -53,7 +53,7 @@ pub enum MeshBufferedGeometryType {
 pub struct MeshVertexData<Idx, BV>
 where
     Idx: VertexIndex,
-    BV: BufferedVertexData + OverrideWith + Position3D,
+    BV: BufferedVertexData + OverrideAttributesWith + Position3D,
 {
     pub vertex: MeshVertex<Idx, BV>,
     pub faces: Vec<usize>,
@@ -63,7 +63,7 @@ where
 pub struct MeshGeometry<Idx, BV>
 where
     Idx: VertexIndex,
-    BV: BufferedVertexData + OverrideWith + Position3D,
+    BV: BufferedVertexData + OverrideAttributesWith + Position3D,
 {
     next_index: usize,
     vertex_indices: HashMap<Idx, usize>,
@@ -74,7 +74,7 @@ where
 impl<Idx, BV> MeshGeometry<Idx, BV>
 where
     Idx: VertexIndex,
-    BV: BufferedVertexData + OverrideWith + Position3D,
+    BV: BufferedVertexData + OverrideAttributesWith + Position3D,
 {
     pub fn new() -> Self {
         Self {
@@ -445,7 +445,7 @@ where
 impl<Idx, BV> ToBufferedGeometry for MeshGeometry<Idx, BV>
 where
     Idx: VertexIndex,
-    BV: BufferedVertexData + OverrideWith + Position3D,
+    BV: BufferedVertexData + OverrideAttributesWith + Position3D,
 {
     fn to_buffered_geometry(&self) -> BufferedGeometry {
         self.to_buffered_geometry_by_type(MeshBufferedGeometryType::NoNormals)
