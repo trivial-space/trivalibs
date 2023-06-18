@@ -6,9 +6,9 @@ pub trait WithVertexIndex<T: VertexIndex> {
     fn vertex_index(&self) -> T;
 }
 
-pub trait VertexIndex: Eq + Hash {}
+pub trait VertexIndex: Eq + Hash + Clone + Copy {}
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct VertIdx2U(u32, u32);
 impl VertexIndex for VertIdx2U {}
 impl Hash for VertIdx2U {
@@ -18,7 +18,7 @@ impl Hash for VertIdx2U {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct VertIdx2Usize(pub usize, pub usize);
 impl VertexIndex for VertIdx2Usize {}
 impl Hash for VertIdx2Usize {
@@ -28,8 +28,8 @@ impl Hash for VertIdx2Usize {
     }
 }
 
-#[derive(PartialEq)]
-pub struct VertIdx3f(f32, f32, f32);
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub struct VertIdx3f(pub f32, pub f32, pub f32);
 impl VertexIndex for VertIdx3f {}
 
 impl From<Vec3> for VertIdx3f {

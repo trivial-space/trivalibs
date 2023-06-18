@@ -8,7 +8,7 @@ use crate::{
 use bytemuck::{Pod, Zeroable};
 use glam::{vec3, Vec3};
 
-use super::MeshVertex;
+use super::{MeshVertex, Position3D};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Clone, Copy, Pod, Zeroable)]
@@ -25,20 +25,17 @@ impl OverrideWith for Vert {
         *self
     }
 }
-impl MeshVertex<VertIdx3f, Vert> for Vert {
+impl Position3D for Vert {
     fn position(&self) -> Vec3 {
         self.pos
     }
-    fn vertex_index(&self) -> VertIdx3f {
-        VertIdx3f::from(self.pos)
-    }
-    fn to_buffered_vertex_data(&self) -> Self {
-        *self
-    }
 }
 
-fn vert(x: f32, y: f32, z: f32) -> Vert {
-    Vert { pos: vec3(x, y, z) }
+fn vert(x: f32, y: f32, z: f32) -> MeshVertex<VertIdx3f, Vert> {
+    MeshVertex {
+        data: Vert { pos: vec3(x, y, z) },
+        vertex_index: VertIdx3f(x, y, z),
+    }
 }
 
 #[test]
@@ -60,8 +57,8 @@ fn generate_geometry() {
     assert_eq!(geom.faces.len(), 1);
     assert_eq!(geom.vertices.len(), 3);
 
-    assert_eq!(geom.get_vertex_index(v2.vertex_index()), 1);
-    assert_eq!(geom.get_vertex_index(v3.vertex_index()), 2);
+    assert_eq!(geom.get_vertex_index(v2.vertex_index), 1);
+    assert_eq!(geom.get_vertex_index(v3.vertex_index), 2);
 }
 
 #[test]
