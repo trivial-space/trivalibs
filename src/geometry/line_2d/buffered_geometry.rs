@@ -50,7 +50,7 @@ pub struct LineGeometryOpts {
 impl Default for LineGeometryOpts {
     fn default() -> Self {
         Self {
-            smouth_depth: 2,
+            smouth_depth: 0,
             smouth_min_length: 3.0,
             smouth_angle_threshold: 0.05,
 
@@ -108,57 +108,83 @@ impl Line {
         for (prev, v, next) in self.iter().with_neighbours() {
             if prev.is_none() {
                 top_line.add_width_data(v.pos, v.width, line_length);
-                bottom_line.add_width_data(v.pos, v.width, line_length);
             }
 
+            // TODO: adjust for first and last vertex, if prev_direction or next_direction are given
             let new_points = line_mitter_positions(&v.pos, &v.dir, v.width, prev.map(|x| &x.dir));
 
             top_line.add_width_data(new_points[0], v.width, line_length);
             bottom_line.add_width_data(new_points[1], v.width, line_length);
 
             if next.is_none() {
-                top_line.add_width_data(v.pos, v.width, line_length);
                 bottom_line.add_width_data(v.pos, v.width, line_length);
             }
 
             line_length += v.len;
         }
 
+        // TODO: smouth top and bottom lines if smouth_depth is > 0
+
         let mut buffer = vec![];
-        let indices = vec![];
+        let mut indices: Vec<u32> = vec![];
 
         let total_length = opts.total_length.unwrap_or(line_length);
 
         let n = usize::max(top_line.vert_count(), bottom_line.vert_count());
 
+        let mut top_idx: u32 = 0;
+        let mut bottom_idx: u32 = 0;
+        let mut next_idx: u32 = 0;
+
         for i in 0..n {
-            let top = top_line.get(i);
-            let bottom = bottom_line.get(i);
+            let top_opt = top_line.get_opt(i);
+            let bottom_opt = bottom_line.get_opt(i);
 
-            let top_uv = Vec2::new(top.data / total_length, 0.0);
-            let bottom_uv = Vec2::new(bottom.data / total_length, 1.0);
+            if let Some(top) = top_opt {
+                let v = if i == 0 { 0.5 } else { 0.0 };
+                let top_uv = Vec2::new(top.data / total_length, v);
+                let top_local_uv = Vec2::new(top.data / self.len, v);
+                let top_vertex = VertexData {
+                    position: top.pos,
+                    width: top.width,
+                    length: top.data,
+                    uv: top_uv,
+                    local_uv: top_local_uv,
+                };
 
-            let top_local_uv = Vec2::new(top.data / self.len, 0.0);
-            let bottom_local_uv = Vec2::new(top.data / self.len, 1.0);
+                buffer.push(top_vertex);
 
-            let top_vertex = VertexData {
-                position: top.pos,
-                width: top.width,
-                length: top.data,
-                uv: top_uv,
-                local_uv: top_local_uv,
-            };
+                indices.push(next_idx);
+                top_idx = next_idx;
+                next_idx += 1;
+            } else {
+                indices.push(top_idx);
+            }
 
-            let bottom_vertex = VertexData {
-                position: bottom.pos,
-                width: bottom.width,
-                length: bottom.data,
-                uv: bottom_uv,
-                local_uv: bottom_local_uv,
-            };
+            if let Some(bottom) = bottom_opt {
+                let v = if i == bottom_line.vert_count() - 1 {
+                    0.5
+                } else {
+                    1.0
+                };
+                let bottom_uv = Vec2::new(bottom.data / total_length, v);
+                let bottom_local_uv = Vec2::new(bottom.data / self.len, v);
+                let bottom_vertex = VertexData {
+                    position: bottom.pos,
+                    width: bottom.width,
+                    length: bottom.data,
+                    uv: bottom_uv,
+                    local_uv: bottom_local_uv,
+                };
 
-            buffer.push(top_vertex);
-            buffer.push(bottom_vertex);
+                buffer.push(bottom_vertex);
+
+                indices.push(next_idx);
+                bottom_idx = next_idx;
+                next_idx += 1;
+            } else {
+                indices.push(bottom_idx);
+            }
         }
 
         let indices_len = indices.len();
@@ -166,9 +192,9 @@ impl Line {
         let geom_layout = create_buffered_geometry_layout(VertexData::vertex_layout());
 
         BufferedGeometry {
-            buffer: Vec::from(bytemuck::cast_slice(&buffer)),
+            buffer: bytemuck::cast_slice(&buffer).to_vec(),
             rendering_primitive: RenderingPrimitive::TriangleStrip,
-            indices: Some(indices),
+            indices: Some(bytemuck::cast_slice(&indices).to_vec()),
             vertex_size: geom_layout.vertex_size,
             vertex_count: indices_len as u32,
             vertex_layout: geom_layout.vertex_layout,

@@ -10,4 +10,5 @@ pub mod prelude {
     pub use crate::utils::*;
     pub use crate::wasm_helpers::*;
     pub use glam::*;
+    pub use std::cell::OnceCell;
 }

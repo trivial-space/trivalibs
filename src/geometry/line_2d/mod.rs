@@ -198,6 +198,10 @@ where
         &self.list[i]
     }
 
+    pub fn get_opt(&self, i: usize) -> Option<&LineVertexData<T>> {
+        self.list.get(i)
+    }
+
     pub fn last(&self) -> &LineVertexData<T> {
         &self.list[self.list.len() - 1]
     }
