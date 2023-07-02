@@ -1,5 +1,5 @@
 use super::transform::Transform;
-use glam::{Mat4, Vec2, Vec3};
+use glam::{Mat4, Quat, Vec2, Vec3};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -10,7 +10,10 @@ pub struct PerspectiveCamera {
     pub far: f32,
 
     pub proj: Mat4,
-    pub transform: Transform,
+
+    pub rot_horizontal: f32,
+    pub rot_vertical: f32,
+    pub translation: Vec3,
 }
 
 impl Default for PerspectiveCamera {
@@ -27,8 +30,18 @@ impl PerspectiveCamera {
             near,
             far,
             proj: Mat4::ZERO,
-            transform: Default::default(),
+            rot_horizontal: 0.0,
+            rot_vertical: 0.0,
+            translation: Vec3::ZERO,
         }
+    }
+
+    pub fn transform(&self) -> Transform {
+        let mut t = Transform::default();
+        t.translation = self.translation;
+        t.rotation =
+            Quat::from_rotation_x(self.rot_vertical) * Quat::from_rotation_y(self.rot_horizontal);
+        t
     }
 
     pub fn recalculate_proj_mat(&mut self) {
@@ -57,7 +70,7 @@ impl PerspectiveCamera {
     /// [`world_to_screen`](Self::world_to_screen).
     pub fn world_to_ndc(&self, world_position: Vec3) -> Option<Vec3> {
         // Build a transform to convert from world to NDC using camera data
-        let world_to_ndc: Mat4 = self.proj * self.transform.compute_matrix().inverse();
+        let world_to_ndc: Mat4 = self.proj * self.transform().compute_matrix().inverse();
         let ndc_space_coords: Vec3 = world_to_ndc.project_point3(world_position);
 
         if !ndc_space_coords.is_nan() {

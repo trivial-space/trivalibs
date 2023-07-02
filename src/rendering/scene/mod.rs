@@ -28,7 +28,7 @@ impl Scene {
     }
 
     pub fn view_mat(&self) -> Mat4 {
-        self.camera.transform.compute_matrix()
+        self.camera.transform().compute_matrix()
     }
 
     pub fn model_mat(&self, obj: &'static str) -> Mat4 {
