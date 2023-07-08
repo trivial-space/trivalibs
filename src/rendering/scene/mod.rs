@@ -1,66 +1,41 @@
 use super::{camera::PerspectiveCamera, transform::Transform};
 use glam::{Mat3, Mat4};
-use serde::Serialize;
-use std::collections::HashMap;
 
-#[derive(Default, Serialize)]
-pub struct SceneObject {
-    transform: Transform,
+pub trait SceneObject {
+    fn transform(&self) -> &Transform;
+    fn parent(&self) -> Option<&Transform>;
 }
 
-#[derive(Default, Serialize)]
-pub struct Scene {
-    objects: HashMap<&'static str, SceneObject>,
-    camera: PerspectiveCamera,
+impl SceneObject for Transform {
+    fn transform(&self) -> &Transform {
+        self
+    }
+    fn parent(&self) -> Option<&Transform> {
+        None
+    }
 }
 
-impl Scene {
-    pub fn new() -> Self {
-        Scene::default()
-    }
+pub fn view_mat(camera: &PerspectiveCamera) -> Mat4 {
+    camera.transform().compute_matrix()
+}
 
-    pub fn obj(&self, key: &'static str) -> &SceneObject {
-        self.objects.get(key).unwrap()
-    }
+pub fn model_mat<O: SceneObject>(obj: &O) -> Mat4 {
+    obj.transform().compute_matrix()
+}
 
-    pub fn proj_mat(&self) -> &Mat4 {
-        &self.camera.proj
-    }
+pub fn model_view_mat<O: SceneObject>(obj: &O, camera: &PerspectiveCamera) -> Mat4 {
+    view_mat(camera) * model_mat(obj)
+}
+pub fn model_view_proj_mat<O: SceneObject>(obj: &O, camera: &PerspectiveCamera) -> Mat4 {
+    camera.proj * model_view_mat(obj, camera)
+}
 
-    pub fn view_mat(&self) -> Mat4 {
-        self.camera.transform().compute_matrix()
-    }
+pub fn model_normal_mat<O: SceneObject>(obj: &O) -> Mat3 {
+    Mat3::from_mat4(model_mat(obj)).inverse().transpose()
+}
 
-    pub fn model_mat(&self, obj: &'static str) -> Mat4 {
-        self.objects[obj].transform.compute_matrix()
-    }
-
-    pub fn model_view_mat(&self, obj: &'static str) -> Mat4 {
-        self.view_mat() * self.model_mat(obj)
-    }
-    pub fn model_view_proj_mat(&self, obj: &'static str) -> Mat4 {
-        *self.proj_mat() * self.model_view_mat(obj)
-    }
-
-    pub fn model_normal_mat(&self, obj: &'static str) -> Mat3 {
-        Mat3::from_mat4(self.model_mat(obj)).inverse().transpose()
-    }
-
-    pub fn view_normal_mat(&self, obj: &'static str) -> Mat3 {
-        Mat3::from_mat4(self.model_view_mat(obj))
-            .inverse()
-            .transpose()
-    }
-
-    pub fn set_obj(&mut self, key: &'static str, transform: Transform) {
-        self.objects.insert(key, SceneObject { transform });
-    }
-
-    pub fn update_cam<F: Fn(&mut PerspectiveCamera)>(&mut self, f: F) {
-        f(&mut self.camera);
-    }
-
-    pub fn update_obj_transform<F: Fn(&mut Transform)>(&mut self, obj: &'static str, f: F) {
-        f(&mut self.objects.get_mut(obj).unwrap().transform)
-    }
+pub fn view_normal_mat<O: SceneObject>(obj: &O, camera: &PerspectiveCamera) -> Mat3 {
+    Mat3::from_mat4(model_view_mat(obj, camera))
+        .inverse()
+        .transpose()
 }
