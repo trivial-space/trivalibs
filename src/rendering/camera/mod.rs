@@ -22,6 +22,31 @@ impl Default for PerspectiveCamera {
     }
 }
 
+pub struct CamOptions {
+    pub fov: Option<f32>,
+    pub aspect_ratio: Option<f32>,
+    pub near: Option<f32>,
+    pub far: Option<f32>,
+
+    pub rot_horizontal: Option<f32>,
+    pub rot_vertical: Option<f32>,
+    pub translation: Option<Vec3>,
+}
+
+impl Default for CamOptions {
+    fn default() -> Self {
+        Self {
+            fov: None,
+            aspect_ratio: None,
+            near: None,
+            far: None,
+            rot_horizontal: None,
+            rot_vertical: None,
+            translation: None,
+        }
+    }
+}
+
 impl PerspectiveCamera {
     pub fn from_perspective(fov: f32, aspect_ratio: f32, near: f32, far: f32) -> Self {
         PerspectiveCamera {
@@ -33,6 +58,47 @@ impl PerspectiveCamera {
             rot_horizontal: 0.0,
             rot_vertical: 0.0,
             translation: Vec3::ZERO,
+        }
+    }
+
+    pub fn set(&mut self, opts: CamOptions) {
+        let mut update_projection = false;
+        if let Some(fov) = opts.fov {
+            if fov != self.fov {
+                self.fov = fov;
+                update_projection = true;
+            }
+        }
+        if let Some(near) = opts.near {
+            if near != self.near {
+                self.near = near;
+                update_projection = true;
+            }
+        }
+        if let Some(far) = opts.far {
+            if far != self.far {
+                self.far = far;
+                update_projection = true;
+            }
+        }
+        if let Some(ratio) = opts.aspect_ratio {
+            if ratio != self.aspect_ratio {
+                self.aspect_ratio = ratio;
+                update_projection = true;
+            }
+        }
+        if update_projection {
+            self.recalculate_proj_mat();
+        }
+
+        if let Some(rot_horizontal) = opts.rot_horizontal {
+            self.rot_horizontal = rot_horizontal;
+        }
+        if let Some(rot_vertical) = opts.rot_vertical {
+            self.rot_vertical = rot_vertical;
+        }
+        if let Some(translation) = opts.translation {
+            self.translation = translation;
         }
     }
 
