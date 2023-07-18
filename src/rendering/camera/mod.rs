@@ -1,3 +1,5 @@
+use std::f32::consts::{FRAC_PI_2, PI, TAU};
+
 use super::transform::Transform;
 use glam::{Mat4, Quat, Vec2, Vec3};
 use serde::Serialize;
@@ -22,7 +24,7 @@ impl Default for PerspectiveCamera {
     }
 }
 
-pub struct CamOptions {
+pub struct CamProps {
     pub fov: Option<f32>,
     pub aspect_ratio: Option<f32>,
     pub near: Option<f32>,
@@ -33,7 +35,7 @@ pub struct CamOptions {
     pub translation: Option<Vec3>,
 }
 
-impl Default for CamOptions {
+impl Default for CamProps {
     fn default() -> Self {
         Self {
             fov: None,
@@ -61,7 +63,7 @@ impl PerspectiveCamera {
         }
     }
 
-    pub fn set(&mut self, opts: CamOptions) {
+    pub fn set(&mut self, opts: CamProps) {
         let mut update_projection = false;
         if let Some(fov) = opts.fov {
             if fov != self.fov {
@@ -93,9 +95,21 @@ impl PerspectiveCamera {
 
         if let Some(rot_horizontal) = opts.rot_horizontal {
             self.rot_horizontal = rot_horizontal;
+            if self.rot_horizontal > TAU {
+                self.rot_horizontal -= TAU;
+            }
+            if self.rot_horizontal < 0.0 {
+                self.rot_horizontal += TAU
+            }
         }
         if let Some(rot_vertical) = opts.rot_vertical {
             self.rot_vertical = rot_vertical;
+            if self.rot_vertical > FRAC_PI_2 {
+                self.rot_vertical = FRAC_PI_2;
+            }
+            if self.rot_vertical < -FRAC_PI_2 {
+                self.rot_vertical = -FRAC_PI_2
+            }
         }
         if let Some(translation) = opts.translation {
             self.translation = translation;
