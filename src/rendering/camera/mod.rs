@@ -118,6 +118,13 @@ impl PerspectiveCamera {
         }
     }
 
+    pub fn set_aspect_ratio(&mut self, aspect_ratio: f32) {
+        if self.aspect_ratio != aspect_ratio {
+            self.aspect_ratio = aspect_ratio;
+            self.recalculate_proj_mat();
+        }
+    }
+
     pub fn update(
         &mut self,
         forward: f32,
