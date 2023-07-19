@@ -16,7 +16,7 @@ impl SceneObject for Transform {
 }
 
 pub fn view_mat(camera: &PerspectiveCamera) -> Mat4 {
-    camera.transform().compute_matrix()
+    camera.transform().compute_matrix().inverse()
 }
 
 pub fn model_mat<O: SceneObject>(obj: &O) -> Mat4 {

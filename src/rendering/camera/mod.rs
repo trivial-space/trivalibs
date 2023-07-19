@@ -1,7 +1,9 @@
-use std::f32::consts::{FRAC_PI_2, PI, TAU};
+use std::f32::consts::{FRAC_PI_2, TAU};
+
+use crate::utils::default;
 
 use super::transform::Transform;
-use glam::{Mat4, Quat, Vec2, Vec3};
+use glam::{vec3, Mat4, Quat, Vec2, Vec3};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -116,11 +118,41 @@ impl PerspectiveCamera {
         }
     }
 
+    pub fn update(
+        &mut self,
+        forward: f32,
+        left: f32,
+        up: f32,
+        rot_hor_delta: f32,
+        rot_vert_delta: f32,
+    ) {
+        if rot_hor_delta != 0.0 || rot_vert_delta != 0.0 {
+            self.set(CamProps {
+                rot_horizontal: Some(self.rot_horizontal + rot_hor_delta),
+                rot_vertical: Some(self.rot_vertical + rot_vert_delta),
+                ..default()
+            })
+        }
+        let mut translation = self.translation;
+        if up != 0.0 {
+            translation += Vec3::Y * up;
+        }
+        if forward != 0.0 {
+            let angle = self.rot_horizontal;
+            translation += vec3(-f32::sin(angle), 0.0, -f32::cos(angle)) * forward;
+        }
+        if left != 0.0 {
+            let angle = self.rot_horizontal;
+            translation += vec3(-f32::cos(angle), 0.0, f32::sin(angle)) * left;
+        }
+        self.translation = translation;
+    }
+
     pub fn transform(&self) -> Transform {
         let mut t = Transform::default();
         t.translation = self.translation;
         t.rotation =
-            Quat::from_rotation_x(self.rot_vertical) * Quat::from_rotation_y(self.rot_horizontal);
+            Quat::from_rotation_y(self.rot_horizontal) * Quat::from_rotation_x(self.rot_vertical);
         t
     }
 
