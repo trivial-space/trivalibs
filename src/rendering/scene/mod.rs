@@ -19,6 +19,10 @@ pub fn view_mat(camera: &PerspectiveCamera) -> Mat4 {
     camera.transform().compute_matrix().inverse()
 }
 
+pub fn view_proj_mat(camera: &PerspectiveCamera) -> Mat4 {
+    camera.proj * view_mat(camera)
+}
+
 pub fn model_mat<O: SceneObject>(obj: &O) -> Mat4 {
     obj.transform().compute_matrix()
 }
