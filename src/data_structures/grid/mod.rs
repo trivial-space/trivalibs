@@ -95,6 +95,7 @@ where
     coord_ops: A,
 }
 
+#[derive(Clone, Copy)]
 pub struct Vertex<'a, T, A>
 where
     T: Clone + Copy,
@@ -131,6 +132,11 @@ where
     pub fn get(&self, x: i32, y: i32) -> &T {
         let (x, y) = self.coord_ops.adjust_coords(x, y, self.width, self.height);
         &self.vertices[x][y]
+    }
+
+    pub fn get_mut(&mut self, x: i32, y: i32) -> &mut T {
+        let (x, y) = self.coord_ops.adjust_coords(x, y, self.width, self.height);
+        &mut self.vertices[x][y]
     }
 
     pub fn set(&mut self, x: i32, y: i32, val: T) {
@@ -209,7 +215,7 @@ where
         grid
     }
 
-    pub fn connected_border_count(&self) -> (usize, usize) {
+    pub fn quad_count(&self) -> (usize, usize) {
         let (circle_cols, circle_rows) = self.coord_ops.circle();
         let w = if circle_cols {
             self.width
@@ -263,16 +269,17 @@ where
     }
 
     pub fn to_cw_quads<'a>(&self) -> Vec<[T; 4]> {
-        let (w, h) = self.connected_border_count();
+        let (w, h) = self.quad_count();
         let mut quads = vec![];
-        for x in 0..w {
-            for y in 0..h {
-                let v = self.vertex(x as i32, y as i32);
+        for w_i in 0..w {
+            for h_i in 0..h {
+                let x = w_i as i32;
+                let y = h_i as i32;
                 quads.push([
-                    v.val,
-                    v.right().unwrap().val,
-                    v.right().unwrap().bottom().unwrap().val,
-                    v.bottom().unwrap().val,
+                    *self.get(x, y),
+                    *self.get(x + 1, y),
+                    *self.get(x + 1, y + 1),
+                    *self.get(x, y + 1),
                 ])
             }
         }
@@ -280,28 +287,56 @@ where
     }
 
     pub fn to_ccw_quads<'a>(&self) -> Vec<[T; 4]> {
-        let (w, h) = self.connected_border_count();
+        let (w, h) = self.quad_count();
         let mut quads = vec![];
-        for x in 0..w {
-            for y in 0..h {
-                let v = self.vertex(x as i32, y as i32);
+        for w_i in 0..w {
+            for h_i in 0..h {
+                let x = w_i as i32;
+                let y = h_i as i32;
                 quads.push([
-                    v.val,
-                    v.bottom().unwrap().val,
-                    v.right().unwrap().bottom().unwrap().val,
-                    v.right().unwrap().val,
+                    *self.get(x, y),
+                    *self.get(x, y + 1),
+                    *self.get(x + 1, y + 1),
+                    *self.get(x + 1, y),
                 ])
             }
         }
         quads
     }
 
-    pub fn subdivide<F: Fn(T, T, f32) -> T>(&self, count_x: u32, count_y: u32, lerp: F) {
-        let (circle_x, circle_y) = self.coord_ops.circle();
+    pub fn subdivide<F: Fn(T, T, f32) -> T>(&self, count_x: u32, count_y: u32, lerp: F) -> Self {
         let grid1 = self.flat_map_cols(|col| {
-            let col1 = col.into_iter().map(|v| v.val).collect();
-            for i in 0..count_x {}
+            let next = col[0].right();
+            let col1 = col.iter().map(|v| v.val).collect();
+            let mut cols = vec![col1];
+            if !next.is_none() {
+                for i in 0..count_x {
+                    let t = (i as f32 + 1.0) / (count_x as f32 + 1.0);
+                    let col2 = col
+                        .iter()
+                        .map(|v| lerp(v.val, v.right().unwrap().val, t))
+                        .collect();
+                    cols.push(col2)
+                }
+            }
+            cols
         });
+        grid1.flat_map_rows(|row| {
+            let next = row[0].bottom();
+            let row1 = row.iter().map(|v| v.val).collect();
+            let mut rows = vec![row1];
+            if !next.is_none() {
+                for i in 0..count_y {
+                    let t = (i as f32 + 1.0) / (count_y as f32 + 1.0);
+                    let row2 = row
+                        .iter()
+                        .map(|v| lerp(v.val, v.bottom().unwrap().val, t))
+                        .collect();
+                    rows.push(row2)
+                }
+            }
+            rows
+        })
     }
 }
 

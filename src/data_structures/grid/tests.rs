@@ -1,7 +1,17 @@
+use lerp::Lerp;
+
 use super::*;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 struct Coord(i32, i32);
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+struct CoordF(f32, f32);
+impl Lerp<f32> for CoordF {
+    fn lerp(self, other: Self, t: f32) -> Self {
+        CoordF(self.0.lerp(other.0, t), self.1.lerp(other.1, t))
+    }
+}
 
 fn fill_grid<C: CoordOpsFn>(mut grid: Grid<Coord, C>) -> Grid<Coord, C> {
     for x in 0..3 {
@@ -175,9 +185,6 @@ fn rows_and_cols() {
 
 #[test]
 fn flat_map() {
-    #[derive(Clone, Copy, PartialEq, Debug)]
-    struct CoordF(f32, f32);
-
     let grid = fill_grid(make_grid_with_coord_ops(CIRCLE_ALL_COORD_OPS));
     let grid2 = grid.flat_map_cols(|col| {
         let col2 = col
@@ -238,4 +245,61 @@ fn flat_map() {
         assert_eq!(*grid2.get(x, 4), CoordF(x as f32, 2.0));
         assert_eq!(*grid2.get(x, 5), CoordF(x as f32, 1.0));
     }
+}
+
+#[test]
+fn subdivide() {
+    let mut grid = make_grid();
+    grid.add_col(vec![CoordF(0.0, 0.0), CoordF(0.0, 1.0)]);
+    grid.add_col(vec![CoordF(1.0, 0.0), CoordF(1.0, 1.0)]);
+
+    let grid1 = grid.subdivide(1, 1, CoordF::lerp);
+    assert_eq!(grid1.width, 3);
+    assert_eq!(grid1.height, 3);
+    assert_eq!(*grid1.get(0, 0), CoordF(0.0, 0.0));
+    assert_eq!(*grid1.get(0, 2), CoordF(0.0, 1.0));
+    assert_eq!(*grid1.get(2, 0), CoordF(1.0, 0.0));
+    assert_eq!(*grid1.get(2, 2), CoordF(1.0, 1.0));
+    assert_eq!(*grid1.get(0, 1), CoordF(0.0, 0.5));
+    assert_eq!(*grid1.get(1, 1), CoordF(0.5, 0.5));
+    assert_eq!(*grid1.get(2, 1), CoordF(1.0, 0.5));
+    assert_eq!(*grid1.get(1, 0), CoordF(0.5, 0.0));
+    assert_eq!(*grid1.get(1, 2), CoordF(0.5, 1.0));
+
+    let grid2 = grid.subdivide(3, 0, CoordF::lerp);
+    assert_eq!(grid2.width, 5);
+    assert_eq!(grid2.height, 2);
+    assert_eq!(*grid2.get(0, 0), CoordF(0.0, 0.0));
+    assert_eq!(*grid2.get(1, 0), CoordF(0.25, 0.0));
+    assert_eq!(*grid2.get(2, 0), CoordF(0.5, 0.0));
+    assert_eq!(*grid2.get(3, 0), CoordF(0.75, 0.0));
+    assert_eq!(*grid2.get(4, 0), CoordF(1.0, 0.0));
+    assert_eq!(*grid2.get(0, 1), CoordF(0.0, 1.0));
+    assert_eq!(*grid2.get(1, 1), CoordF(0.25, 1.0));
+    assert_eq!(*grid2.get(2, 1), CoordF(0.5, 1.0));
+    assert_eq!(*grid2.get(3, 1), CoordF(0.75, 1.0));
+    assert_eq!(*grid2.get(4, 1), CoordF(1.0, 1.0));
+
+    let grid3 = grid.subdivide(0, 1, CoordF::lerp);
+    assert_eq!(grid3.width, 2);
+    assert_eq!(grid3.height, 3);
+    assert_eq!(*grid3.get(0, 0), CoordF(0.0, 0.0));
+    assert_eq!(*grid3.get(1, 2), CoordF(1.0, 1.0));
+    assert_eq!(*grid3.get(0, 1), CoordF(0.0, 0.5));
+    assert_eq!(*grid3.get(1, 1), CoordF(1.0, 0.5));
+
+    let mut grid_circle = make_grid_with_coord_ops(CIRCLE_ALL_COORD_OPS);
+    grid_circle.add_col(vec![CoordF(0.0, 0.0), CoordF(0.0, 1.0)]);
+    grid_circle.add_col(vec![CoordF(1.0, 0.0), CoordF(1.0, 1.0)]);
+
+    let grid4 = grid_circle.subdivide(1, 1, CoordF::lerp);
+    assert_eq!(grid4.width, 4);
+    assert_eq!(grid4.height, 4);
+		assert_eq!(*grid4.get(0, 0), CoordF(0.0, 0.0));
+		assert_eq!(*grid4.get(1, 0), CoordF(0.5, 0.0));
+		assert_eq!(*grid4.get(2, 0), CoordF(1.0, 0.0));
+		assert_eq!(*grid4.get(3, 0), CoordF(0.5, 0.0));
+		assert_eq!(*grid4.get(0, 1), CoordF(0.0, 0.5));
+		assert_eq!(*grid4.get(0, 2), CoordF(0.0, 1.0));
+		assert_eq!(*grid4.get(0, 3), CoordF(0.0, 0.5));
 }
