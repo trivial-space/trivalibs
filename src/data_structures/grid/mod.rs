@@ -1,30 +1,25 @@
-pub trait CoordOps: Copy + Clone {
+pub trait CoordOpsFn: Copy + Clone {
     fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize);
+    fn circle(&self) -> (bool, bool);
 }
-
-#[derive(Clone, Copy)]
-pub struct NoAdjustCoordOps;
-impl CoordOps for NoAdjustCoordOps {
-    fn adjust_coords(&self, x: i32, y: i32, _width: usize, _height: usize) -> (usize, usize) {
-        (x as usize, y as usize)
-    }
-}
-pub static NO_ADJUST_COORD_OPS: NoAdjustCoordOps = NoAdjustCoordOps {};
 
 #[derive(Clone, Copy)]
 pub struct ClampToEdgeCoordOps;
-impl CoordOps for ClampToEdgeCoordOps {
+impl CoordOpsFn for ClampToEdgeCoordOps {
     fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize) {
         let w = width as i32;
         let h = height as i32;
         (x.min(w - 1).max(0) as usize, y.min(h - 1).max(0) as usize)
+    }
+    fn circle(&self) -> (bool, bool) {
+        (false, false)
     }
 }
 pub static CLAMP_TO_EDGE_COORD_OPS: ClampToEdgeCoordOps = ClampToEdgeCoordOps {};
 
 #[derive(Clone, Copy)]
 pub struct CircleRowsCoordOps;
-impl CoordOps for CircleRowsCoordOps {
+impl CoordOpsFn for CircleRowsCoordOps {
     fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize) {
         let h = height as i32;
         if y < 0 {
@@ -35,13 +30,16 @@ impl CoordOps for CircleRowsCoordOps {
         }
 
         (x as usize, y as usize)
+    }
+    fn circle(&self) -> (bool, bool) {
+        (false, true)
     }
 }
 pub static CIRCLE_ROWS_COORD_OPS: CircleRowsCoordOps = CircleRowsCoordOps {};
 
 #[derive(Clone, Copy)]
 pub struct CircleColsCoordOps;
-impl CoordOps for CircleColsCoordOps {
+impl CoordOpsFn for CircleColsCoordOps {
     fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize) {
         let w = width as i32;
         if x < 0 {
@@ -53,12 +51,15 @@ impl CoordOps for CircleColsCoordOps {
 
         (x as usize, y as usize)
     }
+    fn circle(&self) -> (bool, bool) {
+        (true, false)
+    }
 }
 pub static CIRCLE_COLS_COORD_OPS: CircleColsCoordOps = CircleColsCoordOps {};
 
 #[derive(Clone, Copy)]
 pub struct CircleAllCoordOps;
-impl CoordOps for CircleAllCoordOps {
+impl CoordOpsFn for CircleAllCoordOps {
     fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize) {
         let w = width as i32;
         let h = height as i32;
@@ -76,6 +77,9 @@ impl CoordOps for CircleAllCoordOps {
         }
 
         (x as usize, y as usize)
+    }
+    fn circle(&self) -> (bool, bool) {
+        (true, false)
     }
 }
 pub static CIRCLE_ALL_COORD_OPS: CircleAllCoordOps = CircleAllCoordOps {};
@@ -83,7 +87,7 @@ pub static CIRCLE_ALL_COORD_OPS: CircleAllCoordOps = CircleAllCoordOps {};
 pub struct Grid<T, A>
 where
     T: Clone + Copy,
-    A: CoordOps + Copy + Clone,
+    A: CoordOpsFn,
 {
     pub width: usize,
     pub height: usize,
@@ -94,7 +98,7 @@ where
 pub struct Vertex<'a, T, A>
 where
     T: Clone + Copy,
-    A: CoordOps,
+    A: CoordOpsFn,
 {
     pub x: usize,
     pub y: usize,
@@ -102,18 +106,18 @@ where
     grid: &'a Grid<T, A>,
 }
 
-pub fn make_grid<T: Clone + Copy>() -> Grid<T, NoAdjustCoordOps> {
-    Grid::new(NO_ADJUST_COORD_OPS)
+pub fn make_grid<T: Clone + Copy>() -> Grid<T, ClampToEdgeCoordOps> {
+    Grid::new(CLAMP_TO_EDGE_COORD_OPS)
 }
 
-pub fn make_grid_with_coord_ops<T: Copy + Clone, A: CoordOps>(coord_ops: A) -> Grid<T, A> {
+pub fn make_grid_with_coord_ops<T: Copy + Clone, A: CoordOpsFn>(coord_ops: A) -> Grid<T, A> {
     Grid::new(coord_ops)
 }
 
 impl<T, A> Grid<T, A>
 where
     T: Clone + Copy,
-    A: CoordOps,
+    A: CoordOpsFn,
 {
     fn new(coord_ops: A) -> Self {
         Grid {
@@ -124,9 +128,9 @@ where
         }
     }
 
-    pub fn get(&self, x: i32, y: i32) -> Option<&T> {
+    pub fn get(&self, x: i32, y: i32) -> &T {
         let (x, y) = self.coord_ops.adjust_coords(x, y, self.width, self.height);
-        self.vertices.get(x)?.get(y)
+        &self.vertices[x][y]
     }
 
     pub fn set(&mut self, x: i32, y: i32, val: T) {
@@ -165,14 +169,15 @@ where
         }
     }
 
-    pub fn vertex(&self, x: i32, y: i32) -> Option<Vertex<T, A>> {
+    pub fn vertex(&self, x: i32, y: i32) -> Vertex<T, A> {
         let (x, y) = self.coord_ops.adjust_coords(x, y, self.width, self.height);
-        self.vertices.get(x)?.get(y).map(|val| Vertex {
+        let val = self.vertices[x][y];
+        Vertex {
             x,
             y,
             grid: self,
-            val: *val,
-        })
+            val: val,
+        }
     }
 
     pub fn map<B, F>(&self, f: F) -> Grid<B, A>
@@ -181,10 +186,10 @@ where
         F: Fn(Vertex<T, A>) -> B,
     {
         let mut grid = Grid::new(self.coord_ops);
-        for x in 0..self.width as i32 {
+        for x in 0..self.width {
             let mut col = vec![];
-            for y in 0..self.height as i32 {
-                col.push(f(self.vertex(x, y).unwrap()));
+            for y in 0..self.height {
+                col.push(f(self.vertex(x as i32, y as i32)));
             }
             grid.add_col(col);
         }
@@ -204,7 +209,7 @@ where
         for x in 0..self.width {
             let mut col = vec![];
             for y in 0..self.height {
-                col.push(self.vertex(x as i32, y as i32).unwrap());
+                col.push(self.vertex(x as i32, y as i32));
             }
             let new_colls = f(col);
             for i in 0..new_colls.len() {
@@ -234,7 +239,7 @@ where
         for y in 0..self.height {
             let mut row = vec![];
             for x in 0..self.width {
-                row.push(self.vertex(x as i32, y as i32).unwrap());
+                row.push(self.vertex(x as i32, y as i32));
             }
             let new_rows = f(row);
             for i in 0..new_rows.len() {
@@ -243,9 +248,67 @@ where
         }
         grid
     }
+
+    pub fn to_cw_quads<'a>(&self) -> Vec<[T; 4]> {
+        let (circle_cols, circle_rows) = self.coord_ops.circle();
+        let w = if circle_cols {
+            self.width
+        } else {
+            self.width - 1
+        };
+        let h = if circle_rows {
+            self.height
+        } else {
+            self.height - 1
+        };
+
+        let mut quads = vec![];
+        for x in 0..w {
+            for y in 0..h {
+                let v = self.vertex(x as i32, y as i32);
+                quads.push([
+                    v.val,
+                    v.right().unwrap().val,
+                    v.right().unwrap().bottom().unwrap().val,
+                    v.bottom().unwrap().val,
+                ])
+            }
+        }
+        quads
+    }
+
+    pub fn to_ccw_quads<'a>(&self) -> Vec<[T; 4]> {
+        let (circle_cols, circle_rows) = self.coord_ops.circle();
+        let w = if circle_cols {
+            self.width
+        } else {
+            self.width - 1
+        };
+        let h = if circle_rows {
+            self.height
+        } else {
+            self.height - 1
+        };
+
+        let mut quads = vec![];
+        for x in 0..w {
+            for y in 0..h {
+                let v = self.vertex(x as i32, y as i32);
+                quads.push([
+                    v.val,
+                    v.bottom().unwrap().val,
+                    v.right().unwrap().bottom().unwrap().val,
+                    v.right().unwrap().val,
+                ])
+            }
+        }
+        quads
+    }
+
+    pub fn subdivide<F: Fn(T, T, f32) -> T>(&self, count_x: u32, count_y: u32, lerp: F) {}
 }
 
-impl<T: Copy, A: CoordOps> PartialEq for Vertex<'_, T, A> {
+impl<T: Copy, A: CoordOpsFn> PartialEq for Vertex<'_, T, A> {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y
     }
@@ -254,12 +317,17 @@ impl<T: Copy, A: CoordOps> PartialEq for Vertex<'_, T, A> {
 impl<T, A> Vertex<'_, T, A>
 where
     T: Clone + Copy,
-    A: CoordOps,
+    A: CoordOpsFn,
 {
     pub fn next(&self, x_offset: i32, y_offset: i32) -> Option<Self> {
-        self.grid
-            .vertex(self.x as i32 + x_offset, self.y as i32 + y_offset)
-            .and_then(|vert| if vert != *self { Some(vert) } else { None })
+        let vert = self
+            .grid
+            .vertex(self.x as i32 + x_offset, self.y as i32 + y_offset);
+        if vert != *self {
+            Some(vert)
+        } else {
+            None
+        }
     }
     pub fn left(&self) -> Option<Self> {
         self.next(-1, 0)

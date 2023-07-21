@@ -90,6 +90,7 @@ where
         v1: MeshVertex<Idx, BV>,
         v2: MeshVertex<Idx, BV>,
         v3: MeshVertex<Idx, BV>,
+        normal: Option<Vec3>,
         data: Option<BV>,
     ) {
         let v1_idx = self.get_vertex_index(v1.vertex_index);
@@ -98,7 +99,7 @@ where
 
         let face_idx = self.faces.len();
 
-        self.create_face3(v1_idx, v2_idx, v3_idx, None, data);
+        self.create_face3(v1_idx, v2_idx, v3_idx, normal, data);
 
         self.add_vertex(v1_idx, face_idx, v1);
         self.add_vertex(v2_idx, face_idx, v2);
@@ -111,6 +112,7 @@ where
         v2: MeshVertex<Idx, BV>,
         v3: MeshVertex<Idx, BV>,
         v4: MeshVertex<Idx, BV>,
+        normal: Option<Vec3>,
         data: Option<BV>,
     ) {
         let v1_idx = self.get_vertex_index(v1.vertex_index);
@@ -119,7 +121,7 @@ where
         let v4_idx = self.get_vertex_index(v4.vertex_index);
 
         let face_idx = self.faces.len();
-        self.create_face4(v1_idx, v2_idx, v3_idx, v4_idx, None, data);
+        self.create_face4(v1_idx, v2_idx, v3_idx, v4_idx, normal, data);
 
         self.add_vertex(v1_idx, face_idx, v1);
         self.add_vertex(v2_idx, face_idx, v2);
@@ -133,7 +135,7 @@ where
         v2: MeshVertex<Idx, BV>,
         v3: MeshVertex<Idx, BV>,
     ) {
-        self.add_face3_data(v1, v2, v3, None)
+        self.add_face3_data(v1, v2, v3, None, None)
     }
 
     pub fn add_face4(
@@ -143,7 +145,7 @@ where
         v3: MeshVertex<Idx, BV>,
         v4: MeshVertex<Idx, BV>,
     ) {
-        self.add_face4_data(v1, v2, v3, v4, None)
+        self.add_face4_data(v1, v2, v3, v4, None, None)
     }
 
     pub fn vertex(&self, i: usize) -> &MeshVertexData<Idx, BV> {
