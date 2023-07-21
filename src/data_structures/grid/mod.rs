@@ -139,17 +139,41 @@ where
         self.vertices[x][y] = val;
     }
 
+    pub fn vertex(&self, x: i32, y: i32) -> Vertex<T, A> {
+        let (x, y) = self.coord_ops.adjust_coords(x, y, self.width, self.height);
+        let val = self.vertices[x][y];
+        Vertex {
+            x,
+            y,
+            grid: self,
+            val: val,
+        }
+    }
+
+    pub fn col(&self, x: i32) -> &Vec<T> {
+        let (new_x, _) = self.coord_ops.adjust_coords(x, 0, self.width, self.height);
+        &self.vertices[new_x]
+    }
+
+    pub fn row(&self, y: i32) -> Vec<T> {
+        let (_, new_y) = self.coord_ops.adjust_coords(0, y, self.width, self.height);
+        let mut row = vec![];
+        for x in 0..self.width {
+            row.push(self.vertices[x][new_y]);
+        }
+        row
+    }
+
     pub fn add_col(&mut self, vals: Vec<T>) {
         let len = vals.len();
         if self.height == 0 {
             self.height = len;
-        } else if self.height > len {
-            panic!("new column length needs to be at least as big as the grid height.")
+        } else if self.height != len {
+            panic!("new column length needs to be as big as the grid height.")
         }
 
         self.width += 1;
-        self.vertices
-            .push(vals.into_iter().take(self.height).collect());
+        self.vertices.push(vals);
     }
 
     pub fn add_row(&mut self, vals: Vec<T>) {
@@ -159,24 +183,13 @@ where
             for _i in 0..len {
                 self.vertices.push(vec![]);
             }
-        } else if self.width > len {
-            panic!("new row length needs to be at least as big as the grid width.");
+        } else if self.width != len {
+            panic!("new row length needs to be as big as the grid width.");
         }
 
         self.height += 1;
         for i in 0..self.width {
             self.vertices[i].push(vals[i]);
-        }
-    }
-
-    pub fn vertex(&self, x: i32, y: i32) -> Vertex<T, A> {
-        let (x, y) = self.coord_ops.adjust_coords(x, y, self.width, self.height);
-        let val = self.vertices[x][y];
-        Vertex {
-            x,
-            y,
-            grid: self,
-            val: val,
         }
     }
 
@@ -196,8 +209,19 @@ where
         grid
     }
 
-    pub fn col(&self, x: usize) -> Option<&Vec<T>> {
-        self.vertices.get(x)
+    pub fn connected_border_count(&self) -> (usize, usize) {
+        let (circle_cols, circle_rows) = self.coord_ops.circle();
+        let w = if circle_cols {
+            self.width
+        } else {
+            self.width - 1
+        };
+        let h = if circle_rows {
+            self.height
+        } else {
+            self.height - 1
+        };
+        (w, h)
     }
 
     pub fn flat_map_cols<B, F>(&self, f: F) -> Grid<B, A>
@@ -217,17 +241,6 @@ where
             }
         }
         grid
-    }
-
-    pub fn row(&self, y: usize) -> Option<Vec<T>> {
-        if y >= self.height {
-            return None;
-        }
-        let mut row = vec![];
-        for x in 0..self.width {
-            row.push(self.vertices[x][y]);
-        }
-        Some(row)
     }
 
     pub fn flat_map_rows<B, F>(&self, f: F) -> Grid<B, A>
@@ -250,18 +263,7 @@ where
     }
 
     pub fn to_cw_quads<'a>(&self) -> Vec<[T; 4]> {
-        let (circle_cols, circle_rows) = self.coord_ops.circle();
-        let w = if circle_cols {
-            self.width
-        } else {
-            self.width - 1
-        };
-        let h = if circle_rows {
-            self.height
-        } else {
-            self.height - 1
-        };
-
+        let (w, h) = self.connected_border_count();
         let mut quads = vec![];
         for x in 0..w {
             for y in 0..h {
@@ -278,18 +280,7 @@ where
     }
 
     pub fn to_ccw_quads<'a>(&self) -> Vec<[T; 4]> {
-        let (circle_cols, circle_rows) = self.coord_ops.circle();
-        let w = if circle_cols {
-            self.width
-        } else {
-            self.width - 1
-        };
-        let h = if circle_rows {
-            self.height
-        } else {
-            self.height - 1
-        };
-
+        let (w, h) = self.connected_border_count();
         let mut quads = vec![];
         for x in 0..w {
             for y in 0..h {
@@ -305,7 +296,13 @@ where
         quads
     }
 
-    pub fn subdivide<F: Fn(T, T, f32) -> T>(&self, count_x: u32, count_y: u32, lerp: F) {}
+    pub fn subdivide<F: Fn(T, T, f32) -> T>(&self, count_x: u32, count_y: u32, lerp: F) {
+        let (circle_x, circle_y) = self.coord_ops.circle();
+        let grid1 = self.flat_map_cols(|col| {
+            let col1 = col.into_iter().map(|v| v.val).collect();
+            for i in 0..count_x {}
+        });
+    }
 }
 
 impl<T: Copy, A: CoordOpsFn> PartialEq for Vertex<'_, T, A> {

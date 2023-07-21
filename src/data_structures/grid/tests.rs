@@ -66,7 +66,7 @@ fn fill_grid_rows_cols() {
     assert_eq!(grid1.height, 3);
     assert_eq!(*grid1.get(0, 2), Coord(0, 2));
 
-    grid1.add_row(vec![Coord(0, 3), Coord(1, 3)]);
+    grid1.add_row(vec![Coord(0, 3)]);
     assert_eq!(grid1.width, 1);
     assert_eq!(grid1.height, 4);
     assert_eq!(*grid1.get(0, 3), Coord(0, 3));
@@ -82,7 +82,7 @@ fn fill_grid_rows_cols() {
     assert_eq!(*grid2.get(1, 0), Coord(1, 0));
     assert_eq!(*grid2.get(2, 0), Coord(2, 0));
 
-    grid2.add_col(vec![Coord(3, 0), Coord(3, 1)]);
+    grid2.add_col(vec![Coord(3, 0)]);
     assert_eq!(grid2.width, 4);
     assert_eq!(grid2.height, 1);
     assert_eq!(*grid2.get(3, 0), Coord(3, 0));
@@ -164,11 +164,13 @@ fn test_grid_map() {
 #[test]
 fn rows_and_cols() {
     let grid = fill_grid(make_grid());
-    let col = grid.col(1).unwrap();
-    assert_eq!(*col, vec![Coord(1, 0), Coord(1, 1), Coord(1, 2)]);
+    assert_eq!(*grid.col(1), vec![Coord(1, 0), Coord(1, 1), Coord(1, 2)]);
+    assert_eq!(*grid.col(4), *grid.col(2));
+    assert_eq!(*grid.col(-1), *grid.col(0));
 
-    let row = grid.row(1).unwrap();
-    assert_eq!(row, vec![Coord(0, 1), Coord(1, 1), Coord(2, 1)]);
+    assert_eq!(grid.row(1), vec![Coord(0, 1), Coord(1, 1), Coord(2, 1)]);
+    assert_eq!(grid.row(4), grid.row(2));
+    assert_eq!(grid.row(-1), grid.row(0));
 }
 
 #[test]
