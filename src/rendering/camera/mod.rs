@@ -3,21 +3,25 @@ use std::f32::consts::{FRAC_PI_2, TAU};
 use crate::utils::default;
 
 use super::transform::Transform;
-use glam::{vec3, Mat4, Quat, Vec2, Vec3};
+use glam::{vec3, Mat4, Quat, Vec2, Vec3, Vec3Swizzles, Vec4};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PerspectiveCamera {
-    pub fov: f32,
-    pub aspect_ratio: f32,
-    pub near: f32,
-    pub far: f32,
+    fov: f32,
+    aspect_ratio: f32,
+    near: f32,
+    far: f32,
 
-    pub proj: Mat4,
+    proj: Mat4,
 
     pub rot_horizontal: f32,
     pub rot_vertical: f32,
     pub translation: Vec3,
+
+    calculate_planes: bool,
+    calculate_near_far_planes: bool,
+    frustum_planes: Vec<Vec4>,
 }
 
 impl Default for PerspectiveCamera {
@@ -35,6 +39,9 @@ pub struct CamProps {
     pub rot_horizontal: Option<f32>,
     pub rot_vertical: Option<f32>,
     pub translation: Option<Vec3>,
+
+    pub calculate_planes: Option<bool>,
+    pub calculate_near_far_planes: Option<bool>,
 }
 
 impl Default for CamProps {
@@ -47,6 +54,8 @@ impl Default for CamProps {
             rot_horizontal: None,
             rot_vertical: None,
             translation: None,
+            calculate_planes: None,
+            calculate_near_far_planes: None,
         }
     }
 }
@@ -62,6 +71,9 @@ impl PerspectiveCamera {
             rot_horizontal: 0.0,
             rot_vertical: 0.0,
             translation: Vec3::ZERO,
+            calculate_planes: false,
+            calculate_near_far_planes: false,
+            frustum_planes: Vec::with_capacity(6),
         }
     }
 
@@ -91,8 +103,20 @@ impl PerspectiveCamera {
                 update_projection = true;
             }
         }
+        if let Some(calculate_planes) = opts.calculate_planes {
+            if calculate_planes != self.calculate_planes {
+                self.calculate_planes = calculate_planes;
+                update_projection = calculate_planes;
+            }
+        }
+        if let Some(calculate_near_far_planes) = opts.calculate_near_far_planes {
+            if calculate_near_far_planes != self.calculate_near_far_planes {
+                self.calculate_near_far_planes = calculate_near_far_planes;
+                update_projection = calculate_near_far_planes;
+            }
+        }
         if update_projection {
-            self.recalculate_proj_mat();
+            self.recalculate_projection();
         }
 
         if let Some(rot_horizontal) = opts.rot_horizontal {
@@ -121,11 +145,11 @@ impl PerspectiveCamera {
     pub fn set_aspect_ratio(&mut self, aspect_ratio: f32) {
         if self.aspect_ratio != aspect_ratio {
             self.aspect_ratio = aspect_ratio;
-            self.recalculate_proj_mat();
+            self.recalculate_projection();
         }
     }
 
-    pub fn update(
+    pub fn update_transform(
         &mut self,
         forward: f32,
         left: f32,
@@ -163,8 +187,21 @@ impl PerspectiveCamera {
         t
     }
 
-    pub fn recalculate_proj_mat(&mut self) {
+    pub fn projection_mat(&self) -> Mat4 {
+        self.proj
+    }
+
+    pub fn view_mat(&self) -> Mat4 {
+        self.transform().compute_matrix().inverse()
+    }
+
+    pub fn view_proj_mat(&self) -> Mat4 {
+        self.projection_mat() * self.view_mat()
+    }
+
+    pub fn recalculate_projection(&mut self) {
         self.proj = Mat4::perspective_rh(self.fov, self.aspect_ratio, self.near, self.far);
+        // TODO: Calculate frustum planes
     }
 
     /// Given a position in world space, use the camera to compute the screen space coordinates.
@@ -179,7 +216,7 @@ impl PerspectiveCamera {
         }
 
         // Once in NDC space, we can discard the z element and rescale x/y to fit the screen
-        Some((ndc_space_coords.truncate() + Vec2::ONE) / 2.0 * frame_size)
+        Some((ndc_space_coords.xy() + Vec2::ONE) / 2.0 * frame_size)
     }
 
     /// Given a position in world space, use the camera to compute the Normalized Device Coordinates.
@@ -189,7 +226,7 @@ impl PerspectiveCamera {
     /// [`world_to_screen`](Self::world_to_screen).
     pub fn world_to_ndc(&self, world_position: Vec3) -> Option<Vec3> {
         // Build a transform to convert from world to NDC using camera data
-        let world_to_ndc: Mat4 = self.proj * self.transform().compute_matrix().inverse();
+        let world_to_ndc: Mat4 = self.view_proj_mat();
         let ndc_space_coords: Vec3 = world_to_ndc.project_point3(world_position);
 
         if !ndc_space_coords.is_nan() {
@@ -198,4 +235,6 @@ impl PerspectiveCamera {
             None
         }
     }
+
+    // TODO: Implement screen_to_world_ray and ndc_to_world_ray
 }

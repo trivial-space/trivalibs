@@ -3,43 +3,42 @@ use glam::{Mat3, Mat4};
 
 pub trait SceneObject {
     fn transform(&self) -> &Transform;
-    fn parent(&self) -> Option<&Transform>;
+    fn parent(&self) -> Option<&Self>;
+
+    fn model_mat(&self) -> Mat4 {
+        let mut mat = self.transform().compute_matrix();
+        let mut parent = self.parent();
+        while parent.is_some() {
+            mat = parent.unwrap().transform().compute_matrix() * mat;
+            parent = parent.unwrap().parent();
+        }
+        mat
+    }
+
+    fn model_view_mat(&self, camera: &PerspectiveCamera) -> Mat4 {
+        camera.view_mat() * self.model_mat()
+    }
+
+    fn model_view_proj_mat(&self, camera: &PerspectiveCamera) -> Mat4 {
+        camera.view_proj_mat() * self.model_mat()
+    }
+
+    fn model_normal_mat(&self) -> Mat3 {
+        Mat3::from_mat4(self.model_mat()).inverse().transpose()
+    }
+
+    fn view_normal_mat(&self, camera: &PerspectiveCamera) -> Mat3 {
+        Mat3::from_mat4(self.model_view_mat(camera))
+            .inverse()
+            .transpose()
+    }
 }
 
 impl SceneObject for Transform {
     fn transform(&self) -> &Transform {
         self
     }
-    fn parent(&self) -> Option<&Transform> {
+    fn parent(&self) -> Option<&Self> {
         None
     }
-}
-
-pub fn view_mat(camera: &PerspectiveCamera) -> Mat4 {
-    camera.transform().compute_matrix().inverse()
-}
-
-pub fn view_proj_mat(camera: &PerspectiveCamera) -> Mat4 {
-    camera.proj * view_mat(camera)
-}
-
-pub fn model_mat<O: SceneObject>(obj: &O) -> Mat4 {
-    obj.transform().compute_matrix()
-}
-
-pub fn model_view_mat<O: SceneObject>(obj: &O, camera: &PerspectiveCamera) -> Mat4 {
-    view_mat(camera) * model_mat(obj)
-}
-pub fn model_view_proj_mat<O: SceneObject>(obj: &O, camera: &PerspectiveCamera) -> Mat4 {
-    camera.proj * model_view_mat(obj, camera)
-}
-
-pub fn model_normal_mat<O: SceneObject>(obj: &O) -> Mat3 {
-    Mat3::from_mat4(model_mat(obj)).inverse().transpose()
-}
-
-pub fn view_normal_mat<O: SceneObject>(obj: &O, camera: &PerspectiveCamera) -> Mat3 {
-    Mat3::from_mat4(model_view_mat(obj, camera))
-        .inverse()
-        .transpose()
 }
