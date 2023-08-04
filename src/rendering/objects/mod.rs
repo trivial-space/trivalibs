@@ -31,11 +31,11 @@ pub struct Bound {
 }
 
 impl Bound {
-    pub fn is_behind(&self, transform: &Transform, plane: &Plane) -> bool {
+    pub fn is_behind(&self, _transform: &Transform, _plane: &Plane) -> bool {
         todo!("Implement culling")
     }
 
-    pub fn intersects_ray(&self, transform: &Transform, ray: &Ray) -> bool {
+    pub fn intersects_ray(&self, _transform: &Transform, _ray: &Ray) -> bool {
         todo!("Implement ray intersection")
     }
 }
