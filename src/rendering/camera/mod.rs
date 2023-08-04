@@ -26,7 +26,20 @@ pub struct PerspectiveCamera {
 
 impl Default for PerspectiveCamera {
     fn default() -> Self {
-        PerspectiveCamera::from_perspective(std::f32::consts::PI / 4.0, 1.0, 0.1, 1000.0)
+        // PerspectiveCamera::from_perspective(std::f32::consts::PI / 4.0, 1.0, 0.1, 1000.0)
+        PerspectiveCamera {
+            fov: 1.0,
+            aspect_ratio: 1.0,
+            near: 0.1,
+            far: 1000.0,
+            proj: Mat4::ZERO,
+            rot_horizontal: 0.0,
+            rot_vertical: 0.0,
+            translation: Vec3::ZERO,
+            calculate_planes: false,
+            calculate_near_far_planes: false,
+            frustum_planes: Vec::with_capacity(6),
+        }
     }
 }
 
@@ -61,20 +74,10 @@ impl Default for CamProps {
 }
 
 impl PerspectiveCamera {
-    pub fn from_perspective(fov: f32, aspect_ratio: f32, near: f32, far: f32) -> Self {
-        PerspectiveCamera {
-            fov,
-            aspect_ratio,
-            near,
-            far,
-            proj: Mat4::ZERO,
-            rot_horizontal: 0.0,
-            rot_vertical: 0.0,
-            translation: Vec3::ZERO,
-            calculate_planes: false,
-            calculate_near_far_planes: false,
-            frustum_planes: Vec::with_capacity(6),
-        }
+    pub fn create(props: CamProps) -> Self {
+        let mut cam = Self::default();
+        cam.set(props);
+        cam
     }
 
     pub fn set(&mut self, opts: CamProps) {
