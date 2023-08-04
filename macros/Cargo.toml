@@ -1,0 +1,11 @@
+[package]
+name = "tvs-libs-macros"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+syn = { version = "2.0" }
+quote = "1"
+
+[lib]
+proc-macro = true
