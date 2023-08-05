@@ -1,6 +1,10 @@
 use super::{camera::PerspectiveCamera, transform::Transform};
 use glam::{Mat3, Mat4};
 
+pub fn normal_mat(mat: Mat4) -> Mat3 {
+    Mat3::from_mat4(mat).inverse().transpose()
+}
+
 pub trait SceneObject {
     fn transform(&self) -> &Transform;
     fn parent(&self) -> Option<&Self>;
@@ -24,7 +28,7 @@ pub trait SceneObject {
     }
 
     fn model_normal_mat(&self) -> Mat3 {
-        Mat3::from_mat4(self.model_mat()).inverse().transpose()
+        normal_mat(self.model_mat())
     }
 
     fn view_normal_mat(&self, camera: &PerspectiveCamera) -> Mat3 {
