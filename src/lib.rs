@@ -5,6 +5,7 @@ pub mod utils;
 pub mod wasm_helpers;
 
 pub mod prelude {
+    pub use crate::geometry::interpolation::*;
     pub use crate::rendering::transform::*;
     pub use crate::utils::app_state::*;
     pub use crate::utils::*;

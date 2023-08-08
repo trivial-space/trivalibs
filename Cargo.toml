@@ -14,9 +14,4 @@ lerp = "0.5"
 approx = "0.5.1"
 rand = "0.8.5"
 getrandom = { version = "0.2", features = ["js"] }
-glam = { version = "0.24.0", features = [
-	"bytemuck",
-	"serde",
-	"rand",
-	"approx",
-] }
+glam = { version = "0.24", features = ["bytemuck", "serde", "rand", "approx"] }
