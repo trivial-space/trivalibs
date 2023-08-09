@@ -84,6 +84,7 @@ impl CoordOpsFn for CircleAllCoordOps {
 }
 pub static CIRCLE_ALL_COORD_OPS: CircleAllCoordOps = CircleAllCoordOps {};
 
+/// A two dimensional grid structure. Grid quad rotation assumes 0,0 is the lower left corner.
 pub struct Grid<T, A>
 where
     T: Clone + Copy,
@@ -166,6 +167,30 @@ where
         let mut row = vec![];
         for x in 0..self.width {
             row.push(self.vertices[x][new_y]);
+        }
+        row
+    }
+
+    pub fn first_col(&self) -> &Vec<T> {
+        &self.vertices[0]
+    }
+
+    pub fn first_row(&self) -> Vec<T> {
+        let mut row = vec![];
+        for x in 0..self.width {
+            row.push(self.vertices[x][0]);
+        }
+        row
+    }
+
+    pub fn last_col(&self) -> &Vec<T> {
+        &self.vertices[self.width - 1]
+    }
+
+    pub fn last_row(&self) -> Vec<T> {
+        let mut row = vec![];
+        for x in 0..self.width {
+            row.push(self.vertices[x][self.height - 1]);
         }
         row
     }
@@ -268,7 +293,8 @@ where
         grid
     }
 
-    pub fn to_cw_quads<'a>(&self) -> Vec<[T; 4]> {
+    /// Get clockwise oriented quads. Grid quad rotation assumes 0,0 is the lower left corner.
+    pub fn to_ccw_quads<'a>(&self) -> Vec<[T; 4]> {
         let (w, h) = self.quad_count();
         let mut quads = vec![];
         for w_i in 0..w {
@@ -286,7 +312,8 @@ where
         quads
     }
 
-    pub fn to_ccw_quads<'a>(&self) -> Vec<[T; 4]> {
+    /// Get counter clockwise oriented quads. Grid quad rotation assumes 0,0 is the lower left corner.
+    pub fn to_cw_quads<'a>(&self) -> Vec<[T; 4]> {
         let (w, h) = self.quad_count();
         let mut quads = vec![];
         for w_i in 0..w {

@@ -171,15 +171,15 @@ where
 
             let face_idx1 = self.faces.len();
             self.create_face3(verts[0], verts[1], verts[2], normal, data);
-            self.update_vertex_face(verts[0], face_idx1);
-            self.update_vertex_face(verts[1], face_idx1);
-            self.update_vertex_face(verts[2], face_idx1);
+            self.add_vertex_face(verts[0], face_idx1);
+            self.add_vertex_face(verts[1], face_idx1);
+            self.add_vertex_face(verts[2], face_idx1);
 
             let face_idx2 = self.faces.len();
             self.create_face3(verts[0], verts[2], verts[3], normal, data);
-            self.update_vertex_face(verts[0], face_idx2);
-            self.update_vertex_face(verts[2], face_idx2);
-            self.update_vertex_face(verts[3], face_idx2);
+            self.add_vertex_face(verts[0], face_idx2);
+            self.add_vertex_face(verts[2], face_idx2);
+            self.add_vertex_face(verts[3], face_idx2);
         }
     }
 
@@ -197,7 +197,7 @@ where
     pub fn remove_face(&mut self, face_idx: usize) {
         let face = self.faces.swap_remove(face_idx);
         face.vertices.into_iter().for_each(|i| {
-            let mut vert = self.vertices.get_mut(i).unwrap();
+            let vert = &mut self.vertices[i];
             let new_faces = vert
                 .faces
                 .iter()
@@ -211,7 +211,7 @@ where
         if face_idx != len {
             let new_face = &self.faces[face_idx];
             for v in &new_face.vertices {
-                let vert = self.vertices.get_mut(*v).unwrap();
+                let vert = &mut self.vertices[*v];
                 let v_f_idx = vert.faces.iter().position(|i| *i == len).unwrap();
                 vert.faces[v_f_idx] = face_idx;
             }
@@ -236,9 +236,9 @@ where
 
             let v1_len = v1.length();
             let v2_len = v2.length();
-            let v1_len_0 = v1_len < 0.001;
-            let v2_len_0 = v2_len < 0.001;
-            let v3_len_0 = (v2 / v2_len).dot(v1 / v1_len).abs() > 0.999;
+            let v1_len_0 = v1_len < 0.0001;
+            let v2_len_0 = v2_len < 0.0001;
+            let v3_len_0 = (v2 / v2_len).dot(v1 / v1_len).abs() > 0.9999;
 
             if (v1_len_0 || v2_len_0 || v3_len_0) && face.vertices.len() > 3 {
                 if v2_len_0 {
@@ -248,7 +248,7 @@ where
                 }
             }
 
-            let normal = v1.cross(v2);
+            let normal = v2.cross(v1);
             face.face_normal = Some(normal.normalize());
         }
     }
@@ -385,14 +385,14 @@ where
     fn add_vertex(&mut self, vertex_idx: usize, face_idx: usize, vertex: MeshVertex<Idx, BV>) {
         if let Some(data) = self.vertices.get_mut(vertex_idx) {
             data.vertex = vertex;
+            self.add_vertex_face(vertex_idx, face_idx);
         } else {
             self.vertices.push(MeshVertexData {
                 vertex,
-                faces: vec![],
+                faces: vec![face_idx],
                 vertex_normal: None,
             });
         }
-        self.update_vertex_face(vertex_idx, face_idx);
     }
 
     fn create_face3(
@@ -437,7 +437,7 @@ where
         });
     }
 
-    fn update_vertex_face(&mut self, vertex_idx: usize, face_idx: usize) {
+    fn add_vertex_face(&mut self, vertex_idx: usize, face_idx: usize) {
         if let Some(v) = self.vertices.get_mut(vertex_idx) {
             v.faces.push(face_idx);
         }
