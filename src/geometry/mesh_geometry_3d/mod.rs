@@ -370,6 +370,7 @@ where
                 self.generate_face_normals();
                 self.generate_vertex_normals();
                 self.triangulate();
+                // TODO: generate vertex normals per mesh section
                 for vert_data in self.vertices.iter() {
                     let normal = vert_data.vertex_normal.unwrap();
                     buffer.extend(bytemuck::bytes_of(&vert_data.vertex.data));
