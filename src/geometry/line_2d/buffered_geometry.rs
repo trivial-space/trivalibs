@@ -3,7 +3,7 @@ use crate::{
     data_structures::neighbour_list::traits::WithNeighboursTransform,
     rendering::buffered_geometry::{
         create_buffered_geometry_layout, vert_type, BufferedGeometry, BufferedVertexData,
-        RenderingPrimitive, ToBufferedGeometry,
+        RenderingPrimitive,
         VertexFormat::{Float32, Float32x2},
         VertexType,
     },
@@ -61,12 +61,6 @@ impl Default for LineGeometryOpts {
             prev_direction: None,
             next_direction: None,
         }
-    }
-}
-
-impl ToBufferedGeometry for Line {
-    fn to_buffered_geometry(&self) -> BufferedGeometry {
-        self.to_buffered_geometry_with(default())
     }
 }
 
@@ -199,5 +193,9 @@ impl Line {
             vertex_count: indices_len as u32,
             vertex_layout: geom_layout.vertex_layout,
         }
+    }
+
+    pub fn to_buffered_geometry(&self) -> BufferedGeometry {
+        self.to_buffered_geometry_with(default())
     }
 }

@@ -238,10 +238,6 @@ pub fn create_buffered_geometry_layout(layout: Vec<VertexType>) -> BufferedGeome
     }
 }
 
-pub trait ToBufferedGeometry {
-    fn to_buffered_geometry(&self) -> BufferedGeometry;
-}
-
 pub trait BufferedVertexData: Pod + Clone + Copy {
     fn vertex_layout() -> Vec<VertexType>;
 }
