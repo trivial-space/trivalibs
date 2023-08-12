@@ -295,11 +295,11 @@ fn subdivide() {
     let grid4 = grid_circle.subdivide(1, 1, CoordF::lerp);
     assert_eq!(grid4.width, 4);
     assert_eq!(grid4.height, 4);
-		assert_eq!(*grid4.get(0, 0), CoordF(0.0, 0.0));
-		assert_eq!(*grid4.get(1, 0), CoordF(0.5, 0.0));
-		assert_eq!(*grid4.get(2, 0), CoordF(1.0, 0.0));
-		assert_eq!(*grid4.get(3, 0), CoordF(0.5, 0.0));
-		assert_eq!(*grid4.get(0, 1), CoordF(0.0, 0.5));
-		assert_eq!(*grid4.get(0, 2), CoordF(0.0, 1.0));
-		assert_eq!(*grid4.get(0, 3), CoordF(0.0, 0.5));
+    assert_eq!(*grid4.get(0, 0), CoordF(0.0, 0.0));
+    assert_eq!(*grid4.get(1, 0), CoordF(0.5, 0.0));
+    assert_eq!(*grid4.get(2, 0), CoordF(1.0, 0.0));
+    assert_eq!(*grid4.get(3, 0), CoordF(0.5, 0.0));
+    assert_eq!(*grid4.get(0, 1), CoordF(0.0, 0.5));
+    assert_eq!(*grid4.get(0, 2), CoordF(0.0, 1.0));
+    assert_eq!(*grid4.get(0, 3), CoordF(0.0, 0.5));
 }

@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use glam::{vec3, Vec3};
 
 use crate::{
+    data_structures::grid::{CoordOpsFn, Grid},
     rendering::buffered_geometry::{
         create_buffered_geometry_layout, BufferedGeometry, BufferedVertexData,
         OverrideAttributesWith, RenderingPrimitive, VertexFormat, VertexType,
@@ -76,6 +77,7 @@ where
     pub faces: Vec<Face<BV>>,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct FaceDataProps<BV>
 where
     BV: BufferedVertexData + OverrideAttributesWith + Position3D,
@@ -230,6 +232,34 @@ where
         v4: MeshVertex<Idx, BV>,
     ) {
         self.add_face4_data(v1, v2, v3, v4, default())
+    }
+
+    pub fn add_grid_ccw_quads_data<A: CoordOpsFn>(
+        &mut self,
+        grid: &Grid<MeshVertex<Idx, BV>, A>,
+        data: FaceDataProps<BV>,
+    ) {
+        for quad in grid.to_ccw_quads() {
+            self.add_face4_data(quad[0], quad[1], quad[2], quad[3], data.clone());
+        }
+    }
+
+    pub fn add_grid_ccw_quads<A: CoordOpsFn>(&mut self, grid: &Grid<MeshVertex<Idx, BV>, A>) {
+        self.add_grid_ccw_quads_data(grid, default())
+    }
+
+    pub fn add_grid_cw_quads_data<A: CoordOpsFn>(
+        &mut self,
+        grid: &Grid<MeshVertex<Idx, BV>, A>,
+        data: FaceDataProps<BV>,
+    ) {
+        for quad in grid.to_cw_quads() {
+            self.add_face4_data(quad[0], quad[1], quad[2], quad[3], data.clone());
+        }
+    }
+
+    pub fn add_grid_cw_quads<A: CoordOpsFn>(&mut self, grid: &Grid<MeshVertex<Idx, BV>, A>) {
+        self.add_grid_cw_quads_data(grid, default())
     }
 
     pub fn vertex(&self, i: usize) -> &MeshVertexData<Idx, BV> {

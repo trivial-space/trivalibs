@@ -112,8 +112,27 @@ pub fn make_grid<T: Clone + Copy>() -> Grid<T, ClampToEdgeCoordOps> {
     Grid::new(CLAMP_TO_EDGE_COORD_OPS)
 }
 
+pub fn make_grid_from_cols<T: Clone + Copy>(cols: Vec<Vec<T>>) -> Grid<T, ClampToEdgeCoordOps> {
+    let mut grid = make_grid();
+    for col in cols {
+        grid.add_col(col);
+    }
+    grid
+}
+
 pub fn make_grid_with_coord_ops<T: Copy + Clone, A: CoordOpsFn>(coord_ops: A) -> Grid<T, A> {
     Grid::new(coord_ops)
+}
+
+pub fn make_grid_from_cols_with_coord_ops<T: Clone + Copy, A: CoordOpsFn>(
+    coord_ops: A,
+    cols: Vec<Vec<T>>,
+) -> Grid<T, A> {
+    let mut grid = make_grid_with_coord_ops(coord_ops);
+    for col in cols {
+        grid.add_col(col);
+    }
+    grid
 }
 
 impl<T, A> Grid<T, A>
