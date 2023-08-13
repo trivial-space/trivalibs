@@ -91,6 +91,12 @@ pub struct SectionIndex {
     pub index: usize,
 }
 
+impl From<usize> for SectionIndex {
+    fn from(index: usize) -> Self {
+        Self { section: 0, index }
+    }
+}
+
 pub struct MeshVertex<BV>
 where
     BV: BufferedVertexData + OverrideAttributesWith + Position3D,
@@ -281,7 +287,8 @@ where
         &self.vertices[i]
     }
 
-    pub fn face(&self, i: SectionIndex) -> &Face<BV> {
+    pub fn face<T: Into<SectionIndex>>(&self, into_idx: T) -> &Face<BV> {
+        let i: SectionIndex = into_idx.into();
         &self.faces.get(&i.section).unwrap()[i.index]
     }
 
@@ -299,7 +306,7 @@ where
             let section = *section;
 
             for (i, verts, normal, data) in quads {
-                Self::remove_face(faces, vertices, SectionIndex { section, index: i });
+                Self::remove_face_internal(faces, vertices, SectionIndex { section, index: i });
 
                 let face_idx1 = SectionIndex {
                     section,
@@ -339,7 +346,7 @@ where
         }
     }
 
-    pub fn remove_face(
+    fn remove_face_internal(
         faces: &mut Vec<Face<BV>>,
         vertices: &mut Vec<MeshVertex<BV>>,
         face_idx: SectionIndex,
@@ -374,6 +381,15 @@ where
                 vert.faces[v_f_idx] = face_idx;
             }
         }
+    }
+
+    pub fn remove_face<T: Into<SectionIndex>>(&mut self, face_idx: T) {
+        let face_idx: SectionIndex = face_idx.into();
+        Self::remove_face_internal(
+            self.faces.get_mut(&face_idx.section).unwrap(),
+            &mut self.vertices,
+            face_idx,
+        )
     }
 
     pub fn set_vertex(&mut self, vertex_idx: usize, data: BV) {
