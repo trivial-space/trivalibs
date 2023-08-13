@@ -312,7 +312,7 @@ where
         grid
     }
 
-    /// Get clockwise oriented quads. Grid quad rotation assumes 0,0 is the lower left corner.
+    /// Get clockwise oriented quads. Grid quad orientation assumes 0,0 is the lower left corner.
     pub fn to_ccw_quads<'a>(&self) -> Vec<[T; 4]> {
         let (w, h) = self.quad_count();
         let mut quads = vec![];
@@ -331,7 +331,7 @@ where
         quads
     }
 
-    /// Get counter clockwise oriented quads. Grid quad rotation assumes 0,0 is the lower left corner.
+    /// Get clockwise oriented quads. Grid quad orientation assumes 0,0 is the lower left corner.
     pub fn to_cw_quads<'a>(&self) -> Vec<[T; 4]> {
         let (w, h) = self.quad_count();
         let mut quads = vec![];

@@ -1,14 +1,11 @@
 use crate::{
-    geometry::{
-        mesh_geometry_3d::{Face, MeshGeometry},
-        vertex_index::VertIdx3f,
-    },
+    geometry::mesh_geometry_3d::{Face, MeshGeometry},
     rendering::buffered_geometry::{BufferedVertexData, NoAttributeOverride, VertexType},
 };
 use bytemuck::{Pod, Zeroable};
 use glam::{vec3, Vec3};
 
-use super::{MeshVertex, Position3D};
+use super::Position3D;
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Clone, Copy, Pod, Zeroable)]
@@ -27,11 +24,8 @@ impl Position3D for Vert {
 }
 impl NoAttributeOverride for Vert {}
 
-fn vert(x: f32, y: f32, z: f32) -> MeshVertex<VertIdx3f, Vert> {
-    MeshVertex {
-        data: Vert { pos: vec3(x, y, z) },
-        vertex_index: VertIdx3f(x, y, z),
-    }
+fn vert(x: f32, y: f32, z: f32) -> Vert {
+    Vert { pos: vec3(x, y, z) }
 }
 
 #[test]
@@ -43,9 +37,9 @@ fn generate_geometry() {
 
     geom.add_face3(v1, v2, v3);
 
-    assert_eq!(geom.vertex(0).vertex, v1);
-    assert_eq!(geom.vertex(1).vertex, v2);
-    assert_eq!(geom.vertex(2).vertex, v3);
+    assert_eq!(geom.vertex(0).data, v1);
+    assert_eq!(geom.vertex(1).data, v2);
+    assert_eq!(geom.vertex(2).data, v3);
 
     let Face { vertices, .. } = geom.face(0);
     assert_eq!(vertices, &[0, 1, 2]);
@@ -53,8 +47,8 @@ fn generate_geometry() {
     assert_eq!(geom.faces.len(), 1);
     assert_eq!(geom.vertices.len(), 3);
 
-    assert_eq!(geom.get_vertex_index(v2.vertex_index), 1);
-    assert_eq!(geom.get_vertex_index(v3.vertex_index), 2);
+    assert_eq!(geom.get_vertex_index(v2.position()), 1);
+    assert_eq!(geom.get_vertex_index(v3.position()), 2);
 }
 
 #[test]

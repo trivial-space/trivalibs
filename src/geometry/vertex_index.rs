@@ -2,10 +2,6 @@ use std::hash::Hash;
 
 use glam::Vec3;
 
-pub trait WithVertexIndex<T: VertexIndex> {
-    fn vertex_index(&self) -> T;
-}
-
 pub trait VertexIndex: Eq + Hash + Clone + Copy {}
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -41,7 +37,7 @@ impl Eq for VertIdx3f {}
 impl Hash for VertIdx3f {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let hash_val: f64 =
-            self.0 as f64 + self.1 as f64 * 1_000_000_f64 + self.2 as f64 * 1_000_000_000_000_f64;
+            self.0 as f64 + self.1 as f64 * 100_000_f64 + self.2 as f64 * 10_000_000_000_f64;
         hash_val.to_ne_bytes().hash(state)
     }
 }
