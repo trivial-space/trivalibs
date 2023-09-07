@@ -51,7 +51,17 @@ impl Bound {
     }
 }
 
-pub fn intersection_ray_sphere(r: &Ray, s: &Sphere) -> f32 {
+pub fn has_intersection_ray_sphere(r: &Ray, s: &Sphere) -> bool {
+    let oc = r.origin - s.center;
+    let a = r.direction.length_squared();
+    let half_b = oc.dot(r.direction);
+    let c = oc.length_squared() - s.radius * s.radius;
+    let discriminant = half_b * half_b - a * c;
+
+    discriminant > 0.0
+}
+
+pub fn intersect_ray_sphere_within(r: &Ray, s: &Sphere, min: f32, max: f32) -> f32 {
     let oc = r.origin - s.center;
     let a = r.direction.length_squared();
     let half_b = oc.dot(r.direction);
@@ -61,6 +71,58 @@ pub fn intersection_ray_sphere(r: &Ray, s: &Sphere) -> f32 {
     if discriminant < 0.0 {
         -1.0
     } else {
-        (-half_b - discriminant.sqrt()) / a
+        let dsqrt = discriminant.sqrt();
+        let mut t = (-half_b - dsqrt) / a;
+        if t >= min && t <= max {
+            t
+        } else {
+            t = (-half_b + dsqrt) / a;
+            if t >= min && t <= max {
+                t
+            } else {
+                -1.0
+            }
+        }
     }
+}
+
+pub fn intersect_ray_sphere(r: &Ray, s: &Sphere) -> f32 {
+    intersect_ray_sphere_within(r, s, 0.0, std::f32::INFINITY)
+}
+
+pub fn has_intersection_normalized_ray_sphere(r: &Ray, s: &Sphere) -> bool {
+    let oc = r.origin - s.center;
+    let half_b = oc.dot(r.direction);
+    let c = oc.length_squared() - s.radius * s.radius;
+    let discriminant = half_b * half_b - c;
+
+    discriminant > 0.0
+}
+
+pub fn intersect_normalized_ray_sphere_within(r: &Ray, s: &Sphere, min: f32, max: f32) -> f32 {
+    let oc = r.origin - s.center;
+    let half_b = oc.dot(r.direction);
+    let c = oc.length_squared() - s.radius * s.radius;
+    let discriminant = half_b * half_b - c;
+
+    if discriminant < 0.0 {
+        -1.0
+    } else {
+        let dsqrt = discriminant.sqrt();
+        let mut t = -half_b - dsqrt;
+        if t >= min && t <= max {
+            t
+        } else {
+            t = -half_b + dsqrt;
+            if t >= min && t <= max {
+                t
+            } else {
+                -1.0
+            }
+        }
+    }
+}
+
+pub fn intersect_normalized_ray_sphere(r: &Ray, s: &Sphere) -> f32 {
+    intersect_normalized_ray_sphere_within(r, s, 0.0, std::f32::INFINITY)
 }
