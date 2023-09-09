@@ -25,3 +25,8 @@ pub fn random_in_unit_sphere() -> Vec3 {
         }
     }
 }
+
+/// Returns a random number in the range [-1, 1] with normal distribution.
+pub fn random_normal() -> f32 {
+    (random::<f32>() + random::<f32>() + random::<f32>()) / 1.5 - 1.0
+}
