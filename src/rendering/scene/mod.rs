@@ -32,9 +32,7 @@ pub trait SceneObject {
     }
 
     fn view_normal_mat(&self, camera: &PerspectiveCamera) -> Mat3 {
-        Mat3::from_mat4(self.model_view_mat(camera))
-            .inverse()
-            .transpose()
+        normal_mat(self.model_view_mat(camera))
     }
 }
 
