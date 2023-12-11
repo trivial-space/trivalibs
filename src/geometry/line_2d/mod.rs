@@ -329,6 +329,6 @@ where
     }
 }
 
-mod buffered_geometry;
+pub mod buffered_geometry;
 #[cfg(test)]
 mod tests;
