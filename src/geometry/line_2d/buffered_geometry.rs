@@ -1,6 +1,6 @@
 use super::{Line, LineData};
 use crate::{
-    data_structures::neighbour_list::traits::WithNeighboursTransform,
+    data_structures::neighbour_list::traits::{NeighbourMapTransform, WithNeighboursTransform},
     rendering::buffered_geometry::{
         create_buffered_geometry_layout, vert_type, BufferedGeometry, BufferedVertexData,
         RenderingPrimitive,
@@ -34,32 +34,40 @@ impl BufferedVertexData for VertexData {
     }
 }
 
-pub struct LineGeometryOpts {
-    pub total_length: Option<f32>,
-    pub prev_direction: Option<Vec2>,
-    pub next_direction: Option<Vec2>,
-
+#[derive(Clone, Copy)]
+pub struct LineGeometryProps {
     pub smouth_depth: u8,
     pub smouth_angle_threshold: f32,
     pub smouth_min_length: f32,
-
     pub cap_width_length_ratio: f32,
-    pub swap_texture_orientation: bool,
 }
 
-impl Default for LineGeometryOpts {
+impl Default for LineGeometryProps {
     fn default() -> Self {
         Self {
             smouth_depth: 0,
             smouth_min_length: 3.0,
             smouth_angle_threshold: 0.05,
-
             cap_width_length_ratio: 1.0,
-            swap_texture_orientation: false,
+        }
+    }
+}
 
+#[derive(Clone, Copy)]
+pub struct LineGeometryParams {
+    pub total_length: Option<f32>,
+    pub prev_direction: Option<Vec2>,
+    pub next_direction: Option<Vec2>,
+    pub swap_texture_orientation: bool,
+}
+
+impl Default for LineGeometryParams {
+    fn default() -> Self {
+        Self {
             total_length: None,
             prev_direction: None,
             next_direction: None,
+            swap_texture_orientation: false,
         }
     }
 }
@@ -94,7 +102,11 @@ fn line_mitter_positions(pos: &Vec2, dir: &Vec2, width: f32, prev_dir: Option<&V
 }
 
 impl Line {
-    pub fn to_buffered_geometry_with(&self, opts: LineGeometryOpts) -> BufferedGeometry {
+    pub fn to_buffered_geometry_with_props_params(
+        &self,
+        _props: LineGeometryProps,
+        params: LineGeometryParams,
+    ) -> BufferedGeometry {
         let mut top_line = LineData::<f32>::new(self.default_width);
         let mut bottom_line = LineData::<f32>::new(self.default_width);
         let mut line_length = self.len_offset;
@@ -122,7 +134,7 @@ impl Line {
         let mut buffer = vec![];
         let mut indices: Vec<u32> = vec![];
 
-        let total_length = opts.total_length.unwrap_or(line_length);
+        let total_length = params.total_length.unwrap_or(line_length);
 
         let n = usize::max(top_line.vert_count(), bottom_line.vert_count());
 
@@ -135,7 +147,15 @@ impl Line {
             let bottom_opt = bottom_line.get_opt(i);
 
             if let Some(top) = top_opt {
-                let v = if i == 0 { 0.5 } else { 0.0 };
+                let v = if i == 0 {
+                    0.5
+                } else {
+                    if params.swap_texture_orientation {
+                        1.0
+                    } else {
+                        0.0
+                    }
+                };
                 let top_uv = Vec2::new(top.data / total_length, v);
                 let top_local_uv = Vec2::new(top.data / self.len, v);
                 let top_vertex = VertexData {
@@ -159,7 +179,11 @@ impl Line {
                 let v = if i == bottom_line.vert_count() - 1 {
                     0.5
                 } else {
-                    1.0
+                    if params.swap_texture_orientation {
+                        0.0
+                    } else {
+                        1.0
+                    }
                 };
                 let bottom_uv = Vec2::new(bottom.data / total_length, v);
                 let bottom_local_uv = Vec2::new(bottom.data / self.len, v);
@@ -195,7 +219,41 @@ impl Line {
         }
     }
 
+    pub fn to_buffered_geometry_with(&self, props: LineGeometryProps) -> BufferedGeometry {
+        self.to_buffered_geometry_with_props_params(props, default())
+    }
+
     pub fn to_buffered_geometry(&self) -> BufferedGeometry {
+        self.to_buffered_geometry_with(default())
+    }
+}
+
+pub trait LineBufferedGeometryVec {
+    fn to_buffered_geometry_with(&self, props: LineGeometryProps) -> Vec<BufferedGeometry>;
+    fn to_buffered_geometry(&self) -> Vec<BufferedGeometry>;
+}
+
+impl LineBufferedGeometryVec for Vec<Line> {
+    fn to_buffered_geometry_with(&self, props: LineGeometryProps) -> Vec<BufferedGeometry> {
+        let total_length = self.iter().fold(0.0, |acc, x| acc + x.len);
+
+        self.iter()
+            .enumerate()
+            .map_with_prev_next(|(i, line), prev, next| {
+                line.to_buffered_geometry_with_props_params(
+                    props,
+                    LineGeometryParams {
+                        total_length: Some(total_length),
+                        swap_texture_orientation: i % 2 != 0,
+                        prev_direction: prev.map(|(_, x)| x.last().dir),
+                        next_direction: next.map(|(_, x)| x.get(0).dir),
+                    },
+                )
+            })
+            .collect()
+    }
+
+    fn to_buffered_geometry(&self) -> Vec<BufferedGeometry> {
         self.to_buffered_geometry_with(default())
     }
 }

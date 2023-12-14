@@ -21,7 +21,7 @@ impl<F> Lerp<F> for EmptyData {
 #[derive(Clone, Copy)]
 pub struct LineVertexData<T>
 where
-    T: Default + Copy + Clone + Lerp<f32>,
+    T: Default + Copy + Clone + Lerp<f32> + Sized,
 {
     pub pos: Vec2,
     pub width: f32,
@@ -67,7 +67,7 @@ where
         LineVertexData { pos, ..default() }
     }
 
-    fn point_to(&mut self, point: &Vec2) {
+    pub fn point_to(&mut self, point: &Vec2) {
         let mut vec = *point - self.pos;
         let len = vec.length();
         self.len = len;
