@@ -101,6 +101,10 @@ fn line_mitter_positions(pos: &Vec2, dir: &Vec2, width: f32, prev_dir: Option<&V
     line_positions(*pos, normal, mitter_length)
 }
 
+fn cross_2d(v1: Vec2, v2: Vec2) -> f32 {
+    v1.x * v2.y - v1.y * v2.x
+}
+
 impl Line {
     pub fn to_buffered_geometry_with_props_params(
         &self,
@@ -112,12 +116,45 @@ impl Line {
         let mut line_length = self.len_offset;
 
         for (prev, v, next) in self.iter().with_neighbours() {
+            let mut new_points =
+                line_mitter_positions(&v.pos, &v.dir, v.width, prev.map(|x| &x.dir));
+
             if prev.is_none() {
                 top_line.add_width_data(v.pos, v.width, line_length);
             }
 
-            // TODO: adjust for first and last vertex, if prev_direction or next_direction are given
-            let new_points = line_mitter_positions(&v.pos, &v.dir, v.width, prev.map(|x| &x.dir));
+            // adjust first vertex
+            if prev.is_none() && params.prev_direction.is_some() {
+                let prev_dir = params.prev_direction.unwrap();
+                let c = v.width / (prev_dir * -1.0 + v.dir).normalize().dot(v.dir);
+                let a = f32::sqrt(c * c - v.width * v.width);
+                if a > 0.001 {
+                    if cross_2d(v.dir, prev_dir) > 0. {
+                        new_points[0] += -a * v.dir;
+                        new_points[1] += a * v.dir;
+                    } else {
+                        new_points[0] += a * v.dir;
+                        new_points[1] += -a * v.dir;
+                    }
+                }
+            }
+
+            // adjust last vertex
+            if next.is_none() && params.next_direction.is_some() {
+                let next_dir = params.next_direction.unwrap();
+                let c = v.width / (v.dir * -1.0 + next_dir).normalize().dot(next_dir);
+                let a = f32::sqrt(c * c - v.width * v.width);
+
+                if a > 0.001 {
+                    if cross_2d(next_dir, v.dir) > 0. {
+                        new_points[0] += a * v.dir;
+                        new_points[1] += -a * v.dir;
+                    } else {
+                        new_points[0] += -a * v.dir;
+                        new_points[1] += a * v.dir;
+                    }
+                }
+            }
 
             top_line.add_width_data(new_points[0], v.width, line_length);
             bottom_line.add_width_data(new_points[1], v.width, line_length);
@@ -246,7 +283,7 @@ impl LineBufferedGeometryVec for Vec<Line> {
                         total_length: Some(total_length),
                         swap_texture_orientation: i % 2 != 0,
                         prev_direction: prev.map(|(_, x)| x.last().dir),
-                        next_direction: next.map(|(_, x)| x.get(0).dir),
+                        next_direction: next.map(|(_, x)| x.first().dir),
                     },
                 )
             })

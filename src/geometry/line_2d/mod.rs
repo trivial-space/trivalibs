@@ -202,6 +202,14 @@ where
         self.list.get(i)
     }
 
+    pub fn set_raw(&mut self, i: usize, vert: LineVertexData<T>) {
+        self.list[i] = vert;
+    }
+
+    pub fn first(&self) -> &LineVertexData<T> {
+        &self.list[0]
+    }
+
     pub fn last(&self) -> &LineVertexData<T> {
         &self.list[self.list.len() - 1]
     }
@@ -221,6 +229,9 @@ where
 
                 if dot <= cos_threshold {
                     len_offset += line.len;
+                    let mut last = line.last().clone();
+                    last.dir = prev.dir;
+                    line.set_raw(line.list.len() - 1, last);
                     lines.push(line);
                     line = LineData::new(self.default_width);
                     line.len_offset = len_offset;
