@@ -10,7 +10,7 @@ use crate::{
     utils::default,
 };
 use bytemuck::{Pod, Zeroable};
-use glam::Vec2;
+use glam::{bool, Vec2};
 
 #[repr(C)]
 #[derive(Pod, Copy, Clone, Zeroable)]
@@ -108,7 +108,7 @@ fn cross_2d(v1: Vec2, v2: Vec2) -> f32 {
 impl Line {
     pub fn to_buffered_geometry_with_props_params(
         &self,
-        _props: LineGeometryProps,
+        props: LineGeometryProps,
         params: LineGeometryParams,
     ) -> BufferedGeometry {
         let mut top_line = LineData::<f32>::new(self.default_width);
@@ -121,6 +121,7 @@ impl Line {
 
             if prev.is_none() {
                 top_line.add_width_data(v.pos, v.width, line_length);
+                bottom_line.add_width_data(v.pos, v.width, line_length);
             }
 
             // adjust first vertex
@@ -160,31 +161,53 @@ impl Line {
             bottom_line.add_width_data(new_points[1], v.width, line_length);
 
             if next.is_none() {
+                top_line.add_width_data(v.pos, v.width, line_length);
                 bottom_line.add_width_data(v.pos, v.width, line_length);
             }
 
             line_length += v.len;
         }
 
-        // TODO: smouth top and bottom lines if smouth_depth is > 0
+        if props.smouth_depth > 0 {
+            for _ in 0..props.smouth_depth {
+                top_line = top_line.smouth_edges_threshold(
+                    0.25,
+                    props.smouth_min_length,
+                    props.smouth_angle_threshold,
+                );
+                bottom_line = bottom_line.smouth_edges_threshold(
+                    0.25,
+                    props.smouth_min_length,
+                    props.smouth_angle_threshold,
+                );
+            }
+        }
 
         let mut buffer = vec![];
         let mut indices: Vec<u32> = vec![];
 
         let total_length = params.total_length.unwrap_or(line_length);
 
-        let n = usize::max(top_line.vert_count(), bottom_line.vert_count());
-
         let mut top_idx: u32 = 0;
         let mut bottom_idx: u32 = 0;
         let mut next_idx: u32 = 0;
 
-        for i in 0..n {
-            let top_opt = top_line.get_opt(i);
-            let bottom_opt = bottom_line.get_opt(i);
+        let mut top_length: f32 = 0.;
+        let mut bottom_length: f32 = 0.;
+        let mut balance: f32 = 0.;
 
-            if let Some(top) = top_opt {
-                let v = if i == 0 {
+        let mut top_i: usize = 0;
+        let mut bottom_i: usize = 0;
+
+        while top_i < top_line.vert_count() || bottom_i < bottom_line.vert_count() {
+            let top_opt = top_line.get_opt(top_i);
+            let bottom_opt = bottom_line.get_opt(bottom_i);
+
+            if top_opt.is_some() && balance <= 0. {
+                let top = top_opt.unwrap();
+                top_length = top.data;
+
+                let v = if top_idx == 0 {
                     0.5
                 } else {
                     if params.swap_texture_orientation {
@@ -193,12 +216,12 @@ impl Line {
                         0.0
                     }
                 };
-                let top_uv = Vec2::new(top.data / total_length, v);
-                let top_local_uv = Vec2::new(top.data / self.len, v);
+                let top_uv = Vec2::new(top_length / total_length, v);
+                let top_local_uv = Vec2::new(top_length / self.len, v);
                 let top_vertex = VertexData {
+                    length: top_length,
                     position: top.pos,
                     width: top.width,
-                    length: top.data,
                     uv: top_uv,
                     local_uv: top_local_uv,
                 };
@@ -208,12 +231,15 @@ impl Line {
                 indices.push(next_idx);
                 top_idx = next_idx;
                 next_idx += 1;
+                top_i += 1;
             } else {
                 indices.push(top_idx);
             }
 
-            if let Some(bottom) = bottom_opt {
-                let v = if i == bottom_line.vert_count() - 1 {
+            if bottom_opt.is_some() && balance >= 0. {
+                let bottom = bottom_opt.unwrap();
+                bottom_length = bottom.data;
+                let v = if bottom_i == bottom_line.vert_count() - 1 {
                     0.5
                 } else {
                     if params.swap_texture_orientation {
@@ -222,14 +248,14 @@ impl Line {
                         1.0
                     }
                 };
-                let bottom_uv = Vec2::new(bottom.data / total_length, v);
-                let bottom_local_uv = Vec2::new(bottom.data / self.len, v);
+                let bottom_uv = Vec2::new(bottom_length / total_length, v);
+                let bottom_local_uv = Vec2::new(bottom_length / self.len, v);
                 let bottom_vertex = VertexData {
                     position: bottom.pos,
                     width: bottom.width,
-                    length: bottom.data,
                     uv: bottom_uv,
                     local_uv: bottom_local_uv,
+                    length: bottom_length,
                 };
 
                 buffer.push(bottom_vertex);
@@ -237,9 +263,12 @@ impl Line {
                 indices.push(next_idx);
                 bottom_idx = next_idx;
                 next_idx += 1;
+                bottom_i += 1;
             } else {
                 indices.push(bottom_idx);
             }
+
+            balance = top_length - bottom_length;
         }
 
         let indices_len = indices.len();

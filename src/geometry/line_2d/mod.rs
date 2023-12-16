@@ -75,11 +75,26 @@ where
         self.dir = vec;
     }
 
-    pub fn smouth_edge(&self, prev: &Self, next: &Self, ratio: f32) -> Vec<Self> {
-        let v1 = prev.lerp(*self, 1.0 - ratio);
-        let v2 = self.lerp(*next, ratio);
+    pub fn smouth_edge_threshold(
+        &self,
+        prev: &Self,
+        next: &Self,
+        ratio: f32,
+        angle_threshold: f32,
+    ) -> Vec<Self> {
+        let d = 1. - self.dir.dot(prev.dir);
+        if d > angle_threshold {
+            let v1 = prev.lerp(*self, 1.0 - ratio);
+            let v2 = self.lerp(*next, ratio);
 
-        vec![v1, v2]
+            vec![v1, v2]
+        } else {
+            vec![*self]
+        }
+    }
+
+    pub fn smouth_edge(&self, prev: &Self, next: &Self, ratio: f32) -> Vec<Self> {
+        self.smouth_edge_threshold(prev, next, ratio, 0.0)
     }
 }
 
@@ -257,6 +272,27 @@ where
     ) -> Self {
         let new_vertices = self.iter().flat_map_with_prev_next(f);
         LineData::from_iter(new_vertices)
+    }
+
+    pub fn smouth_edges_threshold(&self, ratio: f32, min_dist: f32, angle_threshold: f32) -> Self {
+        self.flat_map_with_prev_next(|curr, prev, next| {
+            if prev.is_none() || next.is_none() {
+                return vec![*curr];
+            }
+
+            let prev = prev.unwrap();
+            let next = next.unwrap();
+
+            if prev.len < min_dist || curr.len < min_dist {
+                return vec![*curr];
+            }
+
+            return curr.smouth_edge_threshold(prev, next, ratio, angle_threshold);
+        })
+    }
+
+    pub fn smouth_edges(&self, ratio: f32, min_dist: f32) -> Self {
+        self.smouth_edges_threshold(ratio, min_dist, 0.0)
     }
 
     pub fn cleanup_vertices(
