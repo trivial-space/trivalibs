@@ -211,7 +211,7 @@ impl Line {
                 let top = top_opt.unwrap();
                 top_length = top.data;
 
-                let v = if top_idx == 0 {
+                let v = if top_i == 0 || top_i == top_line.vert_count() - 1 {
                     0.5
                 } else {
                     if params.swap_texture_orientation {
@@ -243,7 +243,7 @@ impl Line {
             if bottom_opt.is_some() && balance >= 0. {
                 let bottom = bottom_opt.unwrap();
                 bottom_length = bottom.data;
-                let v = if bottom_i == bottom_line.vert_count() - 1 {
+                let v = if bottom_i == 0 || bottom_i == bottom_line.vert_count() - 1 {
                     0.5
                 } else {
                     if params.swap_texture_orientation {
