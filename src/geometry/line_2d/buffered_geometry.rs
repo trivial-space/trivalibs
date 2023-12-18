@@ -40,6 +40,7 @@ pub struct LineGeometryProps {
     pub smouth_angle_threshold: f32,
     pub smouth_min_length: f32,
     pub cap_width_length_ratio: f32,
+    pub total_length: Option<f32>,
 }
 
 impl Default for LineGeometryProps {
@@ -49,6 +50,7 @@ impl Default for LineGeometryProps {
             smouth_min_length: 3.0,
             smouth_angle_threshold: 0.05,
             cap_width_length_ratio: 1.0,
+            total_length: None,
         }
     }
 }
@@ -186,7 +188,9 @@ impl Line {
         let mut buffer = vec![];
         let mut indices: Vec<u32> = vec![];
 
-        let total_length = params.total_length.unwrap_or(line_length);
+        let total_length = props
+            .total_length
+            .unwrap_or(params.total_length.unwrap_or(line_length));
 
         let mut top_idx: u32 = 0;
         let mut bottom_idx: u32 = 0;
@@ -217,13 +221,13 @@ impl Line {
                     }
                 };
                 let top_uv = Vec2::new(top_length / total_length, v);
-                let top_local_uv = Vec2::new(top_length / self.len, v);
+                let top_local_uv = Vec2::new((top_length - self.len_offset) / self.len, v);
                 let top_vertex = VertexData {
-                    length: top_length,
                     position: top.pos,
                     width: top.width,
                     uv: top_uv,
                     local_uv: top_local_uv,
+                    length: top_length,
                 };
 
                 buffer.push(top_vertex);
@@ -249,7 +253,7 @@ impl Line {
                     }
                 };
                 let bottom_uv = Vec2::new(bottom_length / total_length, v);
-                let bottom_local_uv = Vec2::new(bottom_length / self.len, v);
+                let bottom_local_uv = Vec2::new((bottom_length - self.len_offset) / self.len, v);
                 let bottom_vertex = VertexData {
                     position: bottom.pos,
                     width: bottom.width,
