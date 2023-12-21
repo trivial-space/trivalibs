@@ -2,6 +2,7 @@ use glam::{vec3, Vec3};
 use rand::random;
 
 pub mod app_state;
+pub mod f32;
 
 pub fn default<T: Default>() -> T {
     std::default::Default::default()
