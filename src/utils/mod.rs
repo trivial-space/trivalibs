@@ -2,7 +2,7 @@ use glam::{vec3, Vec3};
 use rand::random;
 
 pub mod app_state;
-pub mod f32;
+pub mod f32_utils;
 
 pub fn default<T: Default>() -> T {
     std::default::Default::default()
@@ -10,6 +10,10 @@ pub fn default<T: Default>() -> T {
 
 pub fn random_range(min: f32, max: f32) -> f32 {
     min + (max - min) * random::<f32>()
+}
+
+pub fn rand_int(max: usize) -> usize {
+    (random::<f32>() * max as f32).floor() as usize
 }
 
 pub fn random_in_unit_sphere() -> Vec3 {
@@ -30,4 +34,14 @@ pub fn random_in_unit_sphere() -> Vec3 {
 /// Returns a random number in the range [-1, 1] with normal distribution.
 pub fn random_normal() -> f32 {
     (random::<f32>() + random::<f32>() + random::<f32>()) / 1.5 - 1.0
+}
+
+pub trait Pick<T> {
+    fn pick(&self) -> &T;
+}
+
+impl<T> Pick<T> for &[T] {
+    fn pick(&self) -> &T {
+        &self[(random::<f32>() * self.len() as f32).floor() as usize]
+    }
 }
