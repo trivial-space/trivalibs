@@ -29,12 +29,23 @@ pub fn random_normal() -> f32 {
     (random::<f32>() + random::<f32>() + random::<f32>()) / 1.5 - 1.0
 }
 
+/// Returns a random number in the range [0, 1] with normal distribution arround 0.5.
+pub fn random_normal_01() -> f32 {
+    (random::<f32>() + random::<f32>() + random::<f32>()) / 3.
+}
+
 pub trait Pick<T> {
     fn pick(&self) -> &T;
 }
 
 impl<T> Pick<T> for &[T] {
     fn pick(&self) -> &T {
-        &self[(random::<f32>() * self.len() as f32).floor() as usize]
+        &self[(random::<f64>() * self.len() as f64).floor() as usize]
+    }
+}
+
+impl<T> Pick<T> for Vec<T> {
+    fn pick(&self) -> &T {
+        &self[(random::<f64>() * self.len() as f64).floor() as usize]
     }
 }
