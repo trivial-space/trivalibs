@@ -125,6 +125,7 @@ pub fn line_vert_w_d<T: Default + Copy + Clone + Lerp<f32>>(
     }
 }
 
+#[derive(Clone)]
 pub struct LineData<T>
 where
     T: Default + Copy + Clone + Lerp<f32>,
@@ -141,13 +142,17 @@ impl<T> LineData<T>
 where
     T: Default + Copy + Clone + Lerp<f32>,
 {
-    pub fn new(width: f32) -> Self {
+    pub fn new_offset(width: f32, offset: f32) -> Self {
         LineData::<T> {
             list: Vec::new(),
             len: 0.0,
             default_width: width,
-            len_offset: 0.0,
+            len_offset: offset,
         }
+    }
+
+    pub fn new(width: f32) -> Self {
+        Self::new_offset(width, 0.0)
     }
 
     pub fn from_vecs<I: IntoIterator<Item = Vec2>>(line_width: f32, iter: I) -> Self {
