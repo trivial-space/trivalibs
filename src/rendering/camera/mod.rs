@@ -152,6 +152,15 @@ impl PerspectiveCamera {
         }
     }
 
+    pub fn reset_transform(&mut self, pos: Vec3, rot_horizontal: f32, rot_vertical: f32) {
+        self.set(CamProps {
+            rot_horizontal: Some(rot_horizontal),
+            rot_vertical: Some(rot_vertical),
+            translation: Some(pos),
+            ..default()
+        })
+    }
+
     pub fn update_transform(
         &mut self,
         forward: f32,
