@@ -41,6 +41,9 @@ pub struct LineGeometryProps {
     pub smouth_min_length: f32,
     pub cap_width_length_ratio: f32,
     pub total_length: Option<f32>,
+    pub prev_direction: Option<Vec2>,
+    pub next_direction: Option<Vec2>,
+    pub swap_texture_orientation: bool,
 }
 
 impl Default for LineGeometryProps {
@@ -50,22 +53,6 @@ impl Default for LineGeometryProps {
             smouth_min_length: 3.0,
             smouth_angle_threshold: 0.05,
             cap_width_length_ratio: 1.0,
-            total_length: None,
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct LineGeometryParams {
-    pub total_length: Option<f32>,
-    pub prev_direction: Option<Vec2>,
-    pub next_direction: Option<Vec2>,
-    pub swap_texture_orientation: bool,
-}
-
-impl Default for LineGeometryParams {
-    fn default() -> Self {
-        Self {
             total_length: None,
             prev_direction: None,
             next_direction: None,
@@ -108,11 +95,7 @@ fn cross_2d(v1: Vec2, v2: Vec2) -> f32 {
 }
 
 impl Line {
-    pub fn to_buffered_geometry_with_props_params(
-        &self,
-        props: LineGeometryProps,
-        params: LineGeometryParams,
-    ) -> BufferedGeometry {
+    pub fn to_buffered_geometry_with(&self, props: LineGeometryProps) -> BufferedGeometry {
         let mut top_line = LineData::<f32>::new(self.default_width);
         let mut bottom_line = LineData::<f32>::new(self.default_width);
         let mut line_length = self.len_offset;
@@ -127,8 +110,8 @@ impl Line {
             }
 
             // adjust first vertex
-            if prev.is_none() && params.prev_direction.is_some() {
-                let prev_dir = params.prev_direction.unwrap();
+            if prev.is_none() && props.prev_direction.is_some() {
+                let prev_dir = props.prev_direction.unwrap();
                 let c = v.width / (prev_dir * -1.0 + v.dir).normalize().dot(v.dir);
                 let a = f32::sqrt(c * c - v.width * v.width);
                 if a > 0.001 {
@@ -143,8 +126,8 @@ impl Line {
             }
 
             // adjust last vertex
-            if next.is_none() && params.next_direction.is_some() {
-                let next_dir = params.next_direction.unwrap();
+            if next.is_none() && props.next_direction.is_some() {
+                let next_dir = props.next_direction.unwrap();
                 let c = v.width / (v.dir * -1.0 + next_dir).normalize().dot(next_dir);
                 let a = f32::sqrt(c * c - v.width * v.width);
 
@@ -188,9 +171,7 @@ impl Line {
         let mut buffer = vec![];
         let mut indices: Vec<u32> = vec![];
 
-        let total_length = props
-            .total_length
-            .unwrap_or(params.total_length.unwrap_or(line_length));
+        let total_length = props.total_length.unwrap_or(line_length);
 
         let mut top_idx: u32 = 0;
         let mut bottom_idx: u32 = 0;
@@ -214,7 +195,7 @@ impl Line {
                 let v = if top_i == 0 || top_i == top_line.vert_count() - 1 {
                     0.5
                 } else {
-                    if params.swap_texture_orientation {
+                    if props.swap_texture_orientation {
                         1.0
                     } else {
                         0.0
@@ -246,7 +227,7 @@ impl Line {
                 let v = if bottom_i == 0 || bottom_i == bottom_line.vert_count() - 1 {
                     0.5
                 } else {
-                    if params.swap_texture_orientation {
+                    if props.swap_texture_orientation {
                         0.0
                     } else {
                         1.0
@@ -289,10 +270,6 @@ impl Line {
         }
     }
 
-    pub fn to_buffered_geometry_with(&self, props: LineGeometryProps) -> BufferedGeometry {
-        self.to_buffered_geometry_with_props_params(props, default())
-    }
-
     pub fn to_buffered_geometry(&self) -> BufferedGeometry {
         self.to_buffered_geometry_with(default())
     }
@@ -310,15 +287,13 @@ impl LineBufferedGeometryVec for Vec<Line> {
         self.iter()
             .enumerate()
             .map_with_prev_next(|(i, line), prev, next| {
-                line.to_buffered_geometry_with_props_params(
-                    props,
-                    LineGeometryParams {
-                        total_length: Some(total_length),
-                        swap_texture_orientation: i % 2 != 0,
-                        prev_direction: prev.map(|(_, x)| x.last().dir),
-                        next_direction: next.map(|(_, x)| x.first().dir),
-                    },
-                )
+                line.to_buffered_geometry_with(LineGeometryProps {
+                    total_length: Some(total_length),
+                    swap_texture_orientation: i % 2 != 0,
+                    prev_direction: prev.map(|(_, x)| x.last().dir),
+                    next_direction: next.map(|(_, x)| x.first().dir),
+                    ..props
+                })
             })
             .collect()
     }
