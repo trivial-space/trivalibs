@@ -21,7 +21,6 @@ pub struct PerspectiveCamera {
 
     calculate_planes: bool,
     calculate_near_far_planes: bool,
-    frustum_planes: Vec<Vec4>,
 }
 
 impl Default for PerspectiveCamera {
@@ -38,7 +37,6 @@ impl Default for PerspectiveCamera {
             translation: Vec3::ZERO,
             calculate_planes: false,
             calculate_near_far_planes: false,
-            frustum_planes: Vec::with_capacity(6),
         }
     }
 }
@@ -211,9 +209,20 @@ impl PerspectiveCamera {
         self.projection_mat() * self.view_mat()
     }
 
+    pub fn reflected_cam(&self, _plane: Vec4) -> PerspectiveCamera {
+        todo!("reflect translation and rotations around plane")
+    }
+
+    pub fn reflected_cam_ground(&self) -> PerspectiveCamera {
+        PerspectiveCamera {
+            rot_vertical: -self.rot_vertical,
+            translation: vec3(self.translation.x, -self.translation.y, self.translation.z),
+            ..*self
+        }
+    }
+
     pub fn recalculate_projection(&mut self) {
         self.proj = Mat4::perspective_rh(self.fov, self.aspect_ratio, self.near, self.far);
-        // TODO: Calculate frustum planes
     }
 
     /// Given a position in world space, use the camera to compute the screen space coordinates.
