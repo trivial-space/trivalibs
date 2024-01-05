@@ -9,6 +9,18 @@ pub fn rand_int(max: usize) -> usize {
     (random::<f32>() * max as f32).floor() as usize
 }
 
+pub fn rand_f32() -> f32 {
+    random::<f32>()
+}
+
+pub fn rand_f64() -> f64 {
+    random::<f64>()
+}
+
+pub fn rand_bool() -> bool {
+    random::<bool>()
+}
+
 pub fn random_in_unit_sphere() -> Vec3 {
     loop {
         let p = vec3(
