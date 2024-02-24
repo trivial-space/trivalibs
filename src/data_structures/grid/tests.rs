@@ -253,7 +253,7 @@ fn subdivide() {
     grid.add_col(vec![CoordF(0.0, 0.0), CoordF(0.0, 1.0)]);
     grid.add_col(vec![CoordF(1.0, 0.0), CoordF(1.0, 1.0)]);
 
-    let grid1 = grid.subdivide(1, 1, CoordF::lerp);
+    let grid1 = grid.subdivide(1, 1);
     assert_eq!(grid1.width, 3);
     assert_eq!(grid1.height, 3);
     assert_eq!(*grid1.get(0, 0), CoordF(0.0, 0.0));
@@ -266,7 +266,7 @@ fn subdivide() {
     assert_eq!(*grid1.get(1, 0), CoordF(0.5, 0.0));
     assert_eq!(*grid1.get(1, 2), CoordF(0.5, 1.0));
 
-    let grid2 = grid.subdivide(3, 0, CoordF::lerp);
+    let grid2 = grid.subdivide(3, 0);
     assert_eq!(grid2.width, 5);
     assert_eq!(grid2.height, 2);
     assert_eq!(*grid2.get(0, 0), CoordF(0.0, 0.0));
@@ -280,7 +280,7 @@ fn subdivide() {
     assert_eq!(*grid2.get(3, 1), CoordF(0.75, 1.0));
     assert_eq!(*grid2.get(4, 1), CoordF(1.0, 1.0));
 
-    let grid3 = grid.subdivide(0, 1, CoordF::lerp);
+    let grid3 = grid.subdivide(0, 1);
     assert_eq!(grid3.width, 2);
     assert_eq!(grid3.height, 3);
     assert_eq!(*grid3.get(0, 0), CoordF(0.0, 0.0));
@@ -292,7 +292,7 @@ fn subdivide() {
     grid_circle.add_col(vec![CoordF(0.0, 0.0), CoordF(0.0, 1.0)]);
     grid_circle.add_col(vec![CoordF(1.0, 0.0), CoordF(1.0, 1.0)]);
 
-    let grid4 = grid_circle.subdivide(1, 1, CoordF::lerp);
+    let grid4 = grid_circle.subdivide(1, 1);
     assert_eq!(grid4.width, 4);
     assert_eq!(grid4.height, 4);
     assert_eq!(*grid4.get(0, 0), CoordF(0.0, 0.0));

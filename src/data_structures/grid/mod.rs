@@ -1,3 +1,5 @@
+use lerp::Lerp;
+
 pub trait CoordOpsFn: Copy + Clone {
     fn adjust_coords(&self, x: i32, y: i32, width: usize, height: usize) -> (usize, usize);
     fn circle(&self) -> (bool, bool);
@@ -349,8 +351,14 @@ where
         }
         quads
     }
+}
 
-    pub fn subdivide<F: Fn(T, T, f32) -> T>(&self, count_x: u32, count_y: u32, lerp: F) -> Self {
+impl<T, A> Grid<T, A>
+where
+    T: Clone + Copy + Lerp<f32>,
+    A: CoordOpsFn,
+{
+    pub fn subdivide(&self, count_x: u32, count_y: u32) -> Self {
         let grid1 = self.flat_map_cols(|col| {
             let next = col[0].right();
             let col1 = col.iter().map(|v| v.val).collect();
@@ -360,7 +368,7 @@ where
                     let t = (i as f32 + 1.0) / (count_x as f32 + 1.0);
                     let col2 = col
                         .iter()
-                        .map(|v| lerp(v.val, v.right().unwrap().val, t))
+                        .map(|v| v.val.lerp(v.right().unwrap().val, t))
                         .collect();
                     cols.push(col2)
                 }
@@ -376,7 +384,7 @@ where
                     let t = (i as f32 + 1.0) / (count_y as f32 + 1.0);
                     let row2 = row
                         .iter()
-                        .map(|v| lerp(v.val, v.bottom().unwrap().val, t))
+                        .map(|v| v.val.lerp(v.bottom().unwrap().val, t))
                         .collect();
                     rows.push(row2)
                 }
