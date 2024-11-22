@@ -1,5 +1,6 @@
 pub mod data_structures;
 pub mod geometry;
+pub mod painter;
 pub mod rendering;
 pub mod utils;
 pub mod wasm_helpers;
