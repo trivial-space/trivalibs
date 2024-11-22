@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::prelude::Transform;
+use super::transform::Transform;
 
 pub struct Ray {
 	pub origin: Vec3,

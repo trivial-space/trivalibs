@@ -1,5 +1,5 @@
 pub use std::cell::OnceCell;
-pub use tvs_libs_macros::AppState;
+pub use trivalibs_macros::AppState;
 
 pub trait AppState: Sized + Default + 'static {
 	unsafe fn state_cell() -> &'static mut OnceCell<Self>;

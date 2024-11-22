@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tvs-libs-macros = { path = "macros" }
+trivalibs-macros = { path = "macros" }
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 serde_bytes = "0.11"
-bytemuck = { version = "1.13", features = ["derive"] }
+bytemuck = { version = "1.20", features = ["derive"] }
 js-sys = "0.3"
 lerp = "0.5"
 approx = "0.5.1"

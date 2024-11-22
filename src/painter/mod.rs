@@ -11,7 +11,7 @@ use winit::{
 pub mod painter;
 pub use painter::Painter;
 
-pub trait Application<UserEvent> {
+pub trait CanvasApp<UserEvent> {
 	fn init(&mut self, painter: &mut Painter);
 	fn render(&self, painter: &Painter) -> Result<(), SurfaceError>;
 	fn window_event(&mut self, event: WindowEvent, painter: &Painter);
@@ -30,24 +30,24 @@ pub enum CustomEvent<UserEvent> {
 	UserEvent(UserEvent),
 }
 
-pub struct ApplicationRunner<UserEvent, App>
+pub struct CanvasAppRunner<UserEvent, App>
 where
 	UserEvent: 'static,
-	App: Application<UserEvent>,
+	App: CanvasApp<UserEvent>,
 {
 	state: WindowState,
 	event_loop_proxy: EventLoopProxy<CustomEvent<UserEvent>>,
 	app: App,
 }
 
-pub struct ApplicationHandle<UserEvent>
+pub struct CanvasHandle<UserEvent>
 where
 	UserEvent: 'static,
 {
 	event_loop_proxy: EventLoopProxy<CustomEvent<UserEvent>>,
 }
 
-impl<UserEvent> ApplicationHandle<UserEvent> {
+impl<UserEvent> CanvasHandle<UserEvent> {
 	pub fn send_event(
 		&self,
 		event: UserEvent,
@@ -57,19 +57,19 @@ impl<UserEvent> ApplicationHandle<UserEvent> {
 	}
 }
 
-pub struct ApplicationStarter<UserEvent, App>
+pub struct CanvasAppStarter<UserEvent, App>
 where
 	UserEvent: 'static,
-	App: Application<UserEvent>,
+	App: CanvasApp<UserEvent>,
 {
-	app: ApplicationRunner<UserEvent, App>,
+	app: CanvasAppRunner<UserEvent, App>,
 	event_loop: EventLoop<CustomEvent<UserEvent>>,
 }
 
-impl<UserEvent, App> ApplicationStarter<UserEvent, App>
+impl<UserEvent, App> CanvasAppStarter<UserEvent, App>
 where
 	UserEvent: std::marker::Send,
-	App: Application<UserEvent> + std::marker::Send + 'static,
+	App: CanvasApp<UserEvent> + std::marker::Send + 'static,
 {
 	pub fn start(self) {
 		let event_loop = self.event_loop;
@@ -77,16 +77,16 @@ where
 		let _ = event_loop.run_app(&mut app);
 	}
 
-	pub fn get_handle(&self) -> ApplicationHandle<UserEvent> {
-		ApplicationHandle {
+	pub fn get_handle(&self) -> CanvasHandle<UserEvent> {
+		CanvasHandle {
 			event_loop_proxy: self.app.event_loop_proxy.clone(),
 		}
 	}
 }
 
-pub fn create_app<UserEvent, App: Application<UserEvent> + 'static>(
+pub fn create_canvas_app<UserEvent, App: CanvasApp<UserEvent> + 'static>(
 	app: App,
-) -> ApplicationStarter<UserEvent, App> {
+) -> CanvasAppStarter<UserEvent, App> {
 	#[cfg(not(target_arch = "wasm32"))]
 	env_logger::init();
 
@@ -102,22 +102,21 @@ pub fn create_app<UserEvent, App: Application<UserEvent> + 'static>(
 
 	let event_loop_proxy = event_loop.create_proxy();
 
-	let runner = ApplicationRunner {
+	let runner = CanvasAppRunner {
 		state: WindowState::Uninitialized,
 		event_loop_proxy,
 		app,
 	};
 
-	return ApplicationStarter {
+	return CanvasAppStarter {
 		app: runner,
 		event_loop,
 	};
 }
 
-impl<UserEvent, App> ApplicationHandler<CustomEvent<UserEvent>>
-	for ApplicationRunner<UserEvent, App>
+impl<UserEvent, App> ApplicationHandler<CustomEvent<UserEvent>> for CanvasAppRunner<UserEvent, App>
 where
-	App: Application<UserEvent>,
+	App: CanvasApp<UserEvent>,
 {
 	// This is a common indicator that you can create a window.
 	fn resumed(&mut self, event_loop: &ActiveEventLoop) {
@@ -253,54 +252,4 @@ where
 			self.app.device_event(event, painter);
 		}
 	}
-}
-
-pub mod macros {
-	macro_rules! attribute_alias {(
-    $(
-        #[apply($name:ident $(!)?)] = $( #[$($attrs:tt)*] )+;
-    )*
-	) => (
-    $(
-        $crate::ඞ_with_dollar! {( $_:tt ) => (
-            // Let's not do the paste + module + re-export dance here since it
-            // is less likely for an attribute name to collide with a prelude item.
-            #[allow(nonstandard_style)]
-						#[macro_export]
-            macro_rules! $name {( $_($item:tt)* ) => (
-             $( #[$($attrs)*] )+
-                $_($item)*
-            )}
-            #[allow(unused_imports)]
-            pub use $name;
-        )}
-    )*
-	)}
-
-	#[doc(hidden)]
-	/** Not part of the public API*/
-	#[macro_export]
-	macro_rules! ඞ_with_dollar {( $($rules:tt)* ) => (
-    macro_rules! __emit__ { $($rules)* }
-    __emit__! { $ }
-	)}
-
-	attribute_alias! {
-		#[apply(gpu_data)] =
-		#[repr(C)]
-		#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)];
-	}
-
-	pub use ::macro_rules_attribute::apply;
-
-	#[macro_export]
-	macro_rules! hashmap {
-    () => {
-        ::std::collections::HashMap::new()
-    };
-
-    ($($key:expr => $value:expr),+ $(,)?) => {
-        ::std::collections::HashMap::from([ $(($key, $value)),* ])
-    };
-}
 }

@@ -5,13 +5,66 @@ pub mod rendering;
 pub mod utils;
 pub mod wasm_helpers;
 
+pub use bytemuck;
+pub use glam;
+pub use wgpu;
+pub use winit;
+
+pub mod macros {
+	macro_rules! attribute_alias {(
+    $(
+        #[apply($name:ident $(!)?)] = $( #[$($attrs:tt)*] )+;
+    )*
+	) => (
+    $(
+        $crate::ඞ_with_dollar! {( $_:tt ) => (
+            // Let's not do the paste + module + re-export dance here since it
+            // is less likely for an attribute name to collide with a prelude item.
+            #[allow(nonstandard_style)]
+						#[macro_export]
+            macro_rules! $name {( $_($item:tt)* ) => (
+             $( #[$($attrs)*] )+
+                $_($item)*
+            )}
+            #[allow(unused_imports)]
+            pub use $name;
+        )}
+    )*
+	)}
+
+	#[doc(hidden)]
+	/** Not part of the public API*/
+	#[macro_export]
+	macro_rules! ඞ_with_dollar {( $($rules:tt)* ) => (
+    macro_rules! __emit__ { $($rules)* }
+    __emit__! { $ }
+	)}
+
+	attribute_alias! {
+		#[apply(gpu_data)] =
+		#[repr(C)]
+		#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)];
+	}
+
+	pub use ::macro_rules_attribute::apply;
+
+	#[macro_export]
+	macro_rules! hashmap {
+    () => {
+        ::std::collections::HashMap::new()
+    };
+
+    ($($key:expr => $value:expr),+ $(,)?) => {
+        ::std::collections::HashMap::from([ $(($key, $value)),* ])
+    };
+	}
+}
+
 pub mod prelude {
 	pub use crate::geometry::interpolation::*;
-	pub use crate::rendering::transform::*;
-	pub use crate::utils::app_state::*;
+	pub use crate::macros::*;
 	pub use crate::utils::rand_utils::*;
 	pub use crate::utils::*;
-	pub use crate::wasm_helpers::*;
 	pub use glam::*;
 	pub use lerp::*;
 	pub use rand::prelude::*;
