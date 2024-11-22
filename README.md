@@ -1,3 +1,3 @@
-# libs-wasm
+# trivalibs
 
-Shared Rust libraries used for wasm modules in trivial space sketches.
+Shared Rust libraries used for graphics programming targeting WebAssembly and native.
