@@ -3,13 +3,13 @@ use std::{collections::HashMap, sync::Arc};
 use wgpu::{Adapter, Device, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
 
-use crate::utils::default;
+use crate::{rendering::RenderableBuffer, utils::default};
 
 struct FormStorage {
 	vertex_buffer: wgpu::Buffer,
 	index_buffer: Option<wgpu::Buffer>,
-	vertex_length: u32,
-	index_length: u32,
+	vertex_count: u32,
+	index_count: u32,
 }
 
 #[derive(Clone, Copy)]
@@ -180,7 +180,7 @@ impl Painter {
 	{
 		let f = &mut self.forms[form.0];
 
-		f.vertex_length = props.vertex_buffer.len() as u32;
+		f.vertex_count = props.vertex_buffer.len() as u32;
 
 		self.queue.write_buffer(
 			&f.vertex_buffer,
@@ -189,7 +189,7 @@ impl Painter {
 		);
 
 		if let Some(index_data) = props.index_buffer {
-			f.index_length = index_data.len() as u32;
+			f.index_count = index_data.len() as u32;
 
 			let index_buffer =
 				f.index_buffer
@@ -210,6 +210,32 @@ impl Painter {
 		}
 	}
 
+	pub fn update_form_buffer(&mut self, form: &Form, buffers: RenderableBuffer) {
+		let f = &mut self.forms[form.0];
+
+		f.vertex_count = buffers.vertex_count;
+
+		self.queue
+			.write_buffer(&f.vertex_buffer, 0, &buffers.vertex_buffer);
+
+		if let Some(index_data) = buffers.index_buffer {
+			f.index_count = buffers.index_count;
+
+			let index_buffer =
+				f.index_buffer
+					.get_or_insert(self.device.create_buffer(&wgpu::BufferDescriptor {
+						label: None,
+						usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+						size: get_padded_size(
+							buffers.index_count as u64 * std::mem::size_of::<u32>() as u64,
+						),
+						mapped_at_creation: false,
+					}));
+
+			self.queue.write_buffer(index_buffer, 0, &index_data);
+		}
+	}
+
 	pub fn create_form_with_size(&mut self, size: u64) -> Form {
 		let vertex_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
 			label: None,
@@ -221,8 +247,8 @@ impl Painter {
 		let f = FormStorage {
 			vertex_buffer,
 			index_buffer: None,
-			index_length: 0,
-			vertex_length: 0,
+			index_count: 0,
+			vertex_count: 0,
 		};
 
 		let i = self.forms.len();
@@ -455,9 +481,9 @@ impl Painter {
 			rpass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
 			if let Some(index_buffer) = &f.index_buffer {
 				rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-				rpass.draw_indexed(0..f.index_length, 0, 0..1);
+				rpass.draw_indexed(0..f.index_count, 0, 0..1);
 			} else {
-				rpass.draw(0..f.vertex_length, 0..1);
+				rpass.draw(0..f.vertex_count, 0..1);
 			}
 		}
 

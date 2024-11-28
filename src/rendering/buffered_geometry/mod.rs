@@ -242,11 +242,11 @@ pub trait BufferedVertexData: Pod + Clone + Copy {
 	fn vertex_layout() -> Vec<VertexType>;
 }
 
-pub trait OverrideAttributesWith: BufferedVertexData {
+pub trait OverrideAttributesWith {
 	fn override_with(&self, other: &Self) -> Self;
 }
 
-pub trait NoAttributeOverride: BufferedVertexData {
+pub trait NoAttributeOverride: Copy + Clone {
 	fn no_override_with(&self, _other: &Self) -> Self {
 		*self
 	}
