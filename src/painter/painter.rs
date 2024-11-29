@@ -94,6 +94,18 @@ pub struct SamplerProps {
 	pub min_filter: wgpu::FilterMode,
 }
 
+pub struct Uniform<T> {
+	buffer: wgpu::Buffer,
+	binding: wgpu::BindGroup,
+	t: std::marker::PhantomData<T>,
+}
+
+impl<'a, T> Into<Option<&'a wgpu::BindGroup>> for &'a Uniform<T> {
+	fn into(self) -> Option<&'a wgpu::BindGroup> {
+		Some(&self.binding)
+	}
+}
+
 pub struct Painter {
 	pub surface: Surface<'static>,
 	pub config: SurfaceConfiguration,
@@ -314,6 +326,7 @@ impl Painter {
 					strip_index_format: None,
 					front_face: wgpu::FrontFace::Ccw,
 					cull_mode: Some(wgpu::Face::Back),
+					// cull_mode: None,
 					// Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
 					polygon_mode: wgpu::PolygonMode::Fill,
 					unclipped_depth: false,
@@ -439,6 +452,65 @@ impl Painter {
 			compare: None,
 			..default()
 		})
+	}
+
+	pub fn create_uniform_buffer<T>(&self, layout: &wgpu::BindGroupLayout, data: T) -> Uniform<T>
+	where
+		T: bytemuck::Pod,
+	{
+		let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+			label: None,
+			usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+			size: get_padded_size(std::mem::size_of::<T>() as u64),
+			mapped_at_creation: false,
+		});
+
+		let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+			layout,
+			entries: &[wgpu::BindGroupEntry {
+				binding: 0,
+				resource: buffer.as_entire_binding(),
+			}],
+			label: None,
+		});
+
+		let uniform = Uniform {
+			buffer,
+			binding: bind_group,
+			t: std::marker::PhantomData,
+		};
+
+		self.update_uniform_buffer(&uniform, data);
+
+		uniform
+	}
+
+	pub fn update_uniform_buffer<T>(&self, uniform: &Uniform<T>, data: T)
+	where
+		T: bytemuck::Pod,
+	{
+		self.queue
+			.write_buffer(&uniform.buffer, 0, bytemuck::cast_slice(&[data]));
+	}
+
+	pub fn get_uniform_buffer_layout(
+		&self,
+		visibility: wgpu::ShaderStages,
+	) -> wgpu::BindGroupLayout {
+		self.device
+			.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+				entries: &[wgpu::BindGroupLayoutEntry {
+					binding: 0,
+					visibility,
+					ty: wgpu::BindingType::Buffer {
+						ty: wgpu::BufferBindingType::Uniform,
+						has_dynamic_offset: false,
+						min_binding_size: None,
+					},
+					count: None,
+				}],
+				label: None,
+			})
 	}
 
 	pub fn draw<'a>(

@@ -13,7 +13,7 @@ pub use painter::Painter;
 
 pub trait CanvasApp<UserEvent> {
 	fn init(&mut self, painter: &mut Painter);
-	fn render(&self, painter: &Painter) -> Result<(), SurfaceError>;
+	fn render(&mut self, painter: &Painter) -> Result<(), SurfaceError>;
 	fn window_event(&mut self, event: WindowEvent, painter: &Painter);
 	fn device_event(&mut self, event: DeviceEvent, painter: &Painter);
 	fn user_event(&mut self, event: UserEvent, painter: &Painter);
