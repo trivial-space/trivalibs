@@ -10,6 +10,10 @@ use winit::{
 
 pub mod painter;
 pub use painter::Painter;
+pub mod form;
+pub mod shade;
+pub mod sketch;
+pub mod uniform;
 
 pub trait CanvasApp<UserEvent> {
 	fn init(&mut self, painter: &mut Painter);

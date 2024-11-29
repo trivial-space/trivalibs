@@ -1,84 +1,12 @@
+use super::{
+	form::{Form, FormProps, FormStorage},
+	shade::{FormFormat, Shade, ShadeProps, ShadeStorage},
+	uniform::{get_uniform_layout_buffered, Uniform},
+};
+use crate::{rendering::RenderableBuffer, utils::default};
 use std::{collections::HashMap, sync::Arc};
-
 use wgpu::{Adapter, Device, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
-
-use crate::{rendering::RenderableBuffer, utils::default};
-
-struct FormStorage {
-	vertex_buffer: wgpu::Buffer,
-	index_buffer: Option<wgpu::Buffer>,
-	vertex_count: u32,
-	index_count: u32,
-}
-
-#[derive(Clone, Copy)]
-pub struct Form(usize);
-
-pub struct FormProps<'a, T>
-where
-	T: bytemuck::Pod + bytemuck::Zeroable,
-{
-	pub vertex_buffer: &'a [T],
-	pub index_buffer: Option<&'a [u32]>,
-}
-
-pub struct ShadeStorage {
-	pipeline: wgpu::RenderPipeline,
-}
-
-#[derive(Clone, Copy)]
-pub struct Shade(usize);
-
-pub struct ShadeProps<'a, Format: Into<FormFormat>> {
-	pub vertex_shader: wgpu::ShaderModuleDescriptor<'a>,
-	pub fragment_shader: wgpu::ShaderModuleDescriptor<'a>,
-	pub vertex_format: Format,
-	pub uniform_layout: &'a [&'a wgpu::BindGroupLayout],
-}
-
-pub struct FormFormat {
-	stride: u64,
-	attributes: Vec<wgpu::VertexAttribute>,
-}
-
-pub fn attrib(location: u32, format: wgpu::VertexFormat, offset: u64) -> wgpu::VertexAttribute {
-	wgpu::VertexAttribute {
-		shader_location: location,
-		format,
-		offset,
-	}
-}
-
-impl Into<FormFormat> for &[wgpu::VertexFormat] {
-	fn into(self) -> FormFormat {
-		let mut stride = 0;
-		let mut attributes = Vec::with_capacity(self.len());
-		let mut location = 0;
-		for format in self {
-			attributes.push(attrib(location, *format, stride));
-			stride += format.size();
-			location += 1;
-		}
-
-		FormFormat { attributes, stride }
-	}
-}
-
-impl Into<FormFormat> for Vec<wgpu::VertexFormat> {
-	fn into(self) -> FormFormat {
-		self.as_slice().into()
-	}
-}
-
-impl Into<FormFormat> for wgpu::VertexFormat {
-	fn into(self) -> FormFormat {
-		FormFormat {
-			attributes: vec![attrib(0, self, 0)],
-			stride: self.size(),
-		}
-	}
-}
 
 pub struct Texture2DProps {
 	pub width: u32,
@@ -94,18 +22,6 @@ pub struct SamplerProps {
 	pub min_filter: wgpu::FilterMode,
 }
 
-pub struct Uniform<T> {
-	buffer: wgpu::Buffer,
-	binding: wgpu::BindGroup,
-	t: std::marker::PhantomData<T>,
-}
-
-impl<'a, T> Into<Option<&'a wgpu::BindGroup>> for &'a Uniform<T> {
-	fn into(self) -> Option<&'a wgpu::BindGroup> {
-		Some(&self.binding)
-	}
-}
-
 pub struct Painter {
 	pub surface: Surface<'static>,
 	pub config: SurfaceConfiguration,
@@ -113,8 +29,8 @@ pub struct Painter {
 	pub device: Device,
 	pub queue: Queue,
 	window: Arc<Window>,
-	forms: Vec<FormStorage>,
-	shades: Vec<ShadeStorage>,
+	pub(crate) forms: Vec<FormStorage>,
+	pub(crate) shades: Vec<ShadeStorage>,
 }
 
 impl Painter {
@@ -172,6 +88,61 @@ impl Painter {
 		}
 	}
 
+	// form helpers
+
+	pub fn update_form<T>(&mut self, form: &Form, props: &FormProps<T>)
+	where
+		T: bytemuck::Pod,
+	{
+		form.update_form(self, props);
+	}
+
+	pub fn update_form_buffer(&mut self, form: &Form, buffers: RenderableBuffer) {
+		form.update_form_buffer(self, buffers);
+	}
+
+	pub fn create_form_with_size(&mut self, size: u64) -> Form {
+		Form::new_with_size(self, size)
+	}
+
+	pub fn create_form<T>(&mut self, props: &FormProps<T>) -> Form
+	where
+		T: bytemuck::Pod,
+	{
+		Form::new(self, props)
+	}
+
+	// shade helpers
+
+	pub fn create_shade<Format: Into<FormFormat>>(&mut self, props: ShadeProps<Format>) -> Shade {
+		Shade::new(self, props)
+	}
+
+	// uniform utile
+
+	pub fn create_uniform_buffered<T>(&self, layout: &wgpu::BindGroupLayout, data: T) -> Uniform<T>
+	where
+		T: bytemuck::Pod,
+	{
+		Uniform::new_buffered(self, layout, data)
+	}
+
+	pub fn update_uniform_buffered<T>(&self, uniform: &Uniform<T>, data: T)
+	where
+		T: bytemuck::Pod,
+	{
+		uniform.update_buffered(self, data);
+	}
+
+	pub fn get_uniform_layout_buffered(
+		&self,
+		visibility: wgpu::ShaderStages,
+	) -> wgpu::BindGroupLayout {
+		get_uniform_layout_buffered(self, visibility)
+	}
+
+	// general utils
+
 	pub fn redraw(&self) {
 		self.window.request_redraw();
 	}
@@ -184,166 +155,6 @@ impl Painter {
 
 	pub fn canvas_size(&self) -> winit::dpi::PhysicalSize<u32> {
 		self.window.inner_size()
-	}
-
-	pub fn update_form<T>(&mut self, form: &Form, props: &FormProps<T>)
-	where
-		T: bytemuck::Pod,
-	{
-		let f = &mut self.forms[form.0];
-
-		f.vertex_count = props.vertex_buffer.len() as u32;
-
-		self.queue.write_buffer(
-			&f.vertex_buffer,
-			0,
-			bytemuck::cast_slice(props.vertex_buffer),
-		);
-
-		if let Some(index_data) = props.index_buffer {
-			f.index_count = index_data.len() as u32;
-
-			let index_buffer =
-				f.index_buffer
-					.get_or_insert(self.device.create_buffer(&wgpu::BufferDescriptor {
-						label: None,
-						usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-						size: get_padded_size(
-							index_data.len() as u64 * std::mem::size_of::<u32>() as u64,
-						),
-						mapped_at_creation: false,
-					}));
-
-			self.queue.write_buffer(
-				index_buffer,
-				0,
-				bytemuck::cast_slice(props.index_buffer.unwrap()),
-			);
-		}
-	}
-
-	pub fn update_form_buffer(&mut self, form: &Form, buffers: RenderableBuffer) {
-		let f = &mut self.forms[form.0];
-
-		f.vertex_count = buffers.vertex_count;
-
-		self.queue
-			.write_buffer(&f.vertex_buffer, 0, &buffers.vertex_buffer);
-
-		if let Some(index_data) = buffers.index_buffer {
-			f.index_count = buffers.index_count;
-
-			let index_buffer =
-				f.index_buffer
-					.get_or_insert(self.device.create_buffer(&wgpu::BufferDescriptor {
-						label: None,
-						usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-						size: get_padded_size(
-							buffers.index_count as u64 * std::mem::size_of::<u32>() as u64,
-						),
-						mapped_at_creation: false,
-					}));
-
-			self.queue.write_buffer(index_buffer, 0, &index_data);
-		}
-	}
-
-	pub fn create_form_with_size(&mut self, size: u64) -> Form {
-		let vertex_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-			label: None,
-			usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-			size: get_padded_size(size),
-			mapped_at_creation: false,
-		});
-
-		let f = FormStorage {
-			vertex_buffer,
-			index_buffer: None,
-			index_count: 0,
-			vertex_count: 0,
-		};
-
-		let i = self.forms.len();
-		self.forms.push(f);
-
-		return Form(i);
-	}
-
-	pub fn create_form<T>(&mut self, props: &FormProps<T>) -> Form
-	where
-		T: bytemuck::Pod,
-	{
-		let form = self.create_form_with_size(
-			props.vertex_buffer.len() as u64 * std::mem::size_of::<T>() as u64,
-		);
-
-		self.update_form(&form, props);
-
-		form
-	}
-
-	pub fn create_shade<Format: Into<FormFormat>>(&mut self, props: ShadeProps<Format>) -> Shade {
-		let pipeline_layout = self
-			.device
-			.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-				label: None,
-				bind_group_layouts: props.uniform_layout,
-				push_constant_ranges: &[],
-			});
-
-		let format = props.vertex_format.into();
-
-		let vertex_shader = self.device.create_shader_module(props.vertex_shader);
-		let fragment_shader = self.device.create_shader_module(props.fragment_shader);
-
-		let pipeline = self
-			.device
-			.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-				label: None,
-				layout: Some(&pipeline_layout),
-				vertex: wgpu::VertexState {
-					module: &vertex_shader,
-					entry_point: None,
-					buffers: &[wgpu::VertexBufferLayout {
-						array_stride: format.stride,
-						step_mode: wgpu::VertexStepMode::Vertex,
-						attributes: &format.attributes,
-					}],
-					compilation_options: default(),
-				},
-				fragment: Some(wgpu::FragmentState {
-					module: &fragment_shader,
-					entry_point: None,
-					targets: &[Some(wgpu::ColorTargetState {
-						format: self.config.format,
-						blend: Some(wgpu::BlendState::REPLACE),
-						write_mask: wgpu::ColorWrites::ALL,
-					})],
-					compilation_options: default(),
-				}),
-				primitive: wgpu::PrimitiveState {
-					topology: wgpu::PrimitiveTopology::TriangleList,
-					strip_index_format: None,
-					front_face: wgpu::FrontFace::Ccw,
-					cull_mode: Some(wgpu::Face::Back),
-					// cull_mode: None,
-					// Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-					polygon_mode: wgpu::PolygonMode::Fill,
-					unclipped_depth: false,
-					conservative: false,
-				},
-				depth_stencil: None,
-				multisample: wgpu::MultisampleState::default(),
-				multiview: None,
-				cache: None,
-			});
-
-		let s = ShadeStorage { pipeline };
-
-		let i = self.shades.len();
-		self.shades.push(s);
-
-		Shade(i)
 	}
 
 	pub fn fill_texture_2d(&self, texture: &wgpu::Texture, data: &[u8]) {
@@ -454,65 +265,6 @@ impl Painter {
 		})
 	}
 
-	pub fn create_uniform_buffer<T>(&self, layout: &wgpu::BindGroupLayout, data: T) -> Uniform<T>
-	where
-		T: bytemuck::Pod,
-	{
-		let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-			label: None,
-			usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-			size: get_padded_size(std::mem::size_of::<T>() as u64),
-			mapped_at_creation: false,
-		});
-
-		let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-			layout,
-			entries: &[wgpu::BindGroupEntry {
-				binding: 0,
-				resource: buffer.as_entire_binding(),
-			}],
-			label: None,
-		});
-
-		let uniform = Uniform {
-			buffer,
-			binding: bind_group,
-			t: std::marker::PhantomData,
-		};
-
-		self.update_uniform_buffer(&uniform, data);
-
-		uniform
-	}
-
-	pub fn update_uniform_buffer<T>(&self, uniform: &Uniform<T>, data: T)
-	where
-		T: bytemuck::Pod,
-	{
-		self.queue
-			.write_buffer(&uniform.buffer, 0, bytemuck::cast_slice(&[data]));
-	}
-
-	pub fn get_uniform_buffer_layout(
-		&self,
-		visibility: wgpu::ShaderStages,
-	) -> wgpu::BindGroupLayout {
-		self.device
-			.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-				entries: &[wgpu::BindGroupLayoutEntry {
-					binding: 0,
-					visibility,
-					ty: wgpu::BindingType::Buffer {
-						ty: wgpu::BufferBindingType::Uniform,
-						has_dynamic_offset: false,
-						min_binding_size: None,
-					},
-					count: None,
-				}],
-				label: None,
-			})
-	}
-
 	pub fn draw<'a>(
 		&self,
 		form: &Form,
@@ -566,7 +318,7 @@ impl Painter {
 	}
 }
 
-fn get_padded_size(unpadded_size: u64) -> u64 {
+pub(crate) fn get_padded_size(unpadded_size: u64) -> u64 {
 	// Valid vulkan usage is
 	// 1. buffer size must be a multiple of COPY_BUFFER_ALIGNMENT.
 	// 2. buffer size must be greater than 0.
