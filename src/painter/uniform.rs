@@ -1,15 +1,9 @@
 use super::{painter::get_padded_size, Painter};
 
 pub struct Uniform<T> {
+	pub binding: wgpu::BindGroup,
 	buffer: wgpu::Buffer,
-	binding: wgpu::BindGroup,
 	t: std::marker::PhantomData<T>,
-}
-
-impl<'a, T> Into<Option<&'a wgpu::BindGroup>> for &'a Uniform<T> {
-	fn into(self) -> Option<&'a wgpu::BindGroup> {
-		Some(&self.binding)
-	}
 }
 
 pub fn get_uniform_layout_buffered(

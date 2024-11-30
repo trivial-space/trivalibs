@@ -4,6 +4,7 @@ use super::{
 	uniform::{get_uniform_layout_buffered, Uniform},
 };
 use crate::{rendering::RenderableBuffer, utils::default};
+use glam::{Mat3, Mat3A, Mat4};
 use std::{collections::HashMap, sync::Arc};
 use wgpu::{Adapter, Device, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
@@ -32,6 +33,11 @@ pub struct Painter {
 	pub(crate) forms: Vec<FormStorage>,
 	pub(crate) shades: Vec<ShadeStorage>,
 }
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Zeroable)]
+pub struct Mat3U(Mat3A);
+unsafe impl bytemuck::Pod for Mat3U {}
 
 impl Painter {
 	pub async fn new(window: Arc<Window>) -> Self {
@@ -132,6 +138,22 @@ impl Painter {
 		T: bytemuck::Pod,
 	{
 		uniform.update_buffered(self, data);
+	}
+
+	pub fn create_uniform_mat4(&self, layout: &wgpu::BindGroupLayout, mat: Mat4) -> Uniform<Mat4> {
+		self.create_uniform_buffered(layout, mat)
+	}
+
+	pub fn update_uniform_mat4(&self, uniform: &Uniform<Mat4>, mat: Mat4) {
+		self.update_uniform_buffered(uniform, mat);
+	}
+
+	pub fn create_uniform_mat3(&self, layout: &wgpu::BindGroupLayout, mat: Mat3) -> Uniform<Mat3U> {
+		self.create_uniform_buffered(layout, Mat3U(Mat3A::from(mat)))
+	}
+
+	pub fn update_uniform_mat3(&self, uniform: &Uniform<Mat3U>, mat: Mat3) {
+		self.update_uniform_buffered(uniform, Mat3U(Mat3A::from(mat)));
 	}
 
 	pub fn get_uniform_layout_buffered(
@@ -269,7 +291,7 @@ impl Painter {
 		&self,
 		form: &Form,
 		shade: &Shade,
-		uniforms: HashMap<u32, impl Into<Option<&'a wgpu::BindGroup>>>,
+		uniforms: HashMap<u32, &'a wgpu::BindGroup>,
 	) -> std::result::Result<(), wgpu::SurfaceError> {
 		let f = &self.forms[form.0];
 		let s = &self.shades[shade.0];
@@ -300,7 +322,7 @@ impl Painter {
 			});
 			rpass.set_pipeline(&s.pipeline);
 			for (index, bind_group) in uniforms {
-				rpass.set_bind_group(index, bind_group.into(), &[]);
+				rpass.set_bind_group(index, bind_group, &[]);
 			}
 			rpass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
 			if let Some(index_buffer) = &f.index_buffer {
