@@ -1,22 +1,22 @@
-use crate::utils::default;
-
 use super::Painter;
 
 pub(crate) struct ShadeStorage {
-	pub pipeline: wgpu::RenderPipeline,
-	pub form_format: FormFormat,
+	pub vertex_shader: wgpu::ShaderModule,
+	pub fragment_shader: wgpu::ShaderModule,
+	pub attribs: AttribsFormat,
+	pub pipeline_layout: wgpu::PipelineLayout,
 }
 
-pub struct ShadeProps<'a, Format: Into<FormFormat>> {
+pub struct ShadeProps<'a, Format: Into<AttribsFormat>> {
 	pub vertex_shader: wgpu::ShaderModuleDescriptor<'a>,
 	pub fragment_shader: wgpu::ShaderModuleDescriptor<'a>,
 	pub vertex_format: Format,
 	pub uniform_layout: &'a [&'a wgpu::BindGroupLayout],
 }
 
-pub struct FormFormat {
-	stride: u64,
-	attributes: Vec<wgpu::VertexAttribute>,
+pub struct AttribsFormat {
+	pub stride: u64,
+	pub attributes: Vec<wgpu::VertexAttribute>,
 }
 
 pub fn attrib(location: u32, format: wgpu::VertexFormat, offset: u64) -> wgpu::VertexAttribute {
@@ -27,8 +27,8 @@ pub fn attrib(location: u32, format: wgpu::VertexFormat, offset: u64) -> wgpu::V
 	}
 }
 
-impl Into<FormFormat> for &[wgpu::VertexFormat] {
-	fn into(self) -> FormFormat {
+impl Into<AttribsFormat> for &[wgpu::VertexFormat] {
+	fn into(self) -> AttribsFormat {
 		let mut stride = 0;
 		let mut attributes = Vec::with_capacity(self.len());
 		let mut location = 0;
@@ -38,19 +38,19 @@ impl Into<FormFormat> for &[wgpu::VertexFormat] {
 			location += 1;
 		}
 
-		FormFormat { attributes, stride }
+		AttribsFormat { attributes, stride }
 	}
 }
 
-impl Into<FormFormat> for Vec<wgpu::VertexFormat> {
-	fn into(self) -> FormFormat {
+impl Into<AttribsFormat> for Vec<wgpu::VertexFormat> {
+	fn into(self) -> AttribsFormat {
 		self.as_slice().into()
 	}
 }
 
-impl Into<FormFormat> for wgpu::VertexFormat {
-	fn into(self) -> FormFormat {
-		FormFormat {
+impl Into<AttribsFormat> for wgpu::VertexFormat {
+	fn into(self) -> AttribsFormat {
+		AttribsFormat {
 			attributes: vec![attrib(0, self, 0)],
 			stride: self.size(),
 		}
@@ -61,7 +61,10 @@ impl Into<FormFormat> for wgpu::VertexFormat {
 pub struct Shade(pub(crate) usize);
 
 impl Shade {
-	pub fn new<Format: Into<FormFormat>>(painter: &mut Painter, props: ShadeProps<Format>) -> Self {
+	pub fn new<Format: Into<AttribsFormat>>(
+		painter: &mut Painter,
+		props: ShadeProps<Format>,
+	) -> Self {
 		let pipeline_layout =
 			painter
 				.device
@@ -76,51 +79,11 @@ impl Shade {
 		let vertex_shader = painter.device.create_shader_module(props.vertex_shader);
 		let fragment_shader = painter.device.create_shader_module(props.fragment_shader);
 
-		let pipeline = painter
-			.device
-			.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-				label: None,
-				layout: Some(&pipeline_layout),
-				vertex: wgpu::VertexState {
-					module: &vertex_shader,
-					entry_point: None,
-					buffers: &[wgpu::VertexBufferLayout {
-						array_stride: format.stride,
-						step_mode: wgpu::VertexStepMode::Vertex,
-						attributes: &format.attributes,
-					}],
-					compilation_options: default(),
-				},
-				fragment: Some(wgpu::FragmentState {
-					module: &fragment_shader,
-					entry_point: None,
-					targets: &[Some(wgpu::ColorTargetState {
-						format: painter.config.format,
-						blend: Some(wgpu::BlendState::REPLACE),
-						write_mask: wgpu::ColorWrites::ALL,
-					})],
-					compilation_options: default(),
-				}),
-				primitive: wgpu::PrimitiveState {
-					topology: wgpu::PrimitiveTopology::TriangleList,
-					strip_index_format: None,
-					front_face: wgpu::FrontFace::Ccw,
-					cull_mode: Some(wgpu::Face::Back),
-					// cull_mode: None,
-					// Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-					polygon_mode: wgpu::PolygonMode::Fill,
-					unclipped_depth: false,
-					conservative: false,
-				},
-				depth_stencil: None,
-				multisample: wgpu::MultisampleState::default(),
-				multiview: None,
-				cache: None,
-			});
-
 		let s = ShadeStorage {
-			pipeline,
-			form_format: format,
+			vertex_shader,
+			fragment_shader,
+			attribs: format,
+			pipeline_layout,
 		};
 
 		let i = painter.shades.len();
@@ -130,6 +93,6 @@ impl Shade {
 	}
 
 	pub fn form_stride(&self, painter: &Painter) -> u64 {
-		painter.shades[self.0].form_format.stride
+		painter.shades[self.0].attribs.stride
 	}
 }

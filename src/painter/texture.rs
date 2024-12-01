@@ -1,6 +1,6 @@
 use wgpu::BindGroupLayout;
 
-use super::Painter;
+use super::{uniform::Uniform, Painter};
 
 pub struct Texture2DProps {
 	pub width: u32,
@@ -22,7 +22,7 @@ pub(crate) struct TextureStorage {
 
 pub struct UniformTex2D {
 	pub texture: Texture,
-	pub binding: wgpu::BindGroup,
+	pub uniform: Uniform,
 }
 
 #[derive(Clone, Copy)]
@@ -111,7 +111,7 @@ impl Texture {
 
 	pub fn get_uniform(
 		&self,
-		painter: &Painter,
+		painter: &mut Painter,
 		layout: &BindGroupLayout,
 		sampler: &wgpu::Sampler,
 	) -> UniformTex2D {
@@ -135,9 +135,13 @@ impl Texture {
 				label: None,
 			});
 
+		painter.bindings.push(binding);
+
+		let uniform = Uniform(painter.bindings.len() - 1);
+
 		UniformTex2D {
 			texture: *self,
-			binding,
+			uniform,
 		}
 	}
 

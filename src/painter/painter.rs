@@ -1,12 +1,13 @@
 use super::{
-	form::{Form, FormProps, FormStorage},
-	shade::{FormFormat, Shade, ShadeProps, ShadeStorage},
+	form::{Form, FormData, FormProps, FormStorage},
+	shade::{AttribsFormat, Shade, ShadeProps, ShadeStorage},
+	sketch::{Sketch, SketchProps, SketchStorage},
 	texture::{SamplerProps, Texture, Texture2DProps, TextureStorage, UniformTex2D},
-	uniform::{get_uniform_layout_buffered, Mat3U, Uniform},
+	uniform::{get_uniform_layout_buffered, Mat3U, UniformBuffer},
 };
 use crate::rendering::RenderableBuffer;
 use glam::{Mat3, Mat4};
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 use wgpu::{Adapter, BindGroupLayout, Device, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
 
@@ -20,6 +21,8 @@ pub struct Painter {
 	pub(crate) forms: Vec<FormStorage>,
 	pub(crate) shades: Vec<ShadeStorage>,
 	pub(crate) textures: Vec<TextureStorage>,
+	pub(crate) sketches: Vec<SketchStorage>,
+	pub(crate) bindings: Vec<wgpu::BindGroup>,
 }
 
 impl Painter {
@@ -75,12 +78,14 @@ impl Painter {
 			forms: Vec::with_capacity(8),
 			shades: Vec::with_capacity(8),
 			textures: Vec::with_capacity(8),
+			sketches: Vec::with_capacity(8),
+			bindings: Vec::with_capacity(8),
 		}
 	}
 
 	// form helpers
 
-	pub fn form_update<T>(&mut self, form: &Form, props: &FormProps<T>)
+	pub fn form_update<T>(&mut self, form: &Form, props: &FormData<T>)
 	where
 		T: bytemuck::Pod,
 	{
@@ -91,56 +96,71 @@ impl Painter {
 		form.update_buffer(self, buffers);
 	}
 
-	pub fn form_create_with_size(&mut self, size: u64) -> Form {
-		Form::new_with_size(self, size)
+	pub fn form_create_with_size(&mut self, size: u64, props: FormProps) -> Form {
+		Form::new_with_size(self, size, props)
 	}
 
-	pub fn form_create<T>(&mut self, props: &FormProps<T>) -> Form
+	pub fn form_create<T>(&mut self, data: &FormData<T>, props: FormProps) -> Form
 	where
 		T: bytemuck::Pod,
 	{
-		Form::new(self, props)
+		Form::new(self, data, props)
 	}
 
-	pub fn from_from_buffer(&mut self, buffer: RenderableBuffer) -> Form {
-		Form::from_buffer(self, buffer)
+	pub fn from_from_buffer(&mut self, buffer: RenderableBuffer, props: FormProps) -> Form {
+		Form::from_buffer(self, buffer, props)
 	}
 
 	// shade helpers
 
-	pub fn shade_create<Format: Into<FormFormat>>(&mut self, props: ShadeProps<Format>) -> Shade {
+	pub fn shade_create<Format: Into<AttribsFormat>>(
+		&mut self,
+		props: ShadeProps<Format>,
+	) -> Shade {
 		Shade::new(self, props)
 	}
 
 	// uniform utile
 
-	pub fn uniform_create_buffered<T>(&self, layout: &wgpu::BindGroupLayout, data: T) -> Uniform<T>
+	pub fn uniform_create_buffered<T>(
+		&mut self,
+		layout: &wgpu::BindGroupLayout,
+		data: T,
+	) -> UniformBuffer<T>
 	where
 		T: bytemuck::Pod,
 	{
-		Uniform::new_buffered(self, layout, data)
+		UniformBuffer::new_buffered(self, layout, data)
 	}
 
-	pub fn uniform_update_buffered<T>(&self, uniform: &Uniform<T>, data: T)
+	pub fn uniform_update_buffered<T>(&self, uniform: &UniformBuffer<T>, data: T)
 	where
 		T: bytemuck::Pod,
 	{
 		uniform.update_buffered(self, data);
 	}
 
-	pub fn uniform_create_mat4(&self, layout: &wgpu::BindGroupLayout, mat: Mat4) -> Uniform<Mat4> {
+	pub fn uniform_create_mat4(
+		&mut self,
+		layout: &wgpu::BindGroupLayout,
+		mat: Mat4,
+	) -> UniformBuffer<Mat4> {
 		self.uniform_create_buffered(layout, mat)
 	}
 
-	pub fn uniform_update_mat4(&self, uniform: &Uniform<Mat4>, mat: Mat4) {
+	pub fn uniform_update_mat4(&self, uniform: &UniformBuffer<Mat4>, mat: Mat4) {
 		self.uniform_update_buffered(uniform, mat);
 	}
 
-	pub fn uniform_create_mat3(&self, layout: &wgpu::BindGroupLayout, mat: Mat3) -> Uniform<Mat3U> {
-		Uniform::new_mat3(self, layout, mat)
+	pub fn uniform_create_mat3(
+		&mut self,
+		layout: &wgpu::BindGroupLayout,
+		mat: Mat3,
+	) -> UniformBuffer<Mat3U> {
+		UniformBuffer::new_mat3(self, layout, mat)
 	}
 
-	pub fn uniform_update_mat3(&self, uniform: &Uniform<Mat3U>, mat: Mat3) {
+	pub fn uniform_update_mat3(&self, uniform: &UniformBuffer<Mat3U>, mat: Mat3) {
 		uniform.update_mat3(self, mat);
 	}
 
@@ -168,8 +188,8 @@ impl Painter {
 		Texture::get_2d_uniform_layout(self, visibility)
 	}
 
-	pub fn texture_get_uniform(
-		&self,
+	pub fn uniform_create_tex(
+		&mut self,
 		layout: &BindGroupLayout,
 		texture: Texture,
 		sampler: &wgpu::Sampler,
@@ -179,6 +199,12 @@ impl Painter {
 
 	pub fn create_sampler(&self, props: &SamplerProps) -> wgpu::Sampler {
 		Texture::create_sampler(self, props)
+	}
+
+	// sketch utils
+
+	pub fn sketch_create(&mut self, form: Form, shade: Shade, props: &SketchProps) -> Sketch {
+		Sketch::new(self, form, shade, props)
 	}
 
 	// general utils
@@ -197,14 +223,9 @@ impl Painter {
 		self.window.inner_size()
 	}
 
-	pub fn draw<'a>(
-		&self,
-		form: &Form,
-		shade: &Shade,
-		uniforms: HashMap<u32, &'a wgpu::BindGroup>,
-	) -> std::result::Result<(), wgpu::SurfaceError> {
-		let f = &self.forms[form.0];
-		let s = &self.shades[shade.0];
+	pub fn draw<'a>(&self, sketch: &Sketch) -> std::result::Result<(), wgpu::SurfaceError> {
+		let sketch = &self.sketches[sketch.0];
+		let form = &self.forms[sketch.form.0];
 
 		let frame = self.surface.get_current_texture()?;
 
@@ -215,6 +236,7 @@ impl Painter {
 		let mut encoder = self
 			.device
 			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
 		{
 			let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
 				label: None,
@@ -230,16 +252,17 @@ impl Painter {
 				timestamp_writes: None,
 				occlusion_query_set: None,
 			});
-			rpass.set_pipeline(&s.pipeline);
-			for (index, bind_group) in uniforms {
-				rpass.set_bind_group(index, bind_group, &[]);
+			rpass.set_pipeline(&sketch.pipeline);
+			for (index, uniform) in &sketch.uniforms {
+				let binding = &self.bindings[uniform.0];
+				rpass.set_bind_group(*index, binding, &[]);
 			}
-			rpass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
-			if let Some(index_buffer) = &f.index_buffer {
+			rpass.set_vertex_buffer(0, form.vertex_buffer.slice(..));
+			if let Some(index_buffer) = &form.index_buffer {
 				rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-				rpass.draw_indexed(0..f.index_count, 0, 0..1);
+				rpass.draw_indexed(0..form.index_count, 0, 0..1);
 			} else {
-				rpass.draw(0..f.vertex_count, 0..1);
+				rpass.draw(0..form.vertex_count, 0..1);
 			}
 		}
 

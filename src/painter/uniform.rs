@@ -2,8 +2,11 @@ use glam::{Mat3, Mat3A};
 
 use super::{painter::get_padded_size, Painter};
 
-pub struct Uniform<T> {
-	pub binding: wgpu::BindGroup,
+#[derive(Debug, Clone, Copy)]
+pub struct Uniform(pub(crate) usize);
+
+pub struct UniformBuffer<T> {
+	pub uniform: Uniform,
 	buffer: wgpu::Buffer,
 	t: std::marker::PhantomData<T>,
 }
@@ -29,11 +32,11 @@ pub fn get_uniform_layout_buffered(
 		})
 }
 
-impl<T> Uniform<T>
+impl<T> UniformBuffer<T>
 where
 	T: bytemuck::Pod,
 {
-	pub fn new_buffered(painter: &Painter, layout: &wgpu::BindGroupLayout, data: T) -> Self {
+	pub fn new_buffered(painter: &mut Painter, layout: &wgpu::BindGroupLayout, data: T) -> Self {
 		let buffer = painter.device.create_buffer(&wgpu::BufferDescriptor {
 			label: None,
 			usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
@@ -52,9 +55,13 @@ where
 				label: None,
 			});
 
-		let uniform = Uniform {
+		painter.bindings.push(bind_group);
+
+		let binding = Uniform(painter.bindings.len() - 1);
+
+		let uniform = UniformBuffer {
 			buffer,
-			binding: bind_group,
+			uniform: binding,
 			t: std::marker::PhantomData,
 		};
 
@@ -75,9 +82,9 @@ where
 pub struct Mat3U(Mat3A);
 unsafe impl bytemuck::Pod for Mat3U {}
 
-impl Uniform<Mat3U> {
-	pub fn new_mat3(painter: &Painter, layout: &wgpu::BindGroupLayout, data: Mat3) -> Self {
-		Uniform::new_buffered(painter, layout, Mat3U(Mat3A::from(data)))
+impl UniformBuffer<Mat3U> {
+	pub fn new_mat3(painter: &mut Painter, layout: &wgpu::BindGroupLayout, data: Mat3) -> Self {
+		UniformBuffer::new_buffered(painter, layout, Mat3U(Mat3A::from(data)))
 	}
 
 	pub fn update_mat3(&self, painter: &Painter, data: Mat3) {

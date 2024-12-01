@@ -2,14 +2,29 @@ use crate::rendering::RenderableBuffer;
 
 use super::{painter::get_padded_size, Painter};
 
+pub struct FormProps {
+	pub topology: wgpu::PrimitiveTopology,
+	pub front_face: wgpu::FrontFace,
+}
+
+impl Default for FormProps {
+	fn default() -> Self {
+		FormProps {
+			topology: wgpu::PrimitiveTopology::TriangleList,
+			front_face: wgpu::FrontFace::Ccw,
+		}
+	}
+}
+
 pub(crate) struct FormStorage {
 	pub vertex_buffer: wgpu::Buffer,
 	pub index_buffer: Option<wgpu::Buffer>,
 	pub vertex_count: u32,
 	pub index_count: u32,
+	pub props: FormProps,
 }
 
-pub struct FormProps<'a, T>
+pub struct FormData<'a, T>
 where
 	T: bytemuck::Pod + bytemuck::Zeroable,
 {
@@ -21,21 +36,21 @@ where
 pub struct Form(pub(crate) usize);
 
 impl Form {
-	pub fn update<T>(&self, painter: &mut Painter, props: &FormProps<T>)
+	pub fn update<T>(&self, painter: &mut Painter, data: &FormData<T>)
 	where
 		T: bytemuck::Pod + bytemuck::Zeroable,
 	{
 		let f = &mut painter.forms[self.0];
 
-		f.vertex_count = props.vertex_buffer.len() as u32;
+		f.vertex_count = data.vertex_buffer.len() as u32;
 
 		painter.queue.write_buffer(
 			&f.vertex_buffer,
 			0,
-			bytemuck::cast_slice(props.vertex_buffer),
+			bytemuck::cast_slice(data.vertex_buffer),
 		);
 
-		if let Some(index_data) = props.index_buffer {
+		if let Some(index_data) = data.index_buffer {
 			f.index_count = index_data.len() as u32;
 
 			let index_buffer = f.index_buffer.get_or_insert(painter.device.create_buffer(
@@ -52,7 +67,7 @@ impl Form {
 			painter.queue.write_buffer(
 				index_buffer,
 				0,
-				bytemuck::cast_slice(props.index_buffer.unwrap()),
+				bytemuck::cast_slice(data.index_buffer.unwrap()),
 			);
 		}
 	}
@@ -84,7 +99,7 @@ impl Form {
 		}
 	}
 
-	pub fn new_with_size(painter: &mut Painter, size: u64) -> Self {
+	pub fn new_with_size(painter: &mut Painter, size: u64, props: FormProps) -> Self {
 		let vertex_buffer = painter.device.create_buffer(&wgpu::BufferDescriptor {
 			label: None,
 			usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
@@ -94,9 +109,10 @@ impl Form {
 
 		let f = FormStorage {
 			vertex_buffer,
+			vertex_count: 0,
 			index_buffer: None,
 			index_count: 0,
-			vertex_count: 0,
+			props,
 		};
 
 		let i = painter.forms.len();
@@ -105,24 +121,25 @@ impl Form {
 		return Form(i);
 	}
 
-	pub fn new<T>(painter: &mut Painter, props: &FormProps<T>) -> Self
+	pub fn new<T>(painter: &mut Painter, data: &FormData<T>, props: FormProps) -> Self
 	where
 		T: bytemuck::Pod,
 	{
 		let form = Form::new_with_size(
 			painter,
-			props.vertex_buffer.len() as u64 * std::mem::size_of::<T>() as u64,
+			data.vertex_buffer.len() as u64 * std::mem::size_of::<T>() as u64,
+			props,
 		);
 
-		form.update(painter, props);
+		form.update(painter, data);
 
 		form
 	}
 
-	pub fn from_buffer(painter: &mut Painter, buffers: RenderableBuffer) -> Self {
-		let form = Form::new_with_size(painter, buffers.vertex_buffer.len() as u64);
+	pub fn from_buffer(painter: &mut Painter, buffer: RenderableBuffer, props: FormProps) -> Self {
+		let form = Form::new_with_size(painter, buffer.vertex_buffer.len() as u64, props);
 
-		form.update_buffer(painter, buffers);
+		form.update_buffer(painter, buffer);
 
 		form
 	}
