@@ -1,27 +1,14 @@
 use super::{
 	form::{Form, FormProps, FormStorage},
 	shade::{FormFormat, Shade, ShadeProps, ShadeStorage},
-	uniform::{get_uniform_layout_buffered, Uniform},
+	texture::{SamplerProps, Texture, Texture2DProps, TextureStorage, UniformTex2D},
+	uniform::{get_uniform_layout_buffered, Mat3U, Uniform},
 };
-use crate::{rendering::RenderableBuffer, utils::default};
-use glam::{Mat3, Mat3A, Mat4};
+use crate::rendering::RenderableBuffer;
+use glam::{Mat3, Mat4};
 use std::{collections::HashMap, sync::Arc};
-use wgpu::{Adapter, Device, Queue, Surface, SurfaceConfiguration};
+use wgpu::{Adapter, BindGroupLayout, Device, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
-
-pub struct Texture2DProps {
-	pub width: u32,
-	pub height: u32,
-	pub format: wgpu::TextureFormat,
-	pub usage: wgpu::TextureUsages,
-}
-
-pub struct SamplerProps {
-	pub address_mode_u: wgpu::AddressMode,
-	pub address_mode_v: wgpu::AddressMode,
-	pub mag_filter: wgpu::FilterMode,
-	pub min_filter: wgpu::FilterMode,
-}
 
 pub struct Painter {
 	pub surface: Surface<'static>,
@@ -32,12 +19,8 @@ pub struct Painter {
 	window: Arc<Window>,
 	pub(crate) forms: Vec<FormStorage>,
 	pub(crate) shades: Vec<ShadeStorage>,
+	pub(crate) textures: Vec<TextureStorage>,
 }
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy, bytemuck::Zeroable)]
-pub struct Mat3U(Mat3A);
-unsafe impl bytemuck::Pod for Mat3U {}
 
 impl Painter {
 	pub async fn new(window: Arc<Window>) -> Self {
@@ -91,81 +74,116 @@ impl Painter {
 			window: window.clone(),
 			forms: Vec::with_capacity(8),
 			shades: Vec::with_capacity(8),
+			textures: Vec::with_capacity(8),
 		}
 	}
 
 	// form helpers
 
-	pub fn update_form<T>(&mut self, form: &Form, props: &FormProps<T>)
+	pub fn form_update<T>(&mut self, form: &Form, props: &FormProps<T>)
 	where
 		T: bytemuck::Pod,
 	{
-		form.update_form(self, props);
+		form.update(self, props);
 	}
 
-	pub fn update_form_buffer(&mut self, form: &Form, buffers: RenderableBuffer) {
-		form.update_form_buffer(self, buffers);
+	pub fn form_update_buffer(&mut self, form: &Form, buffers: RenderableBuffer) {
+		form.update_buffer(self, buffers);
 	}
 
-	pub fn create_form_with_size(&mut self, size: u64) -> Form {
+	pub fn form_create_with_size(&mut self, size: u64) -> Form {
 		Form::new_with_size(self, size)
 	}
 
-	pub fn create_form<T>(&mut self, props: &FormProps<T>) -> Form
+	pub fn form_create<T>(&mut self, props: &FormProps<T>) -> Form
 	where
 		T: bytemuck::Pod,
 	{
 		Form::new(self, props)
 	}
 
+	pub fn from_from_buffer(&mut self, buffer: RenderableBuffer) -> Form {
+		Form::from_buffer(self, buffer)
+	}
+
 	// shade helpers
 
-	pub fn create_shade<Format: Into<FormFormat>>(&mut self, props: ShadeProps<Format>) -> Shade {
+	pub fn shade_create<Format: Into<FormFormat>>(&mut self, props: ShadeProps<Format>) -> Shade {
 		Shade::new(self, props)
 	}
 
 	// uniform utile
 
-	pub fn create_uniform_buffered<T>(&self, layout: &wgpu::BindGroupLayout, data: T) -> Uniform<T>
+	pub fn uniform_create_buffered<T>(&self, layout: &wgpu::BindGroupLayout, data: T) -> Uniform<T>
 	where
 		T: bytemuck::Pod,
 	{
 		Uniform::new_buffered(self, layout, data)
 	}
 
-	pub fn update_uniform_buffered<T>(&self, uniform: &Uniform<T>, data: T)
+	pub fn uniform_update_buffered<T>(&self, uniform: &Uniform<T>, data: T)
 	where
 		T: bytemuck::Pod,
 	{
 		uniform.update_buffered(self, data);
 	}
 
-	pub fn create_uniform_mat4(&self, layout: &wgpu::BindGroupLayout, mat: Mat4) -> Uniform<Mat4> {
-		self.create_uniform_buffered(layout, mat)
+	pub fn uniform_create_mat4(&self, layout: &wgpu::BindGroupLayout, mat: Mat4) -> Uniform<Mat4> {
+		self.uniform_create_buffered(layout, mat)
 	}
 
-	pub fn update_uniform_mat4(&self, uniform: &Uniform<Mat4>, mat: Mat4) {
-		self.update_uniform_buffered(uniform, mat);
+	pub fn uniform_update_mat4(&self, uniform: &Uniform<Mat4>, mat: Mat4) {
+		self.uniform_update_buffered(uniform, mat);
 	}
 
-	pub fn create_uniform_mat3(&self, layout: &wgpu::BindGroupLayout, mat: Mat3) -> Uniform<Mat3U> {
-		self.create_uniform_buffered(layout, Mat3U(Mat3A::from(mat)))
+	pub fn uniform_create_mat3(&self, layout: &wgpu::BindGroupLayout, mat: Mat3) -> Uniform<Mat3U> {
+		Uniform::new_mat3(self, layout, mat)
 	}
 
-	pub fn update_uniform_mat3(&self, uniform: &Uniform<Mat3U>, mat: Mat3) {
-		self.update_uniform_buffered(uniform, Mat3U(Mat3A::from(mat)));
+	pub fn uniform_update_mat3(&self, uniform: &Uniform<Mat3U>, mat: Mat3) {
+		uniform.update_mat3(self, mat);
 	}
 
-	pub fn get_uniform_layout_buffered(
+	pub fn uniform_get_layout_buffered(
 		&self,
 		visibility: wgpu::ShaderStages,
 	) -> wgpu::BindGroupLayout {
 		get_uniform_layout_buffered(self, visibility)
 	}
 
+	// texture helpers
+
+	pub fn texture_2d_fill(&self, texture: Texture, data: &[u8]) {
+		texture.fill_2d(self, data);
+	}
+
+	pub fn texture_2d_create(&mut self, props: &Texture2DProps) -> Texture {
+		Texture::create_2d(self, props)
+	}
+
+	pub fn texture_2d_get_uniform_layout(
+		&self,
+		visibility: wgpu::ShaderStages,
+	) -> wgpu::BindGroupLayout {
+		Texture::get_2d_uniform_layout(self, visibility)
+	}
+
+	pub fn texture_get_uniform(
+		&self,
+		layout: &BindGroupLayout,
+		texture: Texture,
+		sampler: &wgpu::Sampler,
+	) -> UniformTex2D {
+		texture.get_uniform(self, layout, sampler)
+	}
+
+	pub fn create_sampler(&self, props: &SamplerProps) -> wgpu::Sampler {
+		Texture::create_sampler(self, props)
+	}
+
 	// general utils
 
-	pub fn redraw(&self) {
+	pub fn request_redraw(&self) {
 		self.window.request_redraw();
 	}
 
@@ -177,114 +195,6 @@ impl Painter {
 
 	pub fn canvas_size(&self) -> winit::dpi::PhysicalSize<u32> {
 		self.window.inner_size()
-	}
-
-	pub fn fill_texture_2d(&self, texture: &wgpu::Texture, data: &[u8]) {
-		let size = texture.size();
-		self.queue.write_texture(
-			// Tells wgpu where to copy the pixel data
-			wgpu::ImageCopyTexture {
-				texture: texture,
-				mip_level: 0,
-				origin: wgpu::Origin3d::ZERO,
-				aspect: wgpu::TextureAspect::All,
-			},
-			// The actual pixel data
-			data,
-			// The layout of the texture
-			wgpu::ImageDataLayout {
-				offset: 0,
-				bytes_per_row: Some(4 * size.width),
-				rows_per_image: Some(size.height),
-			},
-			size,
-		);
-	}
-
-	pub fn create_texture_2d(&mut self, props: &Texture2DProps) -> wgpu::Texture {
-		let texture_size = wgpu::Extent3d {
-			width: props.width,
-			height: props.height,
-			depth_or_array_layers: 1,
-		};
-
-		self.device.create_texture(&wgpu::TextureDescriptor {
-			size: texture_size,
-			mip_level_count: 1,
-			sample_count: 1,
-			dimension: wgpu::TextureDimension::D2,
-			format: props.format,
-			usage: props.usage,
-			label: None,
-			// The base format (Rgba8UnormSrgb) is
-			// always supported. Note that using a different
-			// texture format is not supported on the WebGL2
-			// backend.
-			view_formats: &[],
-		})
-	}
-
-	pub fn get_texture_2d_uniform(
-		&self,
-		texture: &wgpu::Texture,
-		sampler: &wgpu::Sampler,
-	) -> wgpu::BindGroup {
-		let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-		self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-			layout: &self.get_texture_2d_uniform_layout(),
-			entries: &[
-				wgpu::BindGroupEntry {
-					binding: 0,
-					resource: wgpu::BindingResource::TextureView(&view),
-				},
-				wgpu::BindGroupEntry {
-					binding: 1,
-					resource: wgpu::BindingResource::Sampler(sampler),
-				},
-			],
-			label: None,
-		})
-	}
-
-	pub fn get_texture_2d_uniform_layout(&self) -> wgpu::BindGroupLayout {
-		self.device
-			.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-				entries: &[
-					wgpu::BindGroupLayoutEntry {
-						binding: 0,
-						visibility: wgpu::ShaderStages::FRAGMENT,
-						ty: wgpu::BindingType::Texture {
-							multisampled: false,
-							view_dimension: wgpu::TextureViewDimension::D2,
-							sample_type: wgpu::TextureSampleType::Float { filterable: true },
-						},
-						count: None,
-					},
-					wgpu::BindGroupLayoutEntry {
-						binding: 1,
-						visibility: wgpu::ShaderStages::FRAGMENT,
-						// This should match the filterable field of the
-						// corresponding Texture entry above.
-						ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-						count: None,
-					},
-				],
-				label: None,
-			})
-	}
-
-	pub fn create_sampler(&self, props: &SamplerProps) -> wgpu::Sampler {
-		self.device.create_sampler(&wgpu::SamplerDescriptor {
-			address_mode_u: props.address_mode_u,
-			address_mode_v: props.address_mode_v,
-			address_mode_w: wgpu::AddressMode::ClampToEdge,
-			mag_filter: props.mag_filter,
-			min_filter: props.min_filter,
-			mipmap_filter: wgpu::FilterMode::Nearest,
-			compare: None,
-			..default()
-		})
 	}
 
 	pub fn draw<'a>(

@@ -4,6 +4,7 @@ use super::Painter;
 
 pub(crate) struct ShadeStorage {
 	pub pipeline: wgpu::RenderPipeline,
+	pub form_format: FormFormat,
 }
 
 pub struct ShadeProps<'a, Format: Into<FormFormat>> {
@@ -117,11 +118,18 @@ impl Shade {
 				cache: None,
 			});
 
-		let s = ShadeStorage { pipeline };
+		let s = ShadeStorage {
+			pipeline,
+			form_format: format,
+		};
 
 		let i = painter.shades.len();
 		painter.shades.push(s);
 
 		Shade(i)
+	}
+
+	pub fn form_stride(&self, painter: &Painter) -> u64 {
+		painter.shades[self.0].form_format.stride
 	}
 }

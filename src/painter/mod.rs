@@ -13,6 +13,7 @@ pub use painter::Painter;
 pub mod form;
 pub mod shade;
 pub mod sketch;
+pub mod texture;
 pub mod uniform;
 
 pub trait CanvasApp<UserEvent> {
@@ -185,7 +186,7 @@ where
 	fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: CustomEvent<UserEvent>) {
 		match event {
 			CustomEvent::StateInitializationEvent(mut painter) => {
-				painter.redraw();
+				painter.request_redraw();
 				self.app.init(&mut painter);
 				self.state = WindowState::Initialized(painter);
 			}
@@ -210,7 +211,7 @@ where
 						// Reconfigure the surface with the new size
 						painter.resize(new_size);
 						// On macos the window needs to be redrawn manually after resizing
-						painter.redraw();
+						painter.request_redraw();
 					}
 
 					WindowEvent::RedrawRequested => {

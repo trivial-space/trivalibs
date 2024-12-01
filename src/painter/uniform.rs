@@ -1,3 +1,5 @@
+use glam::{Mat3, Mat3A};
+
 use super::{painter::get_padded_size, Painter};
 
 pub struct Uniform<T> {
@@ -65,5 +67,20 @@ where
 		painter
 			.queue
 			.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[data]));
+	}
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Zeroable)]
+pub struct Mat3U(Mat3A);
+unsafe impl bytemuck::Pod for Mat3U {}
+
+impl Uniform<Mat3U> {
+	pub fn new_mat3(painter: &Painter, layout: &wgpu::BindGroupLayout, data: Mat3) -> Self {
+		Uniform::new_buffered(painter, layout, Mat3U(Mat3A::from(data)))
+	}
+
+	pub fn update_mat3(&self, painter: &Painter, data: Mat3) {
+		self.update_buffered(painter, Mat3U(Mat3A::from(data)));
 	}
 }

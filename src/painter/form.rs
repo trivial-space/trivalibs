@@ -21,7 +21,7 @@ where
 pub struct Form(pub(crate) usize);
 
 impl Form {
-	pub fn update_form<T>(&self, painter: &mut Painter, props: &FormProps<T>)
+	pub fn update<T>(&self, painter: &mut Painter, props: &FormProps<T>)
 	where
 		T: bytemuck::Pod + bytemuck::Zeroable,
 	{
@@ -57,7 +57,7 @@ impl Form {
 		}
 	}
 
-	pub fn update_form_buffer(&self, painter: &mut Painter, buffers: RenderableBuffer) {
+	pub fn update_buffer(&self, painter: &mut Painter, buffers: RenderableBuffer) {
 		let f = &mut painter.forms[self.0];
 
 		f.vertex_count = buffers.vertex_count;
@@ -109,11 +109,20 @@ impl Form {
 	where
 		T: bytemuck::Pod,
 	{
-		let form = painter.create_form_with_size(
+		let form = Form::new_with_size(
+			painter,
 			props.vertex_buffer.len() as u64 * std::mem::size_of::<T>() as u64,
 		);
 
-		painter.update_form(&form, props);
+		form.update(painter, props);
+
+		form
+	}
+
+	pub fn from_buffer(painter: &mut Painter, buffers: RenderableBuffer) -> Self {
+		let form = Form::new_with_size(painter, buffers.vertex_buffer.len() as u64);
+
+		form.update_buffer(painter, buffers);
 
 		form
 	}
