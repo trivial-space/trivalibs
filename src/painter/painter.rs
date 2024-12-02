@@ -253,9 +253,10 @@ impl Painter {
 				occlusion_query_set: None,
 			});
 
-			for uniforms in &sketch.uniforms {
-				rpass.set_pipeline(&sketch.pipeline);
-				for (index, uniform) in uniforms {
+			rpass.set_pipeline(&sketch.pipeline);
+
+			let draw = |rpass: &mut wgpu::RenderPass| {
+				for (index, uniform) in &sketch.uniforms {
 					let binding = &self.bindings[uniform.0];
 					rpass.set_bind_group(*index, binding, &[]);
 				}
@@ -266,6 +267,18 @@ impl Painter {
 				} else {
 					rpass.draw(0..form.vertex_count, 0..1);
 				}
+			};
+
+			if sketch.instances.len() > 0 {
+				for uniforms in &sketch.instances {
+					for (index, uniform) in uniforms {
+						let binding = &self.bindings[uniform.0];
+						rpass.set_bind_group(*index, binding, &[]);
+					}
+					draw(&mut rpass);
+				}
+			} else {
+				draw(&mut rpass);
 			}
 		}
 

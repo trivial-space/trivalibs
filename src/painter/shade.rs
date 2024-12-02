@@ -65,6 +65,9 @@ impl Shade {
 		painter: &mut Painter,
 		props: ShadeProps<Format>,
 	) -> Self {
+		let vertex_shader = painter.device.create_shader_module(props.vertex_shader);
+		let fragment_shader = painter.device.create_shader_module(props.fragment_shader);
+
 		let pipeline_layout =
 			painter
 				.device
@@ -75,9 +78,6 @@ impl Shade {
 				});
 
 		let format = props.vertex_format.into();
-
-		let vertex_shader = painter.device.create_shader_module(props.vertex_shader);
-		let fragment_shader = painter.device.create_shader_module(props.fragment_shader);
 
 		let s = ShadeStorage {
 			vertex_shader,

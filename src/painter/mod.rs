@@ -19,7 +19,7 @@ pub mod uniform;
 
 pub trait CanvasApp<RenderState, UserEvent> {
 	fn init(&mut self, painter: &mut Painter) -> RenderState;
-	fn resize(&mut self, painter: &Painter);
+	fn resize(&mut self, painter: &Painter, render_state: &mut RenderState);
 	fn update(&mut self, painter: &mut Painter, render_state: &mut RenderState, tpf: f32);
 	fn render(&self, painter: &Painter, render_state: &RenderState) -> Result<(), SurfaceError>;
 	fn window_event(&mut self, event: WindowEvent, painter: &Painter);
@@ -204,7 +204,8 @@ where
 			CustomEvent::StateInitializationEvent(mut painter) => {
 				painter.request_redraw();
 				self.render_state = Some(self.app.init(&mut painter));
-				self.app.resize(&painter);
+				self.app
+					.resize(&painter, self.render_state.as_mut().unwrap());
 				self.state = WindowState::Initialized(painter);
 			}
 			CustomEvent::UserEvent(user_event) => {
@@ -227,7 +228,8 @@ where
 					WindowEvent::Resized(new_size) => {
 						// Reconfigure the surface with the new size
 						painter.resize(new_size);
-						self.app.resize(painter);
+						self.app
+							.resize(painter, self.render_state.as_mut().unwrap());
 						// On macos the window needs to be redrawn manually after resizing
 						painter.request_redraw();
 						self.is_resizing = true;
@@ -252,7 +254,7 @@ where
 										width: painter.config.width,
 										height: painter.config.height,
 									});
-									self.app.resize(painter);
+									self.app.resize(painter, render_state);
 								}
 								// The system is out of memory, we should probably quit
 								Err(wgpu::SurfaceError::OutOfMemory) => {

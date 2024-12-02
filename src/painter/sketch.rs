@@ -5,9 +5,10 @@ use crate::utils::default;
 use super::{form::Form, shade::Shade, uniform::Uniform, Painter};
 
 pub(crate) struct SketchStorage {
+	pub uniforms: HashMap<u32, Uniform>,
+	pub instances: Vec<HashMap<u32, Uniform>>,
 	pub form: Form,
 	pub pipeline: wgpu::RenderPipeline,
-	pub uniforms: Vec<HashMap<u32, Uniform>>,
 }
 
 pub struct SketchProps {
@@ -80,16 +81,11 @@ impl Sketch {
 				cache: None,
 			});
 
-		let uniforms = if props.instances.len() > 0 {
-			props.instances.clone()
-		} else {
-			vec![props.uniforms.clone()]
-		};
-
 		let sketch = SketchStorage {
 			form,
 			pipeline,
-			uniforms,
+			uniforms: props.uniforms.clone(),
+			instances: props.instances.clone(),
 		};
 
 		painter.sketches.push(sketch);
