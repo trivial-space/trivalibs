@@ -17,9 +17,11 @@ pub mod sketch;
 pub mod texture;
 pub mod uniform;
 
-pub trait CanvasApp<UserEvent> {
-	fn init(&mut self, painter: &mut Painter);
-	fn render(&mut self, painter: &Painter, tpf: f32) -> Result<(), SurfaceError>;
+pub trait CanvasApp<RenderState, UserEvent> {
+	fn init(&mut self, painter: &mut Painter) -> RenderState;
+	fn resize(&mut self, painter: &Painter);
+	fn update(&mut self, painter: &mut Painter, render_state: &mut RenderState, tpf: f32);
+	fn render(&self, painter: &Painter, render_state: &RenderState) -> Result<(), SurfaceError>;
 	fn window_event(&mut self, event: WindowEvent, painter: &Painter);
 	fn device_event(&mut self, event: DeviceEvent, painter: &Painter);
 	fn user_event(&mut self, event: UserEvent, painter: &Painter);
@@ -36,14 +38,15 @@ pub enum CustomEvent<UserEvent> {
 	UserEvent(UserEvent),
 }
 
-pub struct CanvasAppRunner<UserEvent, App>
+pub struct CanvasAppRunner<RenderState, UserEvent, App>
 where
 	UserEvent: 'static,
-	App: CanvasApp<UserEvent>,
+	App: CanvasApp<RenderState, UserEvent>,
 {
 	state: WindowState,
 	event_loop_proxy: EventLoopProxy<CustomEvent<UserEvent>>,
 	app: App,
+	render_state: Option<RenderState>,
 	is_running: bool,
 	is_resizing: bool,
 	now: Instant,
@@ -66,19 +69,19 @@ impl<UserEvent> CanvasHandle<UserEvent> {
 	}
 }
 
-pub struct CanvasAppStarter<UserEvent, App>
+pub struct CanvasAppStarter<RenderState, UserEvent, App>
 where
 	UserEvent: 'static,
-	App: CanvasApp<UserEvent>,
+	App: CanvasApp<RenderState, UserEvent>,
 {
-	app: CanvasAppRunner<UserEvent, App>,
+	app: CanvasAppRunner<RenderState, UserEvent, App>,
 	event_loop: EventLoop<CustomEvent<UserEvent>>,
 }
 
-impl<UserEvent, App> CanvasAppStarter<UserEvent, App>
+impl<RenderState, UserEvent, App> CanvasAppStarter<RenderState, UserEvent, App>
 where
 	UserEvent: std::marker::Send,
-	App: CanvasApp<UserEvent> + std::marker::Send + 'static,
+	App: CanvasApp<RenderState, UserEvent> + std::marker::Send + 'static,
 {
 	pub fn start(self) {
 		let event_loop = self.event_loop;
@@ -93,9 +96,13 @@ where
 	}
 }
 
-pub fn create_canvas_app<UserEvent, App: CanvasApp<UserEvent> + 'static>(
+pub fn create_canvas_app<
+	RenderState,
+	UserEvent,
+	App: CanvasApp<RenderState, UserEvent> + 'static,
+>(
 	app: App,
-) -> CanvasAppStarter<UserEvent, App> {
+) -> CanvasAppStarter<RenderState, UserEvent, App> {
 	#[cfg(not(target_arch = "wasm32"))]
 	env_logger::init();
 
@@ -113,6 +120,7 @@ pub fn create_canvas_app<UserEvent, App: CanvasApp<UserEvent> + 'static>(
 
 	let runner = CanvasAppRunner {
 		state: WindowState::Uninitialized,
+		render_state: None,
 		event_loop_proxy,
 		app,
 		is_running: true,
@@ -126,9 +134,10 @@ pub fn create_canvas_app<UserEvent, App: CanvasApp<UserEvent> + 'static>(
 	};
 }
 
-impl<UserEvent, App> ApplicationHandler<CustomEvent<UserEvent>> for CanvasAppRunner<UserEvent, App>
+impl<RenderState, UserEvent, App> ApplicationHandler<CustomEvent<UserEvent>>
+	for CanvasAppRunner<RenderState, UserEvent, App>
 where
-	App: CanvasApp<UserEvent>,
+	App: CanvasApp<RenderState, UserEvent>,
 {
 	// This is a common indicator that you can create a window.
 	fn resumed(&mut self, event_loop: &ActiveEventLoop) {
@@ -194,7 +203,8 @@ where
 		match event {
 			CustomEvent::StateInitializationEvent(mut painter) => {
 				painter.request_redraw();
-				self.app.init(&mut painter);
+				self.render_state = Some(self.app.init(&mut painter));
+				self.app.resize(&painter);
 				self.state = WindowState::Initialized(painter);
 			}
 			CustomEvent::UserEvent(user_event) => {
@@ -217,6 +227,7 @@ where
 					WindowEvent::Resized(new_size) => {
 						// Reconfigure the surface with the new size
 						painter.resize(new_size);
+						self.app.resize(painter);
 						// On macos the window needs to be redrawn manually after resizing
 						painter.request_redraw();
 						self.is_resizing = true;
@@ -229,7 +240,11 @@ where
 
 							let elapsed = if self.is_running { elapsed } else { 0.0 };
 
-							match self.app.render(painter, elapsed) {
+							let render_state = &mut self.render_state.as_mut().unwrap();
+
+							self.app.update(painter, render_state, elapsed);
+
+							match self.app.render(painter, render_state) {
 								Ok(_) => {}
 								// Reconfigure the surface if it's lost or outdated
 								Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
@@ -237,6 +252,7 @@ where
 										width: painter.config.width,
 										height: painter.config.height,
 									});
+									self.app.resize(painter);
 								}
 								// The system is out of memory, we should probably quit
 								Err(wgpu::SurfaceError::OutOfMemory) => {

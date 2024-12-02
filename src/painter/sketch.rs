@@ -7,11 +7,12 @@ use super::{form::Form, shade::Shade, uniform::Uniform, Painter};
 pub(crate) struct SketchStorage {
 	pub form: Form,
 	pub pipeline: wgpu::RenderPipeline,
-	pub uniforms: HashMap<u32, Uniform>,
+	pub uniforms: Vec<HashMap<u32, Uniform>>,
 }
 
 pub struct SketchProps {
 	pub uniforms: HashMap<u32, Uniform>,
+	pub instances: Vec<HashMap<u32, Uniform>>,
 	pub cull_mode: Option<wgpu::Face>,
 	/// TODO: Implement antialiasing
 	pub antialias: bool,
@@ -21,6 +22,7 @@ impl Default for SketchProps {
 	fn default() -> Self {
 		SketchProps {
 			uniforms: HashMap::with_capacity(0),
+			instances: Vec::with_capacity(0),
 			cull_mode: Some(wgpu::Face::Back),
 			antialias: false,
 		}
@@ -34,6 +36,8 @@ impl Sketch {
 		let f = &painter.forms[form.0];
 		let s = &painter.shades[shade.0];
 
+		// TODO: Store pipelines per shade and props
+		// Sketches with the same configuration should share the same pipeline
 		let pipeline = painter
 			.device
 			.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -76,10 +80,16 @@ impl Sketch {
 				cache: None,
 			});
 
+		let uniforms = if props.instances.len() > 0 {
+			props.instances.clone()
+		} else {
+			vec![props.uniforms.clone()]
+		};
+
 		let sketch = SketchStorage {
 			form,
 			pipeline,
-			uniforms: props.uniforms.clone(),
+			uniforms,
 		};
 
 		painter.sketches.push(sketch);

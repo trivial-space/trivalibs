@@ -252,17 +252,20 @@ impl Painter {
 				timestamp_writes: None,
 				occlusion_query_set: None,
 			});
-			rpass.set_pipeline(&sketch.pipeline);
-			for (index, uniform) in &sketch.uniforms {
-				let binding = &self.bindings[uniform.0];
-				rpass.set_bind_group(*index, binding, &[]);
-			}
-			rpass.set_vertex_buffer(0, form.vertex_buffer.slice(..));
-			if let Some(index_buffer) = &form.index_buffer {
-				rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-				rpass.draw_indexed(0..form.index_count, 0, 0..1);
-			} else {
-				rpass.draw(0..form.vertex_count, 0..1);
+
+			for uniforms in &sketch.uniforms {
+				rpass.set_pipeline(&sketch.pipeline);
+				for (index, uniform) in uniforms {
+					let binding = &self.bindings[uniform.0];
+					rpass.set_bind_group(*index, binding, &[]);
+				}
+				rpass.set_vertex_buffer(0, form.vertex_buffer.slice(..));
+				if let Some(index_buffer) = &form.index_buffer {
+					rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+					rpass.draw_indexed(0..form.index_count, 0, 0..1);
+				} else {
+					rpass.draw(0..form.vertex_count, 0..1);
+				}
 			}
 		}
 
