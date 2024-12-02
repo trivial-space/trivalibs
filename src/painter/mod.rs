@@ -1,10 +1,11 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 use wgpu::SurfaceError;
 use winit::{
 	application::ApplicationHandler,
 	dpi::PhysicalSize,
-	event::{DeviceEvent, DeviceId, WindowEvent},
+	event::{DeviceEvent, DeviceId, ElementState, KeyEvent, WindowEvent},
 	event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
+	keyboard::{KeyCode, PhysicalKey},
 	window::{Window, WindowId},
 };
 
@@ -18,7 +19,7 @@ pub mod uniform;
 
 pub trait CanvasApp<UserEvent> {
 	fn init(&mut self, painter: &mut Painter);
-	fn render(&mut self, painter: &Painter) -> Result<(), SurfaceError>;
+	fn render(&mut self, painter: &Painter, tpf: f32) -> Result<(), SurfaceError>;
 	fn window_event(&mut self, event: WindowEvent, painter: &Painter);
 	fn device_event(&mut self, event: DeviceEvent, painter: &Painter);
 	fn user_event(&mut self, event: UserEvent, painter: &Painter);
@@ -43,6 +44,9 @@ where
 	state: WindowState,
 	event_loop_proxy: EventLoopProxy<CustomEvent<UserEvent>>,
 	app: App,
+	is_running: bool,
+	is_resizing: bool,
+	now: Instant,
 }
 
 pub struct CanvasHandle<UserEvent>
@@ -111,6 +115,9 @@ pub fn create_canvas_app<UserEvent, App: CanvasApp<UserEvent> + 'static>(
 		state: WindowState::Uninitialized,
 		event_loop_proxy,
 		app,
+		is_running: true,
+		is_resizing: false,
+		now: Instant::now(),
 	};
 
 	return CanvasAppStarter {
@@ -212,32 +219,59 @@ where
 						painter.resize(new_size);
 						// On macos the window needs to be redrawn manually after resizing
 						painter.request_redraw();
+						self.is_resizing = true;
 					}
 
 					WindowEvent::RedrawRequested => {
-						match self.app.render(painter) {
-							Ok(_) => {}
-							// Reconfigure the surface if it's lost or outdated
-							Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-								painter.resize(PhysicalSize {
-									width: painter.config.width,
-									height: painter.config.height,
-								});
-							}
-							// The system is out of memory, we should probably quit
-							Err(wgpu::SurfaceError::OutOfMemory) => {
-								log::error!("OutOfMemory");
-								event_loop.exit();
+						if self.is_running || self.is_resizing {
+							let elapsed = self.now.elapsed().as_secs_f32();
+							self.now = Instant::now();
+
+							let elapsed = if self.is_running { elapsed } else { 0.0 };
+
+							match self.app.render(painter, elapsed) {
+								Ok(_) => {}
+								// Reconfigure the surface if it's lost or outdated
+								Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+									painter.resize(PhysicalSize {
+										width: painter.config.width,
+										height: painter.config.height,
+									});
+								}
+								// The system is out of memory, we should probably quit
+								Err(wgpu::SurfaceError::OutOfMemory) => {
+									log::error!("OutOfMemory");
+									event_loop.exit();
+								}
+
+								// This happens when the a frame takes too long to present
+								Err(wgpu::SurfaceError::Timeout) => {
+									log::warn!("Surface timeout")
+								}
 							}
 
-							// This happens when the a frame takes too long to present
-							Err(wgpu::SurfaceError::Timeout) => {
-								log::warn!("Surface timeout")
-							}
+							self.is_resizing = false;
 						}
 					}
 
 					WindowEvent::CloseRequested => event_loop.exit(),
+
+					WindowEvent::KeyboardInput {
+						event:
+							KeyEvent {
+								state: ElementState::Released,
+								physical_key: PhysicalKey::Code(KeyCode::Space),
+								..
+							},
+						..
+					} => {
+						self.is_running = !self.is_running;
+						if self.is_running {
+							self.now = Instant::now();
+							painter.request_redraw();
+						}
+					}
+
 					rest => {
 						self.app.window_event(rest, painter);
 					}
