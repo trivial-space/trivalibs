@@ -5,7 +5,7 @@ pub fn rand_range(min: f32, max: f32) -> f32 {
 	min + (max - min) * random::<f32>()
 }
 
-pub fn rand_int(max: usize) -> usize {
+pub fn rand_usize(max: usize) -> usize {
 	(random::<f32>() * max as f32).floor() as usize
 }
 
@@ -19,6 +19,14 @@ pub fn rand_f64() -> f64 {
 
 pub fn rand_bool() -> bool {
 	random::<bool>()
+}
+
+pub fn rand_sign() -> f32 {
+	if rand_f32() < 0.5 {
+		1.0
+	} else {
+		-1.0
+	}
 }
 
 pub fn rand_vec3() -> Vec3 {
