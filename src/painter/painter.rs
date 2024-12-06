@@ -1,15 +1,19 @@
 use super::{
 	form::{Form, FormData, FormProps, FormStorage},
+	layer::{Layer, LayerProps, LayerStorage},
 	shade::{AttribsFormat, Shade, ShadeProps, ShadeStorage},
+	shaders::FULL_SCREEN_QUAD,
 	sketch::{Sketch, SketchProps, SketchStorage},
 	texture::{SamplerProps, Texture, Texture2DProps, TextureStorage, UniformTex2D},
 	uniform::{get_uniform_layout_buffered, Mat3U, UniformBuffer},
 };
-use crate::rendering::RenderableBuffer;
+use crate::{rendering::RenderableBuffer, utils::default};
 use glam::{Mat3, Mat4};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use wgpu::{Adapter, BindGroupLayout, Device, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
+
+pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static str = "full_screen_texture";
 
 pub struct Painter {
 	pub surface: Surface<'static>,
@@ -23,6 +27,8 @@ pub struct Painter {
 	pub(crate) textures: Vec<TextureStorage>,
 	pub(crate) sketches: Vec<SketchStorage>,
 	pub(crate) bindings: Vec<wgpu::BindGroup>,
+	pub(crate) pipelines: HashMap<String, wgpu::RenderPipeline>,
+	pub(crate) layers: Vec<LayerStorage>,
 }
 
 impl Painter {
@@ -68,7 +74,7 @@ impl Painter {
 
 		surface.configure(&device, &config);
 
-		Self {
+		let mut painter = Self {
 			surface,
 			config,
 			adapter,
@@ -79,8 +85,76 @@ impl Painter {
 			shades: Vec::with_capacity(8),
 			textures: Vec::with_capacity(8),
 			sketches: Vec::with_capacity(8),
+			layers: Vec::with_capacity(8),
 			bindings: Vec::with_capacity(8),
-		}
+			pipelines: HashMap::with_capacity(8),
+		};
+
+		let fullscreen_quad_shader =
+			painter
+				.device
+				.create_shader_module(wgpu::ShaderModuleDescriptor {
+					label: None,
+					source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(FULL_SCREEN_QUAD)),
+				});
+
+		let fullscreen_quad_pipeline_layout =
+			painter
+				.device
+				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+					label: None,
+					bind_group_layouts: &[
+						&painter.texture_2d_get_uniform_layout(wgpu::ShaderStages::FRAGMENT)
+					],
+					push_constant_ranges: &[],
+				});
+
+		let fullscreen_quad_pipeline =
+			painter
+				.device
+				.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+					label: None,
+					layout: Some(&fullscreen_quad_pipeline_layout),
+					vertex: wgpu::VertexState {
+						module: &fullscreen_quad_shader,
+						entry_point: Some("vs_main"),
+						buffers: &[],
+						compilation_options: default(),
+					},
+					fragment: Some(wgpu::FragmentState {
+						module: &fullscreen_quad_shader,
+						entry_point: Some("fs_main"),
+						targets: &[Some(wgpu::ColorTargetState {
+							format: painter.config.format,
+							blend: Some(wgpu::BlendState::REPLACE),
+							write_mask: wgpu::ColorWrites::ALL,
+						})],
+						compilation_options: default(),
+					}),
+					primitive: wgpu::PrimitiveState {
+						topology: wgpu::PrimitiveTopology::TriangleStrip,
+						strip_index_format: None,
+						front_face: wgpu::FrontFace::Cw,
+						cull_mode: None,
+						polygon_mode: wgpu::PolygonMode::Fill,
+						..default()
+					},
+					depth_stencil: None,
+					multisample: wgpu::MultisampleState {
+						count: 1,
+						mask: !0,
+						alpha_to_coverage_enabled: false,
+					},
+					multiview: None,
+					cache: None,
+				});
+
+		painter.pipelines.insert(
+			FULL_SCREEN_TEXTURE_PIPELINE.to_string(),
+			fullscreen_quad_pipeline,
+		);
+
+		painter
 	}
 
 	// form helpers
@@ -185,7 +259,7 @@ impl Painter {
 		&self,
 		visibility: wgpu::ShaderStages,
 	) -> wgpu::BindGroupLayout {
-		Texture::get_2d_uniform_layout(self, visibility)
+		UniformTex2D::get_layout(self, visibility)
 	}
 
 	pub fn uniform_create_tex(
@@ -194,7 +268,7 @@ impl Painter {
 		texture: Texture,
 		sampler: &wgpu::Sampler,
 	) -> UniformTex2D {
-		texture.get_uniform(self, layout, sampler)
+		UniformTex2D::new(self, layout, texture, sampler)
 	}
 
 	pub fn create_sampler(&self, props: &SamplerProps) -> wgpu::Sampler {
@@ -205,6 +279,12 @@ impl Painter {
 
 	pub fn sketch_create(&mut self, form: Form, shade: Shade, props: &SketchProps) -> Sketch {
 		Sketch::new(self, form, shade, props)
+	}
+
+	// layer utils
+
+	pub fn layer_create(&mut self, props: &LayerProps) -> Layer {
+		Layer::new(self, props)
 	}
 
 	// general utils
@@ -223,10 +303,39 @@ impl Painter {
 		self.window.inner_size()
 	}
 
-	pub fn draw<'a>(&self, sketch: &Sketch) -> std::result::Result<(), wgpu::SurfaceError> {
+	fn render_sketch<'a>(&'a self, rpass: &mut wgpu::RenderPass<'a>, sketch: &Sketch) {
 		let sketch = &self.sketches[sketch.0];
 		let form = &self.forms[sketch.form.0];
+		let pipeline = &self.pipelines[&sketch.pipeline_key];
 
+		rpass.set_pipeline(pipeline);
+
+		let draw = |rpass: &mut wgpu::RenderPass| {
+			for (index, uniform) in &sketch.uniforms {
+				rpass.set_bind_group(*index, &self.bindings[uniform.0], &[]);
+			}
+			rpass.set_vertex_buffer(0, form.vertex_buffer.slice(..));
+			if let Some(index_buffer) = &form.index_buffer {
+				rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+				rpass.draw_indexed(0..form.index_count, 0, 0..1);
+			} else {
+				rpass.draw(0..form.vertex_count, 0..1);
+			}
+		};
+
+		if sketch.instances.len() > 0 {
+			for uniforms in &sketch.instances {
+				for (index, uniform) in uniforms {
+					rpass.set_bind_group(*index, &self.bindings[uniform.0], &[]);
+				}
+				draw(rpass);
+			}
+		} else {
+			draw(rpass);
+		}
+	}
+
+	pub fn draw<'a>(&self, sketch: &Sketch) -> std::result::Result<(), wgpu::SurfaceError> {
 		let frame = self.surface.get_current_texture()?;
 
 		let view = frame
@@ -253,33 +362,102 @@ impl Painter {
 				occlusion_query_set: None,
 			});
 
-			rpass.set_pipeline(&sketch.pipeline);
+			self.render_sketch(&mut rpass, sketch);
+		}
 
-			let draw = |rpass: &mut wgpu::RenderPass| {
-				for (index, uniform) in &sketch.uniforms {
-					let binding = &self.bindings[uniform.0];
-					rpass.set_bind_group(*index, binding, &[]);
-				}
-				rpass.set_vertex_buffer(0, form.vertex_buffer.slice(..));
-				if let Some(index_buffer) = &form.index_buffer {
-					rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-					rpass.draw_indexed(0..form.index_count, 0, 0..1);
-				} else {
-					rpass.draw(0..form.vertex_count, 0..1);
-				}
-			};
+		self.queue.submit(Some(encoder.finish()));
+		frame.present();
 
-			if sketch.instances.len() > 0 {
-				for uniforms in &sketch.instances {
-					for (index, uniform) in uniforms {
-						let binding = &self.bindings[uniform.0];
-						rpass.set_bind_group(*index, binding, &[]);
+		Ok(())
+	}
+
+	pub fn paint(&self, layer: &Layer) -> std::result::Result<(), wgpu::SurfaceError> {
+		let layer = &self.layers[layer.0];
+
+		let view = &self.textures[layer.target_textures[0].0].view;
+
+		let mut encoder = self
+			.device
+			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+		{
+			let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+				label: None,
+				color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+					view,
+					resolve_target: None,
+					ops: wgpu::Operations {
+						load: layer
+							.clear_color
+							.map_or(wgpu::LoadOp::Load, |color| wgpu::LoadOp::Clear(color)),
+						store: wgpu::StoreOp::Store,
+					},
+				})],
+				depth_stencil_attachment: layer.depth_texture.as_ref().map(|t| {
+					wgpu::RenderPassDepthStencilAttachment {
+						view: &self.textures[t.0].view,
+						depth_ops: Some(wgpu::Operations {
+							load: wgpu::LoadOp::Clear(1.0),
+							store: wgpu::StoreOp::Store,
+						}),
+						stencil_ops: None,
 					}
-					draw(&mut rpass);
-				}
-			} else {
-				draw(&mut rpass);
+				}),
+				timestamp_writes: None,
+				occlusion_query_set: None,
+			});
+
+			for sketch in &layer.sketches {
+				self.render_sketch(&mut rpass, sketch);
 			}
+		}
+
+		self.queue.submit(Some(encoder.finish()));
+
+		Ok(())
+	}
+
+	pub fn compose(&self, layers: &[Layer]) -> std::result::Result<(), wgpu::SurfaceError> {
+		for layer in layers {
+			self.paint(layer)?;
+		}
+		Ok(())
+	}
+
+	pub fn show(&mut self, layer: &Layer) -> std::result::Result<(), wgpu::SurfaceError> {
+		let frame = self.surface.get_current_texture()?;
+
+		let view = frame
+			.texture
+			.create_view(&wgpu::TextureViewDescriptor::default());
+
+		let mut encoder = self
+			.device
+			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+		let uniform = layer.get_uniform(self).uniform;
+		let binding = &self.bindings[uniform.0];
+
+		let pipeline = &self.pipelines[FULL_SCREEN_TEXTURE_PIPELINE];
+
+		{
+			let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+				label: None,
+				color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+					view: &view,
+					resolve_target: None,
+					ops: wgpu::Operations {
+						load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+						store: wgpu::StoreOp::Store,
+					},
+				})],
+				depth_stencil_attachment: None,
+				timestamp_writes: None,
+				occlusion_query_set: None,
+			});
+			rpass.set_pipeline(pipeline);
+			rpass.set_bind_group(0, binding, &[]);
+			rpass.draw(0..3, 0..1);
 		}
 
 		self.queue.submit(Some(encoder.finish()));

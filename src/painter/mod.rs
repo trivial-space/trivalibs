@@ -12,16 +12,19 @@ use winit::{
 pub mod painter;
 pub use painter::Painter;
 pub mod form;
+pub mod layer;
 pub mod shade;
+pub mod shaders;
 pub mod sketch;
 pub mod texture;
 pub mod uniform;
 
 pub trait CanvasApp<RenderState, UserEvent> {
 	fn init(&mut self, painter: &mut Painter) -> RenderState;
-	fn resize(&mut self, painter: &Painter, render_state: &mut RenderState);
+	fn resize(&mut self, painter: &mut Painter, render_state: &mut RenderState);
 	fn update(&mut self, painter: &mut Painter, render_state: &mut RenderState, tpf: f32);
-	fn render(&self, painter: &Painter, render_state: &RenderState) -> Result<(), SurfaceError>;
+	fn render(&self, painter: &mut Painter, render_state: &RenderState)
+		-> Result<(), SurfaceError>;
 	fn window_event(&mut self, event: WindowEvent, painter: &Painter);
 	fn device_event(&mut self, event: DeviceEvent, painter: &Painter);
 	fn user_event(&mut self, event: UserEvent, painter: &Painter);
@@ -202,10 +205,10 @@ where
 	fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: CustomEvent<UserEvent>) {
 		match event {
 			CustomEvent::StateInitializationEvent(mut painter) => {
-				painter.request_redraw();
 				self.render_state = Some(self.app.init(&mut painter));
 				self.app
-					.resize(&painter, self.render_state.as_mut().unwrap());
+					.resize(&mut painter, self.render_state.as_mut().unwrap());
+				painter.request_redraw();
 				self.state = WindowState::Initialized(painter);
 			}
 			CustomEvent::UserEvent(user_event) => {
