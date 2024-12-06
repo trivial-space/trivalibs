@@ -1,9 +1,9 @@
 use super::{form::Form, shade::Shade, uniform::Uniform, Painter};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 pub(crate) struct SketchStorage {
-	pub uniforms: HashMap<u32, Uniform>,
-	pub instances: Vec<HashMap<u32, Uniform>>,
+	pub uniforms: BTreeMap<u32, Uniform>,
+	pub instances: Vec<BTreeMap<u32, Uniform>>,
 	pub form: Form,
 	pub shade: Shade,
 	pub pipeline_key: Vec<u8>,
@@ -13,8 +13,8 @@ pub(crate) struct SketchStorage {
 }
 
 pub struct SketchProps {
-	pub uniforms: HashMap<u32, Uniform>,
-	pub instances: Vec<HashMap<u32, Uniform>>,
+	pub uniforms: BTreeMap<u32, Uniform>,
+	pub instances: Vec<BTreeMap<u32, Uniform>>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub depth_test: bool,
 	pub blend_state: wgpu::BlendState,
@@ -23,7 +23,7 @@ pub struct SketchProps {
 impl Default for SketchProps {
 	fn default() -> Self {
 		SketchProps {
-			uniforms: HashMap::with_capacity(0),
+			uniforms: BTreeMap::new(),
 			instances: Vec::with_capacity(0),
 			cull_mode: Some(wgpu::Face::Back),
 			depth_test: false,

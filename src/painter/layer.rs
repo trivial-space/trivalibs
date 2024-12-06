@@ -5,7 +5,7 @@ use super::{
 	Painter,
 };
 use crate::utils::default;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 fn map_format_to_u8(format: wgpu::TextureFormat) -> u8 {
 	match format {
@@ -113,7 +113,7 @@ pub struct LayerProps {
 	pub format: Option<wgpu::TextureFormat>,
 	pub clear_color: Option<wgpu::Color>,
 	pub binding_visibility: wgpu::ShaderStages,
-	pub uniforms: HashMap<u32, Uniform>,
+	pub uniforms: BTreeMap<u32, Uniform>,
 	pub multisampled: bool,
 }
 
@@ -124,7 +124,7 @@ impl Default for LayerProps {
 			width: 0,
 			height: 0,
 			format: None,
-			uniforms: HashMap::with_capacity(0),
+			uniforms: BTreeMap::new(),
 			binding_visibility: wgpu::ShaderStages::FRAGMENT,
 			clear_color: None,
 			multisampled: false,

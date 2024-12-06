@@ -58,6 +58,17 @@ pub mod macros {
         ::std::collections::HashMap::from([ $(($key, $value)),* ])
     };
 	}
+
+	#[macro_export]
+	macro_rules! bmap {
+    () => {
+        ::std::collections::BTreeMap::new()
+    };
+
+    ($($key:expr => $value:expr),+ $(,)?) => {
+        ::std::collections::BTreeMap::from([ $(($key, $value)),* ])
+    };
+	}
 }
 
 pub mod prelude {
