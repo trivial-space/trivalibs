@@ -208,7 +208,7 @@ where
 				self.render_state = Some(self.app.init(&mut painter));
 				self.app
 					.resize(&mut painter, self.render_state.as_mut().unwrap());
-				painter.request_redraw();
+				painter.request_next_frame();
 				self.state = WindowState::Initialized(painter);
 			}
 			CustomEvent::UserEvent(user_event) => {
@@ -234,7 +234,7 @@ where
 						self.app
 							.resize(painter, self.render_state.as_mut().unwrap());
 						// On macos the window needs to be redrawn manually after resizing
-						painter.request_redraw();
+						painter.request_next_frame();
 						self.is_resizing = true;
 					}
 
@@ -289,7 +289,7 @@ where
 						self.is_running = !self.is_running;
 						if self.is_running {
 							self.now = Instant::now();
-							painter.request_redraw();
+							painter.request_next_frame();
 						}
 					}
 

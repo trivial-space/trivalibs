@@ -13,7 +13,7 @@ use std::{collections::BTreeMap, sync::Arc};
 use wgpu::{Adapter, BindGroupLayout, Device, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
 
-pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static str = "full_screen_texture";
+pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0, 0];
 
 pub struct Painter {
 	pub surface: Surface<'static>,
@@ -27,7 +27,7 @@ pub struct Painter {
 	pub(crate) textures: Vec<TextureStorage>,
 	pub(crate) sketches: Vec<SketchStorage>,
 	pub(crate) bindings: Vec<wgpu::BindGroup>,
-	pub(crate) pipelines: BTreeMap<(String, String), wgpu::RenderPipeline>,
+	pub(crate) pipelines: BTreeMap<Vec<u8>, wgpu::RenderPipeline>,
 	pub(crate) layers: Vec<LayerStorage>,
 }
 
@@ -150,7 +150,7 @@ impl Painter {
 				});
 
 		painter.pipelines.insert(
-			(FULL_SCREEN_TEXTURE_PIPELINE.to_string(), "".to_string()),
+			FULL_SCREEN_TEXTURE_PIPELINE.to_vec(),
 			fullscreen_quad_pipeline,
 		);
 
@@ -285,7 +285,7 @@ impl Painter {
 
 	// general utils
 
-	pub fn request_redraw(&self) {
+	pub fn request_next_frame(&self) {
 		self.window.request_redraw();
 	}
 
@@ -310,15 +310,16 @@ impl Painter {
 		self.window.inner_size()
 	}
 
-	fn get_pipeline_key(&mut self, sketch: &Sketch, layer: Option<&Layer>) -> (String, String) {
+	fn get_pipeline_key(&mut self, sketch: &Sketch, layer: Option<&Layer>) -> Vec<u8> {
 		let sketch = &self.sketches[sketch.0];
 
-		let layer_key = match layer {
+		let mut layer_key = match layer {
 			Some(layer) => self.layers[layer.0].pipeline_key.clone(),
-			None => "".to_string(),
+			None => vec![],
 		};
 
-		let pipeline_key = (sketch.pipeline_key.clone(), layer_key);
+		let mut pipeline_key = sketch.pipeline_key.clone();
+		pipeline_key.append(&mut layer_key);
 
 		if !self.pipelines.contains_key(&pipeline_key) {
 			let f = &self.forms[sketch.form.0];
@@ -523,7 +524,7 @@ impl Painter {
 		let uniform = layer.get_uniform(self).uniform;
 		let binding = &self.bindings[uniform.0];
 
-		let pipeline = &self.pipelines[&(FULL_SCREEN_TEXTURE_PIPELINE.to_string(), "".to_string())];
+		let pipeline = &self.pipelines[FULL_SCREEN_TEXTURE_PIPELINE];
 
 		{
 			let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
