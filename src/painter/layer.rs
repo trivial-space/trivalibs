@@ -18,6 +18,9 @@ pub(crate) struct LayerStorage {
 	pub use_window_size: bool,
 	pub clear_color: Option<wgpu::Color>,
 	pub binding_visibility: wgpu::ShaderStages,
+	pub pipeline_key: String,
+	pub format: wgpu::TextureFormat,
+	pub multisampled: bool,
 }
 
 pub struct LayerProps {
@@ -28,8 +31,7 @@ pub struct LayerProps {
 	pub clear_color: Option<wgpu::Color>,
 	pub binding_visibility: wgpu::ShaderStages,
 	pub uniforms: HashMap<u32, Uniform>,
-	/// TODO: Implement antialiasing
-	pub antialias: bool,
+	pub multisampled: bool,
 }
 
 impl Default for LayerProps {
@@ -42,7 +44,7 @@ impl Default for LayerProps {
 			uniforms: HashMap::with_capacity(0),
 			binding_visibility: wgpu::ShaderStages::FRAGMENT,
 			clear_color: None,
-			antialias: false,
+			multisampled: false,
 		}
 	}
 }
@@ -66,12 +68,14 @@ impl Layer {
 
 		let mut target_texture = Vec::with_capacity(1);
 
+		let format = props.format.unwrap_or(painter.config.format);
+
 		target_texture.push(Texture::create_2d(
 			painter,
 			&Texture2DProps {
 				width,
 				height,
-				format: props.format.unwrap_or(painter.config.format),
+				format,
 				usage: wgpu::TextureUsages::RENDER_ATTACHMENT
 					| wgpu::TextureUsages::TEXTURE_BINDING,
 			},
@@ -90,6 +94,8 @@ impl Layer {
 		let depth_texture =
 			use_depth.then(|| Texture::create_depth(painter, &TextureDepthProps { width, height }));
 
+		let pipeline_key = format!("ft{:?}-ms{}", format, props.multisampled as u8);
+
 		let storage = LayerStorage {
 			width,
 			height,
@@ -100,6 +106,9 @@ impl Layer {
 			use_window_size,
 			clear_color: props.clear_color,
 			binding_visibility: props.binding_visibility,
+			format,
+			pipeline_key,
+			multisampled: props.multisampled,
 		};
 
 		painter.layers.push(storage);
@@ -163,13 +172,6 @@ impl Layer {
 
 		if let Some(depth_texture) = depth_texture {
 			depth_texture.replace_depth(painter, &TextureDepthProps { width, height });
-		}
-	}
-
-	pub fn on_window_resize(&mut self, painter: &mut Painter) {
-		let l = &painter.layers[self.0];
-		if l.use_window_size {
-			self.resize(painter, 0, 0);
 		}
 	}
 }
