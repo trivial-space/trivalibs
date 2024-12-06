@@ -104,7 +104,7 @@ impl Painter {
 				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 					label: None,
 					bind_group_layouts: &[
-						&painter.texture_2d_get_uniform_layout(wgpu::ShaderStages::FRAGMENT)
+						&painter.uniform_get_layout_tex_2d(wgpu::ShaderStages::FRAGMENT)
 					],
 					push_constant_ranges: &[],
 				});
@@ -181,7 +181,7 @@ impl Painter {
 		Form::new(self, data, props)
 	}
 
-	pub fn from_from_buffer(&mut self, buffer: RenderableBuffer, props: FormProps) -> Form {
+	pub fn form_from_buffer(&mut self, buffer: RenderableBuffer, props: FormProps) -> Form {
 		Form::from_buffer(self, buffer, props)
 	}
 
@@ -194,24 +194,46 @@ impl Painter {
 		Shade::new(self, props)
 	}
 
-	// uniform utile
+	// texture helpers
 
-	pub fn uniform_create_buffered<T>(
-		&mut self,
-		layout: &wgpu::BindGroupLayout,
-		data: T,
-	) -> UniformBuffer<T>
-	where
-		T: bytemuck::Pod,
-	{
-		UniformBuffer::new_buffered(self, layout, data)
+	pub fn texture_2d_create(&mut self, props: &Texture2DProps) -> Texture {
+		Texture::create_2d(self, props)
 	}
 
-	pub fn uniform_update_buffered<T>(&self, uniform: &UniformBuffer<T>, data: T)
+	pub fn texture_2d_fill(&self, texture: Texture, data: &[u8]) {
+		texture.fill_2d(self, data);
+	}
+
+	pub fn sampler_create(&self, props: &SamplerProps) -> wgpu::Sampler {
+		Texture::create_sampler(self, props)
+	}
+
+	// sketch utils
+
+	pub fn sketch_create(&mut self, form: Form, shade: Shade, props: &SketchProps) -> Sketch {
+		Sketch::new(self, form, shade, props)
+	}
+
+	// layer utils
+
+	pub fn layer_create(&mut self, props: &LayerProps) -> Layer {
+		Layer::new(self, props)
+	}
+
+	// uniform utils
+
+	pub fn uniform_create<T>(&mut self, layout: &wgpu::BindGroupLayout, data: T) -> UniformBuffer<T>
 	where
 		T: bytemuck::Pod,
 	{
-		uniform.update_buffered(self, data);
+		UniformBuffer::new(self, layout, data)
+	}
+
+	pub fn uniform_update<T>(&self, uniform: &UniformBuffer<T>, data: T)
+	where
+		T: bytemuck::Pod,
+	{
+		uniform.update(self, data);
 	}
 
 	pub fn uniform_create_mat4(
@@ -219,11 +241,11 @@ impl Painter {
 		layout: &wgpu::BindGroupLayout,
 		mat: Mat4,
 	) -> UniformBuffer<Mat4> {
-		self.uniform_create_buffered(layout, mat)
+		self.uniform_create(layout, mat)
 	}
 
 	pub fn uniform_update_mat4(&self, uniform: &UniformBuffer<Mat4>, mat: Mat4) {
-		self.uniform_update_buffered(uniform, mat);
+		self.uniform_update(uniform, mat);
 	}
 
 	pub fn uniform_create_mat3(
@@ -245,17 +267,7 @@ impl Painter {
 		get_uniform_layout_buffered(self, visibility)
 	}
 
-	// texture helpers
-
-	pub fn texture_2d_fill(&self, texture: Texture, data: &[u8]) {
-		texture.fill_2d(self, data);
-	}
-
-	pub fn texture_2d_create(&mut self, props: &Texture2DProps) -> Texture {
-		Texture::create_2d(self, props)
-	}
-
-	pub fn texture_2d_get_uniform_layout(
+	pub fn uniform_get_layout_tex_2d(
 		&self,
 		visibility: wgpu::ShaderStages,
 	) -> wgpu::BindGroupLayout {
@@ -269,22 +281,6 @@ impl Painter {
 		sampler: &wgpu::Sampler,
 	) -> UniformTex2D {
 		UniformTex2D::new(self, layout, texture, sampler)
-	}
-
-	pub fn create_sampler(&self, props: &SamplerProps) -> wgpu::Sampler {
-		Texture::create_sampler(self, props)
-	}
-
-	// sketch utils
-
-	pub fn sketch_create(&mut self, form: Form, shade: Shade, props: &SketchProps) -> Sketch {
-		Sketch::new(self, form, shade, props)
-	}
-
-	// layer utils
-
-	pub fn layer_create(&mut self, props: &LayerProps) -> Layer {
-		Layer::new(self, props)
 	}
 
 	// general utils
@@ -303,7 +299,7 @@ impl Painter {
 		self.window.inner_size()
 	}
 
-	fn render_sketch<'a>(&'a self, rpass: &mut wgpu::RenderPass<'a>, sketch: &Sketch) {
+	fn render_sketch(&self, rpass: &mut wgpu::RenderPass<'_>, sketch: &Sketch) {
 		let sketch = &self.sketches[sketch.0];
 		let form = &self.forms[sketch.form.0];
 		let pipeline = &self.pipelines[&sketch.pipeline_key];

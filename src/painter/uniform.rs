@@ -36,7 +36,7 @@ impl<T> UniformBuffer<T>
 where
 	T: bytemuck::Pod,
 {
-	pub fn new_buffered(painter: &mut Painter, layout: &wgpu::BindGroupLayout, data: T) -> Self {
+	pub fn new(painter: &mut Painter, layout: &wgpu::BindGroupLayout, data: T) -> Self {
 		let buffer = painter.device.create_buffer(&wgpu::BufferDescriptor {
 			label: None,
 			usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
@@ -65,12 +65,12 @@ where
 			t: std::marker::PhantomData,
 		};
 
-		uniform.update_buffered(&painter, data);
+		uniform.update(&painter, data);
 
 		uniform
 	}
 
-	pub fn update_buffered(&self, painter: &Painter, data: T) {
+	pub fn update(&self, painter: &Painter, data: T) {
 		painter
 			.queue
 			.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[data]));
@@ -84,10 +84,10 @@ unsafe impl bytemuck::Pod for Mat3U {}
 
 impl UniformBuffer<Mat3U> {
 	pub fn new_mat3(painter: &mut Painter, layout: &wgpu::BindGroupLayout, data: Mat3) -> Self {
-		UniformBuffer::new_buffered(painter, layout, Mat3U(Mat3A::from(data)))
+		UniformBuffer::new(painter, layout, Mat3U(Mat3A::from(data)))
 	}
 
 	pub fn update_mat3(&self, painter: &Painter, data: Mat3) {
-		self.update_buffered(painter, Mat3U(Mat3A::from(data)));
+		self.update(painter, Mat3U(Mat3A::from(data)));
 	}
 }

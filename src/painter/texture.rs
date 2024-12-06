@@ -226,27 +226,4 @@ impl UniformTex2D {
 
 		UniformTex2D { texture, uniform }
 	}
-
-	pub fn refresh(&self, painter: &mut Painter, sampler: &wgpu::Sampler) {
-		let t = &painter.textures[self.texture.0];
-
-		let binding = painter
-			.device
-			.create_bind_group(&wgpu::BindGroupDescriptor {
-				layout: &painter.texture_2d_get_uniform_layout(wgpu::ShaderStages::FRAGMENT),
-				entries: &[
-					wgpu::BindGroupEntry {
-						binding: 0,
-						resource: wgpu::BindingResource::TextureView(&t.view),
-					},
-					wgpu::BindGroupEntry {
-						binding: 1,
-						resource: wgpu::BindingResource::Sampler(sampler),
-					},
-				],
-				label: None,
-			});
-
-		painter.bindings[self.uniform.0] = binding;
-	}
 }

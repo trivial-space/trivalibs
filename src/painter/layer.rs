@@ -114,7 +114,7 @@ impl Layer {
 		let uniform = painter.uniform_create_tex(
 			&UniformTex2D::get_layout(painter, visibility),
 			painter.layers[self.0].target_textures[0],
-			&painter.create_sampler(&default()),
+			&painter.sampler_create(&default()),
 		);
 
 		painter.layers[self.0].target_uniforms.push(uniform);

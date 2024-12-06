@@ -1,3 +1,5 @@
+// Full screen triangle concept explained here:
+// https://www.saschawillems.de/blog/2016/08/13/vulkan-tutorial-on-rendering-a-fullscreen-quad-without-buffers/
 pub const FULL_SCREEN_QUAD: &str = r#"
 struct VertexOutput {
   @builtin(position) position: vec4f,
