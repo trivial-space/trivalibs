@@ -1,4 +1,5 @@
 use super::{
+	effect::Effect,
 	sketch::Sketch,
 	texture::{Texture, Texture2DProps, TextureDepthProps, UniformTex2D},
 	uniform::Uniform,
@@ -96,6 +97,7 @@ pub(crate) struct LayerStorage {
 	pub sketches: Vec<Sketch>,
 	pub depth_texture: Option<Texture>,
 	// pub depth_uniform: Option<UniformTex2D>,
+	pub effects: Vec<Effect>,
 	pub width: u32,
 	pub height: u32,
 	pub use_window_size: bool,
@@ -108,6 +110,7 @@ pub(crate) struct LayerStorage {
 
 pub struct LayerProps {
 	pub sketches: Vec<Sketch>,
+	pub effects: Vec<Effect>,
 	pub width: u32,
 	pub height: u32,
 	pub format: Option<wgpu::TextureFormat>,
@@ -121,6 +124,7 @@ impl Default for LayerProps {
 	fn default() -> Self {
 		LayerProps {
 			sketches: Vec::with_capacity(0),
+			effects: Vec::with_capacity(0),
 			width: 0,
 			height: 0,
 			format: None,
@@ -185,6 +189,7 @@ impl Layer {
 			target_textures: target_texture,
 			target_uniforms: Vec::with_capacity(len),
 			sketches: props.sketches.clone(),
+			effects: props.effects.clone(),
 			depth_texture,
 			use_window_size,
 			clear_color: props.clear_color,

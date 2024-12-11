@@ -1,7 +1,8 @@
 use super::{
+	effect::{Effect, EffectProps, EffectStorage},
 	form::{Form, FormData, FormProps, FormStorage},
 	layer::{Layer, LayerProps, LayerStorage},
-	shade::{AttribsFormat, Shade, ShadeProps, ShadeStorage},
+	shade::{AttribsFormat, Shade, ShadeEffectProps, ShadeProps, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
 	sketch::{Sketch, SketchProps, SketchStorage},
 	texture::{SamplerProps, Texture, Texture2DProps, TextureStorage, UniformTex2D},
@@ -26,9 +27,11 @@ pub struct Painter {
 	pub(crate) shades: Vec<ShadeStorage>,
 	pub(crate) textures: Vec<TextureStorage>,
 	pub(crate) sketches: Vec<SketchStorage>,
+	pub(crate) effects: Vec<EffectStorage>,
+	pub(crate) layers: Vec<LayerStorage>,
 	pub(crate) bindings: Vec<wgpu::BindGroup>,
 	pub(crate) pipelines: BTreeMap<Vec<u8>, wgpu::RenderPipeline>,
-	pub(crate) layers: Vec<LayerStorage>,
+	fullscreen_quad_shader: wgpu::ShaderModule,
 }
 
 impl Painter {
@@ -74,6 +77,11 @@ impl Painter {
 
 		surface.configure(&device, &config);
 
+		let fullscreen_quad_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+			label: None,
+			source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(FULL_SCREEN_QUAD)),
+		});
+
 		let mut painter = Self {
 			surface,
 			config,
@@ -85,18 +93,12 @@ impl Painter {
 			shades: Vec::with_capacity(8),
 			textures: Vec::with_capacity(8),
 			sketches: Vec::with_capacity(8),
+			effects: Vec::with_capacity(8),
 			layers: Vec::with_capacity(8),
 			bindings: Vec::with_capacity(8),
 			pipelines: BTreeMap::new(),
+			fullscreen_quad_shader,
 		};
-
-		let fullscreen_quad_shader =
-			painter
-				.device
-				.create_shader_module(wgpu::ShaderModuleDescriptor {
-					label: None,
-					source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(FULL_SCREEN_QUAD)),
-				});
 
 		let fullscreen_quad_pipeline_layout =
 			painter
@@ -116,13 +118,13 @@ impl Painter {
 					label: None,
 					layout: Some(&fullscreen_quad_pipeline_layout),
 					vertex: wgpu::VertexState {
-						module: &fullscreen_quad_shader,
+						module: &painter.fullscreen_quad_shader,
 						entry_point: Some("vs_main"),
 						buffers: &[],
 						compilation_options: default(),
 					},
 					fragment: Some(wgpu::FragmentState {
-						module: &fullscreen_quad_shader,
+						module: &painter.fullscreen_quad_shader,
 						entry_point: Some("fs_main"),
 						targets: &[Some(wgpu::ColorTargetState {
 							format: painter.config.format,
@@ -194,6 +196,10 @@ impl Painter {
 		Shade::new(self, props)
 	}
 
+	pub fn shade_create_effect(&mut self, props: ShadeEffectProps) -> Shade {
+		Shade::new_effect(self, props)
+	}
+
 	// texture helpers
 
 	pub fn texture_2d_create(&mut self, props: &Texture2DProps) -> Texture {
@@ -212,6 +218,10 @@ impl Painter {
 
 	pub fn sketch_create(&mut self, form: Form, shade: Shade, props: &SketchProps) -> Sketch {
 		Sketch::new(self, form, shade, props)
+	}
+
+	pub fn effect_create(&mut self, shade: Shade, props: &EffectProps) -> Effect {
+		Effect::new(self, shade, props)
 	}
 
 	// layer utils
@@ -333,7 +343,7 @@ impl Painter {
 					label: None,
 					layout: Some(&s.pipeline_layout),
 					vertex: wgpu::VertexState {
-						module: &s.vertex_shader,
+						module: s.vertex_shader.as_ref().unwrap(),
 						entry_point: None,
 						buffers: &[wgpu::VertexBufferLayout {
 							array_stride: s.attribs.stride,

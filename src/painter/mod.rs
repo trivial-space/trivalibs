@@ -11,6 +11,7 @@ use winit::{
 
 pub mod painter;
 pub use painter::Painter;
+pub mod effect;
 pub mod form;
 pub mod layer;
 pub mod shade;
