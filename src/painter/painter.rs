@@ -320,7 +320,7 @@ impl Painter {
 		self.window.inner_size()
 	}
 
-	fn get_pipeline_key(&mut self, sketch: &Sketch, layer: Option<&Layer>) -> Vec<u8> {
+	fn get_sketch_pipeline_key(&mut self, sketch: &Sketch, layer: Option<&Layer>) -> Vec<u8> {
 		let sketch = &self.sketches[sketch.0];
 
 		let mut layer_key = match layer {
@@ -398,8 +398,65 @@ impl Painter {
 		pipeline_key
 	}
 
+	fn get_effect_pipeline_key(&mut self, effect: &Effect, layer: &Layer) -> Vec<u8> {
+		let effect = &self.sketches[effect.0];
+
+		let mut layer_key = self.layers[layer.0].pipeline_key.clone();
+
+		let mut pipeline_key = effect.pipeline_key.clone();
+		pipeline_key.append(&mut layer_key);
+
+		if !self.pipelines.contains_key(&pipeline_key) {
+			let s = &self.shades[effect.shade.0];
+			let l = &self.layers[layer.0];
+
+			let pipeline = self
+				.device
+				.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+					label: None,
+					layout: Some(&s.pipeline_layout),
+					vertex: wgpu::VertexState {
+						module: &self.fullscreen_quad_shader,
+						entry_point: Some("vs_main"),
+						buffers: &[],
+						compilation_options: default(),
+					},
+					fragment: Some(wgpu::FragmentState {
+						module: &s.fragment_shader,
+						entry_point: None,
+						targets: &[Some(wgpu::ColorTargetState {
+							format: l.format,
+							blend: Some(effect.blend_state),
+							write_mask: wgpu::ColorWrites::ALL,
+						})],
+						compilation_options: default(),
+					}),
+					primitive: wgpu::PrimitiveState {
+						topology: wgpu::PrimitiveTopology::TriangleStrip,
+						strip_index_format: None,
+						front_face: wgpu::FrontFace::Cw,
+						cull_mode: None,
+						polygon_mode: wgpu::PolygonMode::Fill,
+						..default()
+					},
+					depth_stencil: None,
+					multisample: wgpu::MultisampleState {
+						count: 1,
+						mask: !0,
+						alpha_to_coverage_enabled: false,
+					},
+					multiview: None,
+					cache: None,
+				});
+
+			self.pipelines.insert(pipeline_key.clone(), pipeline);
+		}
+
+		pipeline_key
+	}
+
 	fn render_sketch(&mut self, rpass: &mut wgpu::RenderPass<'_>, sketch: &Sketch) {
-		let pipeline_key = &self.get_pipeline_key(sketch, None);
+		let pipeline_key = &self.get_sketch_pipeline_key(sketch, None);
 		let pipeline = &self.pipelines[pipeline_key];
 		rpass.set_pipeline(pipeline);
 
