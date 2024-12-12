@@ -248,10 +248,6 @@ impl Painter {
 		Texture::create_2d(self, props)
 	}
 
-	pub fn texture_2d_fill(&self, texture: Texture, data: &[u8]) {
-		texture.fill_2d(self, data);
-	}
-
 	pub fn sampler_create(&self, props: &SamplerProps) -> wgpu::Sampler {
 		Texture::create_sampler(self, props)
 	}
