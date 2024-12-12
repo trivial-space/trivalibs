@@ -47,6 +47,36 @@ impl Into<AttribsFormat> for &[wgpu::VertexFormat] {
 	}
 }
 
+impl Into<AttribsFormat> for &[wgpu::VertexFormat; 1] {
+	fn into(self) -> AttribsFormat {
+		self.as_slice().into()
+	}
+}
+impl Into<AttribsFormat> for &[wgpu::VertexFormat; 2] {
+	fn into(self) -> AttribsFormat {
+		self.as_slice().into()
+	}
+}
+impl Into<AttribsFormat> for &[wgpu::VertexFormat; 3] {
+	fn into(self) -> AttribsFormat {
+		self.as_slice().into()
+	}
+}
+impl Into<AttribsFormat> for &[wgpu::VertexFormat; 4] {
+	fn into(self) -> AttribsFormat {
+		self.as_slice().into()
+	}
+}
+impl Into<AttribsFormat> for &[wgpu::VertexFormat; 5] {
+	fn into(self) -> AttribsFormat {
+		self.as_slice().into()
+	}
+}
+impl Into<AttribsFormat> for &[wgpu::VertexFormat; 6] {
+	fn into(self) -> AttribsFormat {
+		self.as_slice().into()
+	}
+}
 impl Into<AttribsFormat> for Vec<wgpu::VertexFormat> {
 	fn into(self) -> AttribsFormat {
 		self.as_slice().into()

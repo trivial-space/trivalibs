@@ -11,7 +11,7 @@ use super::{
 use crate::{rendering::RenderableBuffer, utils::default};
 use glam::{Mat3, Mat4};
 use std::{collections::BTreeMap, sync::Arc};
-use wgpu::{Adapter, BindGroupLayout, Device, Queue, Surface, SurfaceConfiguration};
+use wgpu::{Adapter, BindGroupLayout, Device, Queue, RenderPass, Surface, SurfaceConfiguration};
 use winit::window::Window;
 
 pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0, 0];
@@ -320,21 +320,25 @@ impl Painter {
 		self.window.inner_size()
 	}
 
-	fn get_sketch_pipeline_key(&mut self, sketch: &Sketch, layer: Option<&Layer>) -> Vec<u8> {
-		let sketch = &self.sketches[sketch.0];
+	fn set_sketch_pipeline(
+		&mut self,
+		rpass: &mut RenderPass,
+		sketch: &Sketch,
+		layer: Option<&Layer>,
+	) {
+		let layer = layer.map(|l| &self.layers[l.0]);
 
-		let mut layer_key = match layer {
-			Some(layer) => self.layers[layer.0].pipeline_key.clone(),
-			None => vec![],
+		let layer_key = match layer {
+			Some(layer) => layer.pipeline_key.as_slice(),
+			None => &[],
 		};
 
-		let mut pipeline_key = sketch.pipeline_key.clone();
-		pipeline_key.append(&mut layer_key);
+		let sketch = &self.sketches[sketch.0];
+		let pipeline_key = &[sketch.pipeline_key.as_slice(), layer_key].concat();
 
-		if !self.pipelines.contains_key(&pipeline_key) {
+		if !self.pipelines.contains_key(pipeline_key) {
 			let f = &self.forms[sketch.form.0];
 			let s = &self.shades[sketch.shade.0];
-			let layer = layer.map(|l| &self.layers[l.0]);
 			let format = layer.map_or(self.config.format, |l| l.format);
 
 			let pipeline = self
@@ -395,20 +399,19 @@ impl Painter {
 			self.pipelines.insert(pipeline_key.clone(), pipeline);
 		}
 
-		pipeline_key
+		let pipeline = &self.pipelines[pipeline_key];
+		rpass.set_pipeline(pipeline);
 	}
 
-	fn get_effect_pipeline_key(&mut self, effect: &Effect, layer: &Layer) -> Vec<u8> {
-		let effect = &self.sketches[effect.0];
+	fn set_effect_pipeline(&mut self, rpass: &mut RenderPass, effect: &Effect, layer: &Layer) {
+		let layer = &self.layers[layer.0];
+		let effect = &self.effects[effect.0];
 
-		let mut layer_key = self.layers[layer.0].pipeline_key.clone();
+		let layer_key = layer.pipeline_key.as_slice();
+		let pipeline_key = &[effect.pipeline_key.as_slice(), layer_key].concat();
 
-		let mut pipeline_key = effect.pipeline_key.clone();
-		pipeline_key.append(&mut layer_key);
-
-		if !self.pipelines.contains_key(&pipeline_key) {
+		if !self.pipelines.contains_key(pipeline_key) {
 			let s = &self.shades[effect.shade.0];
-			let l = &self.layers[layer.0];
 
 			let pipeline = self
 				.device
@@ -425,7 +428,7 @@ impl Painter {
 						module: &s.fragment_shader,
 						entry_point: None,
 						targets: &[Some(wgpu::ColorTargetState {
-							format: l.format,
+							format: layer.format,
 							blend: Some(effect.blend_state),
 							write_mask: wgpu::ColorWrites::ALL,
 						})],
@@ -449,16 +452,20 @@ impl Painter {
 					cache: None,
 				});
 
-			self.pipelines.insert(pipeline_key.clone(), pipeline);
+			self.pipelines.insert(pipeline_key.to_vec(), pipeline);
 		}
 
-		pipeline_key
-	}
-
-	fn render_sketch(&mut self, rpass: &mut wgpu::RenderPass<'_>, sketch: &Sketch) {
-		let pipeline_key = &self.get_sketch_pipeline_key(sketch, None);
 		let pipeline = &self.pipelines[pipeline_key];
 		rpass.set_pipeline(pipeline);
+	}
+
+	fn render_sketch(
+		&mut self,
+		rpass: &mut wgpu::RenderPass<'_>,
+		sketch: &Sketch,
+		layer: Option<&Layer>,
+	) {
+		self.set_sketch_pipeline(rpass, sketch, layer);
 
 		let sketch = &self.sketches[sketch.0];
 		let form = &self.forms[sketch.form.0];
@@ -488,7 +495,50 @@ impl Painter {
 		}
 	}
 
-	pub fn draw<'a>(&mut self, sketch: &Sketch) -> std::result::Result<(), wgpu::SurfaceError> {
+	fn render_effect(&mut self, effect: &Effect, layer: &Layer) -> Result<(), wgpu::SurfaceError> {
+		let l = &self.layers[layer.0];
+
+		let view = &self.textures[l.target_textures[0].0].view;
+
+		let mut encoder = self
+			.device
+			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+		{
+			let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+				label: None,
+				color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+					view,
+					resolve_target: None,
+					ops: wgpu::Operations {
+						load: l
+							.clear_color
+							.map_or(wgpu::LoadOp::Load, |color| wgpu::LoadOp::Clear(color)),
+						store: wgpu::StoreOp::Store,
+					},
+				})],
+				depth_stencil_attachment: None,
+				timestamp_writes: None,
+				occlusion_query_set: None,
+			});
+
+			self.set_effect_pipeline(&mut rpass, effect, layer);
+
+			let e = &self.effects[effect.0];
+
+			for (index, uniform) in &e.uniforms {
+				rpass.set_bind_group(*index, &self.bindings[uniform.0], &[]);
+			}
+
+			rpass.draw(0..3, 0..1);
+		}
+
+		self.queue.submit(Some(encoder.finish()));
+
+		Ok(())
+	}
+
+	pub fn draw<'a>(&mut self, sketch: &Sketch) -> Result<(), wgpu::SurfaceError> {
 		let frame = self.surface.get_current_texture()?;
 
 		let view = frame
@@ -515,7 +565,7 @@ impl Painter {
 				occlusion_query_set: None,
 			});
 
-			self.render_sketch(&mut rpass, sketch);
+			self.render_sketch(&mut rpass, sketch, None);
 		}
 
 		self.queue.submit(Some(encoder.finish()));
@@ -524,60 +574,66 @@ impl Painter {
 		Ok(())
 	}
 
-	pub fn paint(&mut self, layer: &Layer) -> std::result::Result<(), wgpu::SurfaceError> {
-		let layer = &self.layers[layer.0];
+	pub fn paint(&mut self, layer: &Layer) -> Result<(), wgpu::SurfaceError> {
+		let l = &self.layers[layer.0];
 
-		let view = &self.textures[layer.target_textures[0].0].view;
+		if l.sketches.len() > 0 {
+			let view = &self.textures[l.target_textures[0].0].view;
 
-		let mut encoder = self
-			.device
-			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+			let mut encoder = self
+				.device
+				.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-		{
-			let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-				label: None,
-				color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-					view,
-					resolve_target: None,
-					ops: wgpu::Operations {
-						load: layer
-							.clear_color
-							.map_or(wgpu::LoadOp::Load, |color| wgpu::LoadOp::Clear(color)),
-						store: wgpu::StoreOp::Store,
-					},
-				})],
-				depth_stencil_attachment: layer.depth_texture.as_ref().map(|t| {
-					wgpu::RenderPassDepthStencilAttachment {
-						view: &self.textures[t.0].view,
-						depth_ops: Some(wgpu::Operations {
-							load: wgpu::LoadOp::Clear(1.0),
+			{
+				let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+					label: None,
+					color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+						view,
+						resolve_target: None,
+						ops: wgpu::Operations {
+							load: l
+								.clear_color
+								.map_or(wgpu::LoadOp::Load, |color| wgpu::LoadOp::Clear(color)),
 							store: wgpu::StoreOp::Store,
-						}),
-						stencil_ops: None,
-					}
-				}),
-				timestamp_writes: None,
-				occlusion_query_set: None,
-			});
+						},
+					})],
+					depth_stencil_attachment: l.depth_texture.as_ref().map(|t| {
+						wgpu::RenderPassDepthStencilAttachment {
+							view: &self.textures[t.0].view,
+							depth_ops: Some(wgpu::Operations {
+								load: wgpu::LoadOp::Clear(1.0),
+								store: wgpu::StoreOp::Store,
+							}),
+							stencil_ops: None,
+						}
+					}),
+					timestamp_writes: None,
+					occlusion_query_set: None,
+				});
 
-			for sketch in layer.sketches.clone() {
-				self.render_sketch(&mut rpass, &sketch);
+				for sketch in l.sketches.clone() {
+					self.render_sketch(&mut rpass, &sketch, Some(layer));
+				}
 			}
+
+			self.queue.submit(Some(encoder.finish()));
 		}
 
-		self.queue.submit(Some(encoder.finish()));
+		for effect in self.layers[layer.0].effects.clone() {
+			self.render_effect(&effect, layer)?;
+		}
 
 		Ok(())
 	}
 
-	pub fn compose(&mut self, layers: &[Layer]) -> std::result::Result<(), wgpu::SurfaceError> {
+	pub fn compose(&mut self, layers: &[Layer]) -> Result<(), wgpu::SurfaceError> {
 		for layer in layers {
 			self.paint(layer)?;
 		}
 		Ok(())
 	}
 
-	pub fn show(&mut self, layer: &Layer) -> std::result::Result<(), wgpu::SurfaceError> {
+	pub fn show(&mut self, layer: &Layer) -> Result<(), wgpu::SurfaceError> {
 		let frame = self.surface.get_current_texture()?;
 
 		let view = frame
