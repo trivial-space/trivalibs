@@ -1,4 +1,4 @@
-use glam::{Mat3, Mat3A};
+use glam::{Mat3, Mat3A, Vec3, Vec3A};
 
 use super::{painter::get_padded_size, Painter};
 
@@ -89,5 +89,20 @@ impl UniformBuffer<Mat3U> {
 
 	pub fn update_mat3(&self, painter: &Painter, data: Mat3) {
 		self.update(painter, Mat3U(Mat3A::from(data)));
+	}
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Zeroable)]
+pub struct Vec3U(Vec3A);
+unsafe impl bytemuck::Pod for Vec3U {}
+
+impl UniformBuffer<Vec3U> {
+	pub fn new_vec3(painter: &mut Painter, layout: &wgpu::BindGroupLayout, data: Vec3) -> Self {
+		UniformBuffer::new(painter, layout, Vec3U(Vec3A::from(data)))
+	}
+
+	pub fn update_vec3(&self, painter: &Painter, data: Vec3) {
+		self.update(painter, Vec3U(Vec3A::from(data)));
 	}
 }

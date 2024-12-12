@@ -6,22 +6,56 @@ use super::{
 	shaders::FULL_SCREEN_QUAD,
 	sketch::{Sketch, SketchProps, SketchStorage},
 	texture::{SamplerProps, Texture, Texture2DProps, TextureStorage, UniformTex2D},
-	uniform::{get_uniform_layout_buffered, Mat3U, UniformBuffer},
+	uniform::{get_uniform_layout_buffered, Mat3U, UniformBuffer, Vec3U},
 };
 use crate::{rendering::RenderableBuffer, utils::default};
-use glam::{Mat3, Mat4};
+use glam::{Mat3, Vec3};
 use std::{collections::BTreeMap, sync::Arc};
-use wgpu::{Adapter, BindGroupLayout, Device, Queue, RenderPass, Surface, SurfaceConfiguration};
 use winit::window::Window;
 
 pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0, 0];
 
+pub trait UniformType {
+	fn create_buff<T: bytemuck::Pod>(&self, painter: &mut Painter, data: T) -> UniformBuffer<T>;
+	fn create_mat3(&self, painter: &mut Painter, mat: Mat3) -> UniformBuffer<Mat3U>;
+	fn create_vec3(&self, painter: &mut Painter, vec: Vec3) -> UniformBuffer<Vec3U>;
+	fn create_tex2d(
+		&self,
+		painter: &mut Painter,
+		texture: Texture,
+		sampler: &wgpu::Sampler,
+	) -> UniformTex2D;
+}
+
+impl UniformType for wgpu::BindGroupLayout {
+	fn create_buff<T: bytemuck::Pod>(&self, painter: &mut Painter, data: T) -> UniformBuffer<T> {
+		UniformBuffer::new(painter, self, data)
+	}
+
+	fn create_mat3(&self, painter: &mut Painter, mat: Mat3) -> UniformBuffer<Mat3U> {
+		UniformBuffer::new_mat3(painter, self, mat)
+	}
+
+	fn create_vec3(&self, painter: &mut Painter, vec: Vec3) -> UniformBuffer<Vec3U> {
+		UniformBuffer::new_vec3(painter, self, vec)
+	}
+
+	fn create_tex2d(
+		&self,
+		painter: &mut Painter,
+		texture: Texture,
+		sampler: &wgpu::Sampler,
+	) -> UniformTex2D {
+		UniformTex2D::new(painter, self, texture, sampler)
+	}
+}
+
 pub struct Painter {
-	pub surface: Surface<'static>,
-	pub config: SurfaceConfiguration,
-	pub adapter: Adapter,
-	pub device: Device,
-	pub queue: Queue,
+	pub surface: wgpu::Surface<'static>,
+	pub config: wgpu::SurfaceConfiguration,
+	pub adapter: wgpu::Adapter,
+	pub device: wgpu::Device,
+	pub queue: wgpu::Queue,
 	window: Arc<Window>,
 	pub(crate) forms: Vec<FormStorage>,
 	pub(crate) shades: Vec<ShadeStorage>,
@@ -106,7 +140,7 @@ impl Painter {
 				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 					label: None,
 					bind_group_layouts: &[
-						&painter.uniform_get_layout_tex_2d(wgpu::ShaderStages::FRAGMENT)
+						&painter.uniform_type_tex_2d(wgpu::ShaderStages::FRAGMENT)
 					],
 					push_constant_ranges: &[],
 				});
@@ -232,65 +266,36 @@ impl Painter {
 
 	// uniform utils
 
-	pub fn uniform_create<T>(&mut self, layout: &wgpu::BindGroupLayout, data: T) -> UniformBuffer<T>
-	where
-		T: bytemuck::Pod,
-	{
-		UniformBuffer::new(self, layout, data)
-	}
-
-	pub fn uniform_update<T>(&self, uniform: &UniformBuffer<T>, data: T)
-	where
-		T: bytemuck::Pod,
-	{
-		uniform.update(self, data);
-	}
-
-	pub fn uniform_create_mat4(
-		&mut self,
-		layout: &wgpu::BindGroupLayout,
-		mat: Mat4,
-	) -> UniformBuffer<Mat4> {
-		self.uniform_create(layout, mat)
-	}
-
-	pub fn uniform_update_mat4(&self, uniform: &UniformBuffer<Mat4>, mat: Mat4) {
-		self.uniform_update(uniform, mat);
-	}
-
-	pub fn uniform_create_mat3(
-		&mut self,
-		layout: &wgpu::BindGroupLayout,
-		mat: Mat3,
-	) -> UniformBuffer<Mat3U> {
-		UniformBuffer::new_mat3(self, layout, mat)
-	}
-
-	pub fn uniform_update_mat3(&self, uniform: &UniformBuffer<Mat3U>, mat: Mat3) {
-		uniform.update_mat3(self, mat);
-	}
-
-	pub fn uniform_get_layout_buffered(
-		&self,
-		visibility: wgpu::ShaderStages,
-	) -> wgpu::BindGroupLayout {
+	pub fn uniform_type_buffered(&self, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
 		get_uniform_layout_buffered(self, visibility)
 	}
 
-	pub fn uniform_get_layout_tex_2d(
-		&self,
-		visibility: wgpu::ShaderStages,
-	) -> wgpu::BindGroupLayout {
+	pub fn uniform_type_buffered_frag(&self) -> wgpu::BindGroupLayout {
+		self.uniform_type_buffered(wgpu::ShaderStages::FRAGMENT)
+	}
+
+	pub fn uniform_type_buffered_vert(&self) -> wgpu::BindGroupLayout {
+		self.uniform_type_buffered(wgpu::ShaderStages::VERTEX)
+	}
+
+	pub fn uniform_type_buffered_both(&self) -> wgpu::BindGroupLayout {
+		self.uniform_type_buffered(wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT)
+	}
+
+	pub fn uniform_type_tex_2d(&self, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
 		UniformTex2D::get_layout(self, visibility)
 	}
 
-	pub fn uniform_create_tex(
-		&mut self,
-		layout: &BindGroupLayout,
-		texture: Texture,
-		sampler: &wgpu::Sampler,
-	) -> UniformTex2D {
-		UniformTex2D::new(self, layout, texture, sampler)
+	pub fn uniform_type_tex_2d_frag(&self) -> wgpu::BindGroupLayout {
+		self.uniform_type_tex_2d(wgpu::ShaderStages::FRAGMENT)
+	}
+
+	pub fn uniform_type_tex_2d_vert(&self) -> wgpu::BindGroupLayout {
+		self.uniform_type_tex_2d(wgpu::ShaderStages::VERTEX)
+	}
+
+	pub fn uniform_type_tex_2d_both(&self) -> wgpu::BindGroupLayout {
+		self.uniform_type_tex_2d(wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT)
 	}
 
 	// general utils
@@ -322,7 +327,7 @@ impl Painter {
 
 	fn set_sketch_pipeline(
 		&mut self,
-		rpass: &mut RenderPass,
+		rpass: &mut wgpu::RenderPass,
 		sketch: &Sketch,
 		layer: Option<&Layer>,
 	) {
@@ -403,7 +408,12 @@ impl Painter {
 		rpass.set_pipeline(pipeline);
 	}
 
-	fn set_effect_pipeline(&mut self, rpass: &mut RenderPass, effect: &Effect, layer: &Layer) {
+	fn set_effect_pipeline(
+		&mut self,
+		rpass: &mut wgpu::RenderPass,
+		effect: &Effect,
+		layer: &Layer,
+	) {
 		let layer = &self.layers[layer.0];
 		let effect = &self.effects[effect.0];
 

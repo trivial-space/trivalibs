@@ -1,5 +1,6 @@
 use super::{
 	effect::Effect,
+	painter::UniformType,
 	sketch::Sketch,
 	texture::{Texture, Texture2DProps, TextureDepthProps, UniformTex2D},
 	uniform::Uniform,
@@ -208,8 +209,8 @@ impl Layer {
 			return *uniform;
 		}
 		let visibility = painter.layers[self.0].binding_visibility;
-		let uniform = painter.uniform_create_tex(
-			&UniformTex2D::get_layout(painter, visibility),
+		let uniform = UniformTex2D::get_layout(painter, visibility).create_tex2d(
+			painter,
 			painter.layers[self.0].target_textures[0],
 			&painter.sampler_create(&default()),
 		);
