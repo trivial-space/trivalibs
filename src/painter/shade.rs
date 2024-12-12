@@ -1,4 +1,4 @@
-use super::Painter;
+use super::{painter::UniformType, Painter};
 
 pub(crate) struct ShadeStorage {
 	pub vertex_shader: Option<wgpu::ShaderModule>,
@@ -7,16 +7,16 @@ pub(crate) struct ShadeStorage {
 	pub pipeline_layout: wgpu::PipelineLayout,
 }
 
-pub struct ShadeProps<'a, Format: Into<AttribsFormat>> {
+pub struct ShadeProps<'a, Format: Into<AttribsFormat>, UType: UniformType> {
 	pub vertex_shader: wgpu::ShaderModuleDescriptor<'a>,
 	pub fragment_shader: wgpu::ShaderModuleDescriptor<'a>,
 	pub vertex_format: Format,
-	pub uniform_layout: &'a [&'a wgpu::BindGroupLayout],
+	pub uniform_types: &'a [&'a UType],
 }
 
-pub struct ShadeEffectProps<'a> {
+pub struct ShadeEffectProps<'a, UType: UniformType> {
 	pub shader: wgpu::ShaderModuleDescriptor<'a>,
-	pub uniform_layout: &'a [&'a wgpu::BindGroupLayout],
+	pub uniform_types: &'a [&'a UType],
 }
 
 pub struct AttribsFormat {
@@ -96,9 +96,9 @@ impl Into<AttribsFormat> for wgpu::VertexFormat {
 pub struct Shade(pub(crate) usize);
 
 impl Shade {
-	pub fn new<Format: Into<AttribsFormat>>(
+	pub fn new<Format: Into<AttribsFormat>, UType: UniformType>(
 		painter: &mut Painter,
-		props: ShadeProps<Format>,
+		props: ShadeProps<Format, UType>,
 	) -> Self {
 		let vertex_shader = painter.device.create_shader_module(props.vertex_shader);
 		let fragment_shader = painter.device.create_shader_module(props.fragment_shader);
@@ -108,7 +108,12 @@ impl Shade {
 				.device
 				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 					label: None,
-					bind_group_layouts: props.uniform_layout,
+					bind_group_layouts: props
+						.uniform_types
+						.iter()
+						.map(|t| t.layout())
+						.collect::<Vec<_>>()
+						.as_slice(),
 					push_constant_ranges: &[],
 				});
 
@@ -127,7 +132,10 @@ impl Shade {
 		Shade(i)
 	}
 
-	pub fn new_effect(painter: &mut Painter, props: ShadeEffectProps) -> Self {
+	pub fn new_effect<UType: UniformType>(
+		painter: &mut Painter,
+		props: ShadeEffectProps<UType>,
+	) -> Self {
 		let fragment_shader = painter.device.create_shader_module(props.shader);
 
 		let pipeline_layout =
@@ -135,7 +143,12 @@ impl Shade {
 				.device
 				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 					label: None,
-					bind_group_layouts: props.uniform_layout,
+					bind_group_layouts: props
+						.uniform_types
+						.iter()
+						.map(|t| t.layout())
+						.collect::<Vec<_>>()
+						.as_slice(),
 					push_constant_ranges: &[],
 				});
 

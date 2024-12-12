@@ -25,6 +25,7 @@ pub trait UniformType {
 		texture: Texture,
 		sampler: &wgpu::Sampler,
 	) -> UniformTex2D;
+	fn layout(&self) -> &wgpu::BindGroupLayout;
 }
 
 impl UniformType for wgpu::BindGroupLayout {
@@ -47,6 +48,10 @@ impl UniformType for wgpu::BindGroupLayout {
 		sampler: &wgpu::Sampler,
 	) -> UniformTex2D {
 		UniformTex2D::new(painter, self, texture, sampler)
+	}
+
+	fn layout(&self) -> &wgpu::BindGroupLayout {
+		self
 	}
 }
 
@@ -223,14 +228,17 @@ impl Painter {
 
 	// shade helpers
 
-	pub fn shade_create<Format: Into<AttribsFormat>>(
+	pub fn shade_create<Format: Into<AttribsFormat>, UType: UniformType>(
 		&mut self,
-		props: ShadeProps<Format>,
+		props: ShadeProps<Format, UType>,
 	) -> Shade {
 		Shade::new(self, props)
 	}
 
-	pub fn shade_create_effect(&mut self, props: ShadeEffectProps) -> Shade {
+	pub fn shade_create_effect<UType: UniformType>(
+		&mut self,
+		props: ShadeEffectProps<UType>,
+	) -> Shade {
 		Shade::new_effect(self, props)
 	}
 
