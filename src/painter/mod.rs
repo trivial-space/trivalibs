@@ -21,7 +21,7 @@ pub mod texture;
 pub mod uniform;
 
 pub trait CanvasApp<RenderState, UserEvent> {
-	fn init(&mut self, painter: &mut Painter) -> RenderState;
+	fn init(&self, painter: &mut Painter) -> RenderState;
 	fn resize(&mut self, painter: &mut Painter, render_state: &mut RenderState);
 	fn update(&mut self, painter: &mut Painter, render_state: &mut RenderState, tpf: f32);
 	fn render(&self, painter: &mut Painter, render_state: &RenderState)
