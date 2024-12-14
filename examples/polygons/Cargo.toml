@@ -1,0 +1,9 @@
+[package]
+name = "draft_polygons"
+edition.workspace = true
+
+[dependencies]
+trivalibs.workspace = true
+shader = { path = "./shader", package = "draft_polygons_shader" }
+png.workspace = true
+bytemuck.workspace = true

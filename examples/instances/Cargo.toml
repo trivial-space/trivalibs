@@ -1,0 +1,8 @@
+[package]
+name = "draft_instances"
+edition.workspace = true
+
+[dependencies]
+trivalibs.workspace = true
+shader = { path = "./shader", package = "draft_instances_shader" }
+bytemuck.workspace = true

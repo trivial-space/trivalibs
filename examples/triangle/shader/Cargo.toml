@@ -1,0 +1,10 @@
+[package]
+name = "draft_triangle_shader"
+edition.workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+# Dependencies for CPU and GPU code
+[dependencies]
+spirv-std = { version = "0.9" }

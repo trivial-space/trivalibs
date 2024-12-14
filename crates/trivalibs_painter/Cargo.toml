@@ -1,0 +1,13 @@
+[package]
+name = "trivalibs_painter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+trivalibs_core = { path = "../trivalibs_core" }
+bytemuck.workspace = true
+winit.workspace = true
+wgpu.workspace = true
+log.workspace = true
+env_logger.workspace = true
+pollster.workspace = true

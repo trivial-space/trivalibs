@@ -1,0 +1,20 @@
+[package]
+name = "trivalibs_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+trivalibs_macros = { path = "../trivalibs_macros" }
+serde.workspace = true
+serde_repr.workspace = true
+serde_bytes.workspace = true
+bytemuck.workspace = true
+js-sys.workspace = true
+lerp.workspace = true
+approx.workspace = true
+rand.workspace = true
+getrandom.workspace = true
+glam.workspace = true
+log.workspace = true
+env_logger.workspace = true
+macro_rules_attribute.workspace = true
