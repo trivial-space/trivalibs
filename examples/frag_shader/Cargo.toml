@@ -3,7 +3,4 @@ name = "draft_frag_shader"
 edition.workspace = true
 
 [dependencies]
-shader = { path = "./shader", package = "draft_frag_shader_shader" }
 trivalibs.workspace = true
-png.workspace = true
-bytemuck.workspace = true

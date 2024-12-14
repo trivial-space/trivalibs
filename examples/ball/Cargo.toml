@@ -3,7 +3,6 @@ name = "draft_ball"
 edition.workspace = true
 
 [dependencies]
-shader = { path = "./shader", package = "draft_ball_shader" }
 trivalibs.workspace = true
 png.workspace = true
 bytemuck.workspace = true

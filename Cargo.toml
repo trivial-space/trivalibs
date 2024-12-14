@@ -9,7 +9,7 @@ trivalibs_painter = { path = "crates/trivalibs_painter" }
 
 [workspace]
 resolver = "2"
-members = ["crates/*", "examples/*"]
+members = ["crates/*", "examples/*", "examples/**/shader"]
 
 [workspace.package]
 edition = "2021"
@@ -33,6 +33,7 @@ glam = { version = "0.29.2", features = [
 ] }
 winit = "0.30.5"
 wgpu = { version = "23.0.1", features = ["spirv"] }
+spirv-std = { version = "0.9" }
 log = "0.4"
 env_logger = "0.11"
 pollster = "0.4.0"
