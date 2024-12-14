@@ -7,4 +7,9 @@ crate-type = ["rlib", "cdylib"]
 
 # Dependencies for CPU and GPU code
 [dependencies]
-spirv-std = { version = "0.9" }
+spirv-std.workspace = true
+
+# dependencies for CPU code
+[target.'cfg(not(target_arch = "spirv"))'.dependencies]
+trivalibs.workspace = true
+bytemuck.workspace = true

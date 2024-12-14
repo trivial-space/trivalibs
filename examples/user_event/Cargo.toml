@@ -1,0 +1,6 @@
+[package]
+name = "draft_user_event"
+edition.workspace = true
+
+[dependencies]
+trivalibs.workspace = true
