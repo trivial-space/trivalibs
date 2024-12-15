@@ -1,0 +1,11 @@
+[package]
+name = "draft_shader_image"
+edition.workspace = true
+
+[dependencies]
+trivalibs.workspace = true
+log.workspace = true
+png.workspace = true
+pollster.workspace = true
+env_logger.workspace = true
+flume.workspace = true

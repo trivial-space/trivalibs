@@ -4,7 +4,18 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-trivalibs-macros = { path = "macros" }
+trivalibs_core = { path = "crates/trivalibs_core" }
+trivalibs_painter = { path = "crates/trivalibs_painter" }
+
+[workspace]
+resolver = "2"
+members = ["crates/*", "examples/*", "examples/**/shader"]
+
+[workspace.package]
+edition = "2021"
+
+[workspace.dependencies]
+trivalibs = { path = "." }
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 serde_bytes = "0.11"
@@ -22,7 +33,10 @@ glam = { version = "0.29.2", features = [
 ] }
 winit = "0.30.5"
 wgpu = { version = "23.0.1", features = ["spirv"] }
+spirv-std = { version = "0.9" }
 log = "0.4"
 env_logger = "0.11"
 pollster = "0.4.0"
 macro_rules_attribute = "0.2.0"
+png = "0.17.14"
+flume = "0.11.1"

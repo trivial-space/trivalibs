@@ -9,6 +9,9 @@ use winit::{
 	window::{Window, WindowId},
 };
 
+pub use wgpu;
+pub use winit;
+
 pub mod painter;
 pub use painter::Painter;
 pub mod effect;

@@ -1,8 +1,6 @@
-use wgpu::BindGroupLayout;
-
-use crate::utils::default;
-
 use super::{uniform::Uniform, Painter};
+use trivalibs_core::utils::default;
+use wgpu::BindGroupLayout;
 
 pub struct Texture2DProps {
 	pub width: u32,

@@ -1,0 +1,9 @@
+[package]
+name = "draft_shader_image_shader"
+edition.workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+spirv-std.workspace = true

@@ -6,8 +6,8 @@ use super::{
 	uniform::Uniform,
 	Painter,
 };
-use crate::utils::default;
 use std::collections::BTreeMap;
+use trivalibs_core::utils::default;
 
 fn map_format_to_u8(format: wgpu::TextureFormat) -> u8 {
 	match format {

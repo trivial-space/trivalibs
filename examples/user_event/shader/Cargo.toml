@@ -1,0 +1,9 @@
+[package]
+name = "draft_user_event_shader"
+edition.workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+spirv-std.workspace = true

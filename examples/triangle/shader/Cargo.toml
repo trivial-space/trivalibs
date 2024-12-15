@@ -1,0 +1,15 @@
+[package]
+name = "draft_triangle_shader"
+edition.workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+# Dependencies for CPU and GPU code
+[dependencies]
+spirv-std.workspace = true
+
+# dependencies for CPU code
+[target.'cfg(not(target_arch = "spirv"))'.dependencies]
+trivalibs.workspace = true
+bytemuck.workspace = true

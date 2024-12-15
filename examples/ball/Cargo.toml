@@ -1,0 +1,8 @@
+[package]
+name = "draft_ball"
+edition.workspace = true
+
+[dependencies]
+trivalibs.workspace = true
+png.workspace = true
+bytemuck.workspace = true

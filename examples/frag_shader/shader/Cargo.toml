@@ -1,0 +1,9 @@
+[package]
+name = "draft_frag_shader_shader"
+edition.workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+spirv-std.workspace = true

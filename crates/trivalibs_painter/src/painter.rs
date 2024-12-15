@@ -8,9 +8,12 @@ use super::{
 	texture::{SamplerProps, Texture, Texture2DProps, TextureStorage, UniformTex2D},
 	uniform::{get_uniform_layout_buffered, Mat3U, UniformBuffer, Vec3U},
 };
-use crate::{rendering::RenderableBuffer, utils::default};
-use glam::{Mat3, Vec3};
 use std::{collections::BTreeMap, sync::Arc};
+use trivalibs_core::{
+	glam::{Mat3, Vec3},
+	rendering::RenderableBuffer,
+	utils::default,
+};
 use winit::window::Window;
 
 pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0, 0];

@@ -1,6 +1,5 @@
-use glam::{Mat3, Mat3A, Vec3, Vec3A};
-
 use super::{painter::get_padded_size, Painter};
+use trivalibs_core::glam::{Mat3, Mat3A, Vec3, Vec3A};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Uniform(pub(crate) usize);

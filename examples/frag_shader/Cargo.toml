@@ -1,0 +1,6 @@
+[package]
+name = "draft_frag_shader"
+edition.workspace = true
+
+[dependencies]
+trivalibs.workspace = true

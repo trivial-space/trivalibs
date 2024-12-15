@@ -18,3 +18,4 @@ Cargo.lock
 
 /target
 #Cargo.lock
+spirv-manifest.json

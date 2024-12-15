@@ -1,6 +1,5 @@
-use std::collections::BTreeMap;
-
 use super::{shade::Shade, uniform::Uniform, Painter};
+use std::collections::BTreeMap;
 
 pub(crate) struct EffectStorage {
 	pub uniforms: BTreeMap<u32, Uniform>,

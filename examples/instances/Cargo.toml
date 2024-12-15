@@ -1,0 +1,6 @@
+[package]
+name = "draft_instances"
+edition.workspace = true
+
+[dependencies]
+trivalibs.workspace = true
