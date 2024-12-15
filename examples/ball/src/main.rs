@@ -9,7 +9,7 @@ use trivalibs::{
 		sketch::SketchProps,
 		texture::Texture2DProps,
 		uniform::{Mat3U, UniformBuffer},
-		wgpu::{self, include_spirv, VertexFormat::*},
+		wgpu::{self, VertexFormat::*},
 		winit::event::{DeviceEvent, WindowEvent},
 		CanvasApp, Painter,
 	},
@@ -72,11 +72,11 @@ impl CanvasApp<RenderState, ()> for App {
 		let tex_type = p.uniform_type_tex_2d_frag();
 
 		let shade = p.shade_create(ShadeProps {
-			vertex_shader: include_spirv!("../shader/vertex.spv"),
-			fragment_shader: include_spirv!("../shader/fragment.spv"),
 			vertex_format: &[Float32x3, Float32x2, Float32x3, Float32x3],
 			uniform_types: &[&uniform_type, &uniform_type, &tex_type],
 		});
+		shade.set_vertex_bytes(p, include_bytes!("../shader/vertex.spv").to_vec());
+		shade.set_fragment_bytes(p, include_bytes!("../shader/fragment.spv").to_vec());
 
 		let form = p.form_from_buffer(create_ball_geom(), default());
 

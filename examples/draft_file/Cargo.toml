@@ -1,0 +1,3 @@
+[package]
+name = "draft_file"
+edition.workspace = true

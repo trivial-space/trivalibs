@@ -14,6 +14,7 @@ use trivalibs_core::{
 	rendering::RenderableBuffer,
 	utils::default,
 };
+use wgpu::util::make_spirv;
 use winit::window::Window;
 
 pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0, 0];
@@ -353,13 +354,27 @@ impl Painter {
 			let s = &self.shades[sketch.shade.0];
 			let format = layer.map_or(self.config.format, |l| l.format);
 
+			let vertex_shader = self
+				.device
+				.create_shader_module(wgpu::ShaderModuleDescriptor {
+					label: None,
+					source: make_spirv(&s.vertex_bytes.as_ref().unwrap()),
+				});
+
+			let fragment_shader = self
+				.device
+				.create_shader_module(wgpu::ShaderModuleDescriptor {
+					label: None,
+					source: make_spirv(&s.fragment_bytes.as_ref().unwrap()),
+				});
+
 			let pipeline = self
 				.device
 				.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
 					label: None,
 					layout: Some(&s.pipeline_layout),
 					vertex: wgpu::VertexState {
-						module: s.vertex_shader.as_ref().unwrap(),
+						module: &vertex_shader,
 						entry_point: None,
 						buffers: &[wgpu::VertexBufferLayout {
 							array_stride: s.attribs.stride,
@@ -369,7 +384,7 @@ impl Painter {
 						compilation_options: default(),
 					},
 					fragment: Some(wgpu::FragmentState {
-						module: &s.fragment_shader,
+						module: &fragment_shader,
 						entry_point: None,
 						targets: &[Some(wgpu::ColorTargetState {
 							format,
@@ -430,6 +445,13 @@ impl Painter {
 		if !self.pipelines.contains_key(pipeline_key) {
 			let s = &self.shades[effect.shade.0];
 
+			let fragment_shader = self
+				.device
+				.create_shader_module(wgpu::ShaderModuleDescriptor {
+					label: None,
+					source: make_spirv(&s.fragment_bytes.as_ref().unwrap()),
+				});
+
 			let pipeline = self
 				.device
 				.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -442,7 +464,7 @@ impl Painter {
 						compilation_options: default(),
 					},
 					fragment: Some(wgpu::FragmentState {
-						module: &s.fragment_shader,
+						module: &fragment_shader,
 						entry_point: None,
 						targets: &[Some(wgpu::ColorTargetState {
 							format: layer.format,
