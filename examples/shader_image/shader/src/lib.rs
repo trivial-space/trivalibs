@@ -1,6 +1,4 @@
-//! Ported to Rust from <https://github.com/Tw1ddle/Sky-Shader/blob/master/src/shaders/glsl/sky.fragment>
-#![allow(unexpected_cfgs)]
-#![cfg_attr(target_arch = "spirv", no_std)]
+#![no_std]
 
 use spirv_std::glam::{vec2, vec4, Vec2, Vec4};
 #[allow(unused_imports)]
