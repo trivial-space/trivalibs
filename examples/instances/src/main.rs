@@ -3,6 +3,7 @@ use trivalibs::{
 	painter::{
 		create_canvas_app,
 		form::FormData,
+		load_fragment_shader, load_vertex_shader,
 		painter::UniformType,
 		shade::ShadeProps,
 		sketch::{Sketch, SketchProps},
@@ -80,8 +81,8 @@ impl CanvasApp<RenderState, ()> for App {
 			vertex_format: vec![VertexFormat::Float32x3],
 			uniform_types: &[&vert_u_type, &vert_u_type, &frag_u_type],
 		});
-		shade.set_vertex_bytes(p, include_bytes!("../shader/vertex.spv").to_vec());
-		shade.set_fragment_bytes(p, include_bytes!("../shader/fragment.spv").to_vec());
+		load_vertex_shader!(shade, p, "../shader/vertex.spv");
+		load_fragment_shader!(shade, p, "../shader/fragment.spv");
 
 		let form = p.form_create(
 			&FormData {

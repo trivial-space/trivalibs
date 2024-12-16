@@ -4,6 +4,7 @@ use trivalibs::{
 		create_canvas_app,
 		effect::EffectProps,
 		layer::{Layer, LayerProps},
+		load_fragment_shader,
 		painter::UniformType,
 		shade::ShadeEffectProps,
 		uniform::UniformBuffer,
@@ -32,8 +33,7 @@ impl CanvasApp<RenderState, ()> for App {
 		let shade = p.shade_create_effect(ShadeEffectProps {
 			uniform_types: &[&u_type, &u_type],
 		});
-		// TODO: implement path resolution in macro
-		shade.set_fragment_path(p, "../shader/main.spv");
+		load_fragment_shader!(shade, p, "../shader/main.spv");
 
 		let time = u_type.create_buff(p, 0.0f32);
 		let size = u_type.create_buff(p, uvec2(0, 0));

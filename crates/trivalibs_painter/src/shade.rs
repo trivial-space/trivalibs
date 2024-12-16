@@ -182,8 +182,7 @@ impl Shade {
 	}
 
 	pub fn set_vertex_path(&self, painter: &mut Painter, path: &str) {
-		let path = get_full_path(path);
-		painter.shades[self.0].vertex_path = Some(path);
+		painter.shades[self.0].vertex_path = Some(path.to_string());
 		self.load_vertex_from_path(painter);
 	}
 
@@ -199,17 +198,45 @@ impl Shade {
 	}
 
 	pub fn set_fragment_path(&self, painter: &mut Painter, path: &str) {
-		let path = get_full_path(path);
-		painter.shades[self.0].fragment_path = Some(path);
+		painter.shades[self.0].fragment_path = Some(path.to_string());
 		self.load_fragment_from_path(painter);
 	}
 }
 
-fn get_full_path(path: &str) -> String {
-	let current_file = file!();
-	let current_dir = std::path::Path::new(current_file).parent().unwrap();
-	let full_path = current_dir.join(path);
-	println!("full_path: {:?}", full_path);
-	let full_path = std::fs::canonicalize(full_path).unwrap();
-	full_path.to_str().unwrap().to_string()
+#[macro_export]
+macro_rules! load_fragment_shader {
+	($shade:expr, $painter:expr, $path:expr) => {
+		#[cfg(debug_assertions)]
+		{
+			let current_file = file!();
+			let current_dir = std::path::Path::new(current_file).parent().unwrap();
+			let full_path = current_dir.join($path);
+			let full_path = std::fs::canonicalize(full_path).unwrap();
+			let full_path = full_path.to_str().unwrap();
+			println!("loading shader: {:?}", full_path);
+			$shade.set_fragment_path($painter, full_path);
+		}
+
+		#[cfg(not(debug_assertions))]
+		$shade.set_fragment_bytes($painter, include_bytes!($path).to_vec());
+	};
+}
+
+#[macro_export]
+macro_rules! load_vertex_shader {
+	($shade:expr, $painter:expr, $path:expr) => {
+		#[cfg(debug_assertions)]
+		{
+			let current_file = file!();
+			let current_dir = std::path::Path::new(current_file).parent().unwrap();
+			let full_path = current_dir.join($path);
+			let full_path = std::fs::canonicalize(full_path).unwrap();
+			let full_path = full_path.to_str().unwrap();
+			println!("loading shader: {:?}", full_path);
+			$shade.set_vertex_path($painter, full_path);
+		}
+
+		#[cfg(not(debug_assertions))]
+		$shade.set_vertex_bytes($painter, include_bytes!($path).to_vec());
+	};
 }

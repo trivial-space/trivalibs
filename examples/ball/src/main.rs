@@ -4,6 +4,7 @@ use trivalibs::{
 	painter::{
 		create_canvas_app,
 		layer::{Layer, LayerProps},
+		load_fragment_shader, load_vertex_shader,
 		painter::UniformType,
 		shade::ShadeProps,
 		sketch::SketchProps,
@@ -75,8 +76,8 @@ impl CanvasApp<RenderState, ()> for App {
 			vertex_format: &[Float32x3, Float32x2, Float32x3, Float32x3],
 			uniform_types: &[&uniform_type, &uniform_type, &tex_type],
 		});
-		shade.set_vertex_bytes(p, include_bytes!("../shader/vertex.spv").to_vec());
-		shade.set_fragment_bytes(p, include_bytes!("../shader/fragment.spv").to_vec());
+		load_vertex_shader!(shade, p, "../shader/vertex.spv");
+		load_fragment_shader!(shade, p, "../shader/fragment.spv");
 
 		let form = p.form_from_buffer(create_ball_geom(), default());
 
