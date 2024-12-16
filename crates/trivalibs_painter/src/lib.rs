@@ -1,3 +1,4 @@
+use notify::Watcher;
 use std::{sync::Arc, time::Instant};
 use wgpu::SurfaceError;
 use winit::{
@@ -43,6 +44,7 @@ enum WindowState {
 pub enum CustomEvent<UserEvent> {
 	StateInitializationEvent(Painter),
 	UserEvent(UserEvent),
+	ReloadShaders(String),
 }
 
 pub struct CanvasAppRunner<RenderState, UserEvent, App>
@@ -93,6 +95,55 @@ where
 	pub fn start(self) {
 		let event_loop = self.event_loop;
 		let mut app = self.app;
+
+		#[cfg(debug_assertions)]
+		let (tx, rx) = std::sync::mpsc::channel::<notify::Result<notify::Event>>();
+
+		#[cfg(debug_assertions)]
+		let mut watcher = notify::recommended_watcher(tx).unwrap();
+
+		#[cfg(debug_assertions)]
+		let path = std::env::current_dir().unwrap();
+
+		#[cfg(debug_assertions)]
+		println!("Watching: {:?}", path);
+
+		#[cfg(debug_assertions)]
+		watcher
+			.watch(&path, notify::RecursiveMode::Recursive)
+			.unwrap();
+
+		#[cfg(debug_assertions)]
+		let proxy = app.event_loop_proxy.clone();
+
+		#[cfg(debug_assertions)]
+		std::thread::spawn(move || {
+			// Block forever, printing out events as they come in
+			for res in rx {
+				match res {
+					Ok(event) => {
+						if event.kind.is_modify() {
+							event.paths.iter().for_each(|path| {
+								if let Some(ext) = path.extension() {
+									if ext != "spv" {
+										return;
+									}
+									proxy
+										.send_event(CustomEvent::ReloadShaders(
+											path.display().to_string(),
+										))
+										.unwrap_or_else(|_| {
+											panic!("Failed to send shader reload event");
+										});
+								}
+							});
+						}
+					}
+					Err(e) => println!("watch error: {:?}", e),
+				}
+			}
+		});
+
 		let _ = event_loop.run_app(&mut app);
 	}
 
@@ -218,6 +269,14 @@ where
 			CustomEvent::UserEvent(user_event) => {
 				if let WindowState::Initialized(painter) = &self.state {
 					self.app.user_event(user_event, painter);
+				}
+			}
+			CustomEvent::ReloadShaders(path) => {
+				#[cfg(debug_assertions)]
+				{
+					if let WindowState::Initialized(painter) = &mut self.state {
+						painter.reload_shader(path);
+					}
 				}
 			}
 		}

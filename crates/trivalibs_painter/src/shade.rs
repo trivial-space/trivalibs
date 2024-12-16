@@ -1,21 +1,21 @@
 use super::{painter::UniformType, Painter};
+use std::fs;
 
 pub(crate) struct ShadeStorage {
-	pub vertex_shader: Option<wgpu::ShaderModule>,
-	pub fragment_shader: wgpu::ShaderModule,
+	pub vertex_path: Option<String>,
+	pub vertex_bytes: Option<Vec<u8>>,
+	pub fragment_path: Option<String>,
+	pub fragment_bytes: Option<Vec<u8>>,
 	pub attribs: AttribsFormat,
 	pub pipeline_layout: wgpu::PipelineLayout,
 }
 
 pub struct ShadeProps<'a, Format: Into<AttribsFormat>, UType: UniformType> {
-	pub vertex_shader: wgpu::ShaderModuleDescriptor<'a>,
-	pub fragment_shader: wgpu::ShaderModuleDescriptor<'a>,
 	pub vertex_format: Format,
 	pub uniform_types: &'a [&'a UType],
 }
 
 pub struct ShadeEffectProps<'a, UType: UniformType> {
-	pub shader: wgpu::ShaderModuleDescriptor<'a>,
 	pub uniform_types: &'a [&'a UType],
 }
 
@@ -100,9 +100,6 @@ impl Shade {
 		painter: &mut Painter,
 		props: ShadeProps<Format, UType>,
 	) -> Self {
-		let vertex_shader = painter.device.create_shader_module(props.vertex_shader);
-		let fragment_shader = painter.device.create_shader_module(props.fragment_shader);
-
 		let pipeline_layout =
 			painter
 				.device
@@ -120,8 +117,10 @@ impl Shade {
 		let format = props.vertex_format.into();
 
 		let s = ShadeStorage {
-			vertex_shader: Some(vertex_shader),
-			fragment_shader,
+			vertex_path: None,
+			vertex_bytes: None,
+			fragment_path: None,
+			fragment_bytes: None,
 			attribs: format,
 			pipeline_layout,
 		};
@@ -136,8 +135,6 @@ impl Shade {
 		painter: &mut Painter,
 		props: ShadeEffectProps<UType>,
 	) -> Self {
-		let fragment_shader = painter.device.create_shader_module(props.shader);
-
 		let pipeline_layout =
 			painter
 				.device
@@ -155,8 +152,10 @@ impl Shade {
 		let format = vec![].into();
 
 		let s = ShadeStorage {
-			vertex_shader: None,
-			fragment_shader,
+			vertex_path: None,
+			vertex_bytes: None,
+			fragment_path: None,
+			fragment_bytes: None,
 			attribs: format,
 			pipeline_layout,
 		};
@@ -170,4 +169,74 @@ impl Shade {
 	pub fn form_stride(&self, painter: &Painter) -> u64 {
 		painter.shades[self.0].attribs.stride
 	}
+
+	pub fn set_vertex_bytes(&self, painter: &mut Painter, bytes: Vec<u8>) {
+		painter.shades[self.0].vertex_bytes = Some(bytes);
+	}
+
+	pub(crate) fn load_vertex_from_path(&self, painter: &mut Painter) {
+		if let Some(shader_path) = &painter.shades[self.0].vertex_path {
+			let bytes = fs::read(shader_path).expect("Failed to read vertex shader file");
+			self.set_vertex_bytes(painter, bytes);
+		}
+	}
+
+	pub fn set_vertex_path(&self, painter: &mut Painter, path: &str) {
+		painter.shades[self.0].vertex_path = Some(path.to_string());
+		self.load_vertex_from_path(painter);
+	}
+
+	pub fn set_fragment_bytes(&self, painter: &mut Painter, bytes: Vec<u8>) {
+		painter.shades[self.0].fragment_bytes = Some(bytes);
+	}
+
+	pub(crate) fn load_fragment_from_path(&self, painter: &mut Painter) {
+		if let Some(shader_path) = &painter.shades[self.0].fragment_path {
+			let bytes = fs::read(shader_path).expect("Failed to read fragment shader file");
+			self.set_fragment_bytes(painter, bytes);
+		}
+	}
+
+	pub fn set_fragment_path(&self, painter: &mut Painter, path: &str) {
+		painter.shades[self.0].fragment_path = Some(path.to_string());
+		self.load_fragment_from_path(painter);
+	}
+}
+
+#[macro_export]
+macro_rules! load_fragment_shader {
+	($shade:expr, $painter:expr, $path:expr) => {
+		#[cfg(debug_assertions)]
+		{
+			let current_file = file!();
+			let current_dir = std::path::Path::new(current_file).parent().unwrap();
+			let full_path = current_dir.join($path);
+			let full_path = std::fs::canonicalize(full_path).unwrap();
+			let full_path = full_path.to_str().unwrap();
+			println!("loading shader: {:?}", full_path);
+			$shade.set_fragment_path($painter, full_path);
+		}
+
+		#[cfg(not(debug_assertions))]
+		$shade.set_fragment_bytes($painter, include_bytes!($path).to_vec());
+	};
+}
+
+#[macro_export]
+macro_rules! load_vertex_shader {
+	($shade:expr, $painter:expr, $path:expr) => {
+		#[cfg(debug_assertions)]
+		{
+			let current_file = file!();
+			let current_dir = std::path::Path::new(current_file).parent().unwrap();
+			let full_path = current_dir.join($path);
+			let full_path = std::fs::canonicalize(full_path).unwrap();
+			let full_path = full_path.to_str().unwrap();
+			println!("loading shader: {:?}", full_path);
+			$shade.set_vertex_path($painter, full_path);
+		}
+
+		#[cfg(not(debug_assertions))]
+		$shade.set_vertex_bytes($painter, include_bytes!($path).to_vec());
+	};
 }

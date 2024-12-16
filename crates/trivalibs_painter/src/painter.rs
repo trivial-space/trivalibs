@@ -14,9 +14,10 @@ use trivalibs_core::{
 	rendering::RenderableBuffer,
 	utils::default,
 };
+use wgpu::util::make_spirv;
 use winit::window::Window;
 
-pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0, 0];
+pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0xff, 0xff];
 
 pub trait UniformType {
 	fn create_buff<T: bytemuck::Pod>(&self, painter: &mut Painter, data: T) -> UniformBuffer<T>;
@@ -353,13 +354,27 @@ impl Painter {
 			let s = &self.shades[sketch.shade.0];
 			let format = layer.map_or(self.config.format, |l| l.format);
 
+			let vertex_shader = self
+				.device
+				.create_shader_module(wgpu::ShaderModuleDescriptor {
+					label: None,
+					source: make_spirv(&s.vertex_bytes.as_ref().unwrap()),
+				});
+
+			let fragment_shader = self
+				.device
+				.create_shader_module(wgpu::ShaderModuleDescriptor {
+					label: None,
+					source: make_spirv(&s.fragment_bytes.as_ref().unwrap()),
+				});
+
 			let pipeline = self
 				.device
 				.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
 					label: None,
 					layout: Some(&s.pipeline_layout),
 					vertex: wgpu::VertexState {
-						module: s.vertex_shader.as_ref().unwrap(),
+						module: &vertex_shader,
 						entry_point: None,
 						buffers: &[wgpu::VertexBufferLayout {
 							array_stride: s.attribs.stride,
@@ -369,7 +384,7 @@ impl Painter {
 						compilation_options: default(),
 					},
 					fragment: Some(wgpu::FragmentState {
-						module: &s.fragment_shader,
+						module: &fragment_shader,
 						entry_point: None,
 						targets: &[Some(wgpu::ColorTargetState {
 							format,
@@ -430,6 +445,13 @@ impl Painter {
 		if !self.pipelines.contains_key(pipeline_key) {
 			let s = &self.shades[effect.shade.0];
 
+			let fragment_shader = self
+				.device
+				.create_shader_module(wgpu::ShaderModuleDescriptor {
+					label: None,
+					source: make_spirv(&s.fragment_bytes.as_ref().unwrap()),
+				});
+
 			let pipeline = self
 				.device
 				.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -442,7 +464,7 @@ impl Painter {
 						compilation_options: default(),
 					},
 					fragment: Some(wgpu::FragmentState {
-						module: &s.fragment_shader,
+						module: &fragment_shader,
 						entry_point: None,
 						targets: &[Some(wgpu::ColorTargetState {
 							format: layer.format,
@@ -690,6 +712,45 @@ impl Painter {
 		frame.present();
 
 		Ok(())
+	}
+
+	pub(crate) fn reload_shader(&mut self, path: String) {
+		println!("Reloading shader: {}", path);
+		let shade_indices = self
+			.shades
+			.iter()
+			.enumerate()
+			.filter_map(|(idx, s)| {
+				if s.vertex_path.as_ref().map_or(false, |p| p.contains(&path)) {
+					return Some(idx);
+				}
+				if s.fragment_path
+					.as_ref()
+					.map_or(false, |p| p.contains(&path))
+				{
+					return Some(idx);
+				}
+				None
+			})
+			.collect::<Vec<_>>();
+
+		let pipeline_keys = self
+			.pipelines
+			.keys()
+			.cloned()
+			.map(|key| (u16::from_le_bytes([key[0], key[1]]), key))
+			.collect::<Vec<_>>();
+
+		for idx in shade_indices {
+			Shade(idx).load_fragment_from_path(self);
+			Shade(idx).load_vertex_from_path(self);
+
+			for (shade_idx, pipeline_key) in &pipeline_keys {
+				if *shade_idx == idx as u16 {
+					self.pipelines.remove(pipeline_key);
+				}
+			}
+		}
 	}
 }
 
