@@ -209,6 +209,7 @@ fn get_full_path(path: &str) -> String {
 	let current_file = file!();
 	let current_dir = std::path::Path::new(current_file).parent().unwrap();
 	let full_path = current_dir.join(path);
+	println!("full_path: {:?}", full_path);
 	let full_path = std::fs::canonicalize(full_path).unwrap();
 	full_path.to_str().unwrap().to_string()
 }

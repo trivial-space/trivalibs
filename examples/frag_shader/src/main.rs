@@ -32,7 +32,8 @@ impl CanvasApp<RenderState, ()> for App {
 		let shade = p.shade_create_effect(ShadeEffectProps {
 			uniform_types: &[&u_type, &u_type],
 		});
-		shade.set_fragment_bytes(p, include_bytes!("../shader/main.spv").to_vec());
+		// TODO: implement path resolution in macro
+		shade.set_fragment_path(p, "../shader/main.spv");
 
 		let time = u_type.create_buff(p, 0.0f32);
 		let size = u_type.create_buff(p, uvec2(0, 0));
