@@ -17,7 +17,7 @@ use trivalibs_core::{
 use wgpu::util::make_spirv;
 use winit::window::Window;
 
-pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0, 0];
+pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0xff, 0xff];
 
 pub trait UniformType {
 	fn create_buff<T: bytemuck::Pod>(&self, painter: &mut Painter, data: T) -> UniformBuffer<T>;
@@ -712,6 +712,45 @@ impl Painter {
 		frame.present();
 
 		Ok(())
+	}
+
+	pub(crate) fn reload_shader(&mut self, path: String) {
+		println!("Reloading shader: {}", path);
+		let shade_indices = self
+			.shades
+			.iter()
+			.enumerate()
+			.filter_map(|(idx, s)| {
+				if s.vertex_path.as_ref().map_or(false, |p| p.contains(&path)) {
+					return Some(idx);
+				}
+				if s.fragment_path
+					.as_ref()
+					.map_or(false, |p| p.contains(&path))
+				{
+					return Some(idx);
+				}
+				None
+			})
+			.collect::<Vec<_>>();
+
+		let pipeline_keys = self
+			.pipelines
+			.keys()
+			.cloned()
+			.map(|key| (u16::from_le_bytes([key[0], key[1]]), key))
+			.collect::<Vec<_>>();
+
+		for idx in shade_indices {
+			Shade(idx).load_fragment_from_path(self);
+			Shade(idx).load_vertex_from_path(self);
+
+			for (shade_idx, pipeline_key) in &pipeline_keys {
+				if *shade_idx == idx as u16 {
+					self.pipelines.remove(pipeline_key);
+				}
+			}
+		}
 	}
 }
 
