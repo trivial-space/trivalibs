@@ -128,6 +128,8 @@ impl CanvasApp<RenderState, ()> for App {
 
 		rs.norm
 			.update_mat3(p, self.ball_transform.view_normal_mat(&self.cam));
+
+		p.request_next_frame();
 	}
 
 	fn render(
@@ -136,11 +138,7 @@ impl CanvasApp<RenderState, ()> for App {
 		state: &RenderState,
 	) -> std::result::Result<(), wgpu::SurfaceError> {
 		p.paint(&state.canvas)?;
-		p.show(&state.canvas)?;
-
-		p.request_next_frame();
-
-		Ok(())
+		p.show(&state.canvas)
 	}
 
 	fn user_event(&mut self, _e: (), _p: &Painter) {}

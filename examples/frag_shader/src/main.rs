@@ -64,15 +64,13 @@ impl CanvasApp<RenderState, ()> for App {
 	fn update(&mut self, p: &mut Painter, rs: &mut RenderState, tpf: f32) {
 		self.time += tpf;
 		rs.time.update(p, self.time);
+
+		p.request_next_frame();
 	}
 
 	fn render(&self, p: &mut Painter, state: &RenderState) -> Result<(), SurfaceError> {
 		p.paint(&state.canvas)?;
-		p.show(&state.canvas)?;
-
-		p.request_next_frame();
-
-		Ok(())
+		p.show(&state.canvas)
 	}
 
 	fn user_event(&mut self, _e: (), _p: &Painter) {}
