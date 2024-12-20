@@ -2,8 +2,7 @@ use shader::Vertex;
 use trivalibs::painter::{
 	create_canvas_app,
 	wgpu::{self, include_spirv, util::DeviceExt},
-	winit::event::{DeviceEvent, WindowEvent},
-	CanvasApp, Painter,
+	CanvasApp, Event, Painter,
 };
 use trivalibs::prelude::*;
 
@@ -261,9 +260,7 @@ impl CanvasApp<ViewState, ()> for App {
 		Ok(())
 	}
 
-	fn user_event(&mut self, _e: (), _p: &Painter) {}
-	fn window_event(&mut self, _e: WindowEvent, _p: &Painter) {}
-	fn device_event(&mut self, _e: DeviceEvent, _p: &Painter) {}
+	fn event(&mut self, _e: Event<()>, _p: &Painter) {}
 	fn resize(&mut self, _p: &mut Painter, _r: &mut ViewState) {}
 	fn update(&mut self, _p: &mut Painter, _r: &mut ViewState, _tpf: f32) {}
 }

@@ -1,8 +1,7 @@
 use trivalibs::painter::{
 	create_canvas_app,
 	wgpu::{self, include_spirv},
-	winit::event::{DeviceEvent, WindowEvent},
-	CanvasApp, Painter,
+	CanvasApp, Event, Painter,
 };
 
 struct ViewState {
@@ -116,15 +115,18 @@ impl CanvasApp<ViewState, UserEvent> for App {
 		Ok(())
 	}
 
-	fn user_event(&mut self, event: UserEvent, painter: &Painter) {
-		self.color = event.0;
-		painter.request_next_frame();
+	fn event(&mut self, event: Event<UserEvent>, painter: &Painter) {
+		match event {
+			Event::UserEvent(event) => {
+				self.color = event.0;
+				painter.request_next_frame();
+			}
+			_ => {}
+		}
 	}
 
 	fn resize(&mut self, _p: &mut Painter, _r: &mut ViewState) {}
 	fn update(&mut self, _p: &mut Painter, _r: &mut ViewState, _tpf: f32) {}
-	fn window_event(&mut self, _e: WindowEvent, _p: &Painter) {}
-	fn device_event(&mut self, _e: DeviceEvent, _p: &Painter) {}
 }
 
 pub fn main() {

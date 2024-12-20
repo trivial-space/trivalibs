@@ -25,14 +25,18 @@ pub mod texture;
 pub mod uniform;
 pub use uniform::UniformType;
 
+pub enum Event<UserEvent> {
+	WindowEvent(WindowEvent),
+	DeviceEvent(DeviceEvent),
+	UserEvent(UserEvent),
+}
+
 pub trait CanvasApp<ViewState, UserEvent> {
 	fn init(&self, painter: &mut Painter) -> ViewState;
 	fn resize(&mut self, painter: &mut Painter, render_state: &mut ViewState);
 	fn update(&mut self, painter: &mut Painter, render_state: &mut ViewState, tpf: f32);
 	fn render(&self, painter: &mut Painter, render_state: &ViewState) -> Result<(), SurfaceError>;
-	fn window_event(&mut self, event: WindowEvent, painter: &Painter);
-	fn device_event(&mut self, event: DeviceEvent, painter: &Painter);
-	fn user_event(&mut self, event: UserEvent, painter: &Painter);
+	fn event(&mut self, event: Event<UserEvent>, painter: &Painter);
 }
 
 enum WindowState {
@@ -264,7 +268,7 @@ where
 			}
 			CustomEvent::UserEvent(user_event) => {
 				if let WindowState::Initialized(painter) = &self.state {
-					self.app.user_event(user_event, painter);
+					self.app.event(Event::UserEvent(user_event), painter);
 				}
 			}
 			CustomEvent::ReloadShaders(path) => {
@@ -353,7 +357,7 @@ where
 					}
 
 					rest => {
-						self.app.window_event(rest, painter);
+						self.app.event(Event::WindowEvent(rest), painter);
 					}
 				};
 			}
@@ -368,7 +372,7 @@ where
 		event: DeviceEvent,
 	) {
 		if let WindowState::Initialized(painter) = &mut self.state {
-			self.app.device_event(event, painter);
+			self.app.event(Event::DeviceEvent(event), painter);
 		}
 	}
 }

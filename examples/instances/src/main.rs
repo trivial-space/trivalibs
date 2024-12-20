@@ -6,8 +6,7 @@ use trivalibs::{
 		sketch::{Sketch, SketchProps},
 		uniform::UniformBuffer,
 		wgpu::{self, VertexFormat},
-		winit::event::{DeviceEvent, WindowEvent},
-		CanvasApp, Painter, UniformType,
+		CanvasApp, Event, Painter, UniformType,
 	},
 	prelude::*,
 	rendering::{
@@ -141,9 +140,7 @@ impl CanvasApp<ViewState, ()> for App {
 		p.draw(&rs.sketch)
 	}
 
-	fn window_event(&mut self, _e: WindowEvent, _p: &Painter) {}
-	fn device_event(&mut self, _e: DeviceEvent, _p: &Painter) {}
-	fn user_event(&mut self, _e: (), _p: &Painter) {}
+	fn event(&mut self, _e: Event<()>, _p: &Painter) {}
 }
 
 pub fn main() {

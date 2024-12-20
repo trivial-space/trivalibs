@@ -8,8 +8,7 @@ use trivalibs::{
 		shade::ShadeEffectProps,
 		uniform::UniformBuffer,
 		wgpu::SurfaceError,
-		winit::event::{DeviceEvent, WindowEvent},
-		CanvasApp, Painter, UniformType,
+		CanvasApp, Event, Painter, UniformType,
 	},
 	prelude::*,
 };
@@ -73,9 +72,7 @@ impl CanvasApp<ViewState, ()> for App {
 		p.show(&state.canvas)
 	}
 
-	fn user_event(&mut self, _e: (), _p: &Painter) {}
-	fn window_event(&mut self, _e: WindowEvent, _p: &Painter) {}
-	fn device_event(&mut self, _e: DeviceEvent, _p: &Painter) {}
+	fn event(&mut self, _e: Event<()>, _p: &Painter) {}
 }
 
 pub fn main() {
