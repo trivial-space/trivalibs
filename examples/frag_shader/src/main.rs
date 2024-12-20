@@ -55,14 +55,14 @@ impl CanvasApp<ViewState, ()> for App {
 		ViewState { canvas, time, size }
 	}
 
-	fn resize(&mut self, p: &mut Painter, rs: &mut ViewState) {
+	fn resize(&mut self, p: &mut Painter, v: &mut ViewState) {
 		let size = p.canvas_size();
-		rs.size.update(p, uvec2(size.width, size.height));
+		v.size.update(p, uvec2(size.width, size.height));
 	}
 
-	fn update(&mut self, p: &mut Painter, rs: &mut ViewState, tpf: f32) {
+	fn update(&mut self, p: &mut Painter, v: &mut ViewState, tpf: f32) {
 		self.time += tpf;
-		rs.time.update(p, self.time);
+		v.time.update(p, self.time);
 
 		p.request_next_frame();
 	}

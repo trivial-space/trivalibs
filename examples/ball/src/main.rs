@@ -112,20 +112,20 @@ impl CanvasApp<ViewState, ()> for App {
 		ViewState { canvas, mvp, norm }
 	}
 
-	fn resize(&mut self, p: &mut Painter, _rs: &mut ViewState) {
+	fn resize(&mut self, p: &mut Painter, _v: &mut ViewState) {
 		let size = p.canvas_size();
 
 		self.cam
 			.set_aspect_ratio(size.width as f32 / size.height as f32);
 	}
 
-	fn update(&mut self, p: &mut Painter, rs: &mut ViewState, tpf: f32) {
+	fn update(&mut self, p: &mut Painter, v: &mut ViewState, tpf: f32) {
 		self.ball_transform.rotate_y(tpf * 0.5);
 
-		rs.mvp
+		v.mvp
 			.update(p, self.ball_transform.model_view_proj_mat(&self.cam));
 
-		rs.norm
+		v.norm
 			.update_mat3(p, self.ball_transform.view_normal_mat(&self.cam));
 
 		p.request_next_frame();

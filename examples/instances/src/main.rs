@@ -119,25 +119,25 @@ impl CanvasApp<ViewState, ()> for App {
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter, rs: &mut ViewState) {
+	fn resize(&mut self, p: &mut Painter, v: &mut ViewState) {
 		let size = p.canvas_size();
 		self.cam
 			.set_aspect_ratio(size.width as f32 / size.height as f32);
 
-		rs.vp_mat.update(p, self.cam.view_proj_mat());
+		v.vp_mat.update(p, self.cam.view_proj_mat());
 	}
 
-	fn update(&mut self, p: &mut Painter, rs: &mut ViewState, tpf: f32) {
-		for (tri, model) in self.triangles.iter_mut().zip(rs.model_mats.iter_mut()) {
+	fn update(&mut self, p: &mut Painter, v: &mut ViewState, tpf: f32) {
+		for (tri, model) in self.triangles.iter_mut().zip(v.model_mats.iter_mut()) {
 			tri.transform.rotate_y(tpf * tri.speed);
 
 			model.update(p, tri.transform.model_mat());
 		}
 	}
 
-	fn render(&self, p: &mut Painter, rs: &ViewState) -> Result<(), wgpu::SurfaceError> {
+	fn render(&self, p: &mut Painter, v: &ViewState) -> Result<(), wgpu::SurfaceError> {
 		p.request_next_frame();
-		p.draw(&rs.sketch)
+		p.draw(&v.sketch)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &Painter) {}
