@@ -20,7 +20,7 @@ struct Vertex {
 	uv: Vec2,
 }
 
-const TRIANGLE: [Vertex; 3] = [
+const TRIANGLE: &[Vertex] = &[
 	Vertex {
 		pos: vec3(-1.0, -1.0, 0.0),
 		uv: vec2(0.0, 0.0),
@@ -35,7 +35,7 @@ const TRIANGLE: [Vertex; 3] = [
 	},
 ];
 
-const QUAD: [Vertex; 6] = [
+const QUAD: &[Vertex] = &[
 	Vertex {
 		pos: vec3(-1.0, -1.0, 0.0),
 		uv: vec2(0.0, 0.0),
@@ -95,11 +95,11 @@ impl CanvasApp<RenderState, ()> for App {
 		load_vertex_shader!(tex_shader, p, "../tex_shader/vs_main.spv");
 		load_fragment_shader!(tex_shader, p, "../tex_shader/fs_main.spv");
 
-		let quad_form = p.form_from_buffer(QUAD.as_slice(), default());
-		let triangle_form = p.form_from_buffer(TRIANGLE.as_slice(), default());
+		let quad_form = p.form_from_buffer(QUAD, default());
+		let triangle_form = p.form_from_buffer(TRIANGLE, default());
 
-		let quad_mvp = u_vs_type.create_buff(p, Mat4::IDENTITY);
-		let triangle_mvp = u_vs_type.create_buff(p, Mat4::IDENTITY);
+		let quad_mvp = u_vs_type.create_mat4(p);
+		let triangle_mvp = u_vs_type.create_mat4(p);
 
 		let quad_color = vec3(0.0, 0.0, 1.0);
 		let triangle_color = vec3(1.0, 0.0, 0.0);
