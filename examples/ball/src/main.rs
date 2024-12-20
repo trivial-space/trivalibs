@@ -131,11 +131,7 @@ impl CanvasApp<ViewState, ()> for App {
 		p.request_next_frame();
 	}
 
-	fn render(
-		&self,
-		p: &mut Painter,
-		state: &ViewState,
-	) -> std::result::Result<(), wgpu::SurfaceError> {
+	fn render(&self, p: &mut Painter, state: &ViewState) -> Result<(), wgpu::SurfaceError> {
 		p.paint(&state.canvas)?;
 		p.show(&state.canvas)
 	}

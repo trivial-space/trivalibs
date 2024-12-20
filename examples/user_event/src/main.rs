@@ -76,11 +76,7 @@ impl CanvasApp<ViewState, UserEvent> for App {
 		ViewState { pipeline }
 	}
 
-	fn render(
-		&self,
-		painter: &mut Painter,
-		state: &ViewState,
-	) -> std::result::Result<(), wgpu::SurfaceError> {
+	fn render(&self, painter: &mut Painter, state: &ViewState) -> Result<(), wgpu::SurfaceError> {
 		let frame = painter.surface.get_current_texture()?;
 
 		let view = frame
