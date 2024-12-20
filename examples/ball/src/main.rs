@@ -5,14 +5,13 @@ use trivalibs::{
 		create_canvas_app,
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
-		painter::UniformType,
 		shade::ShadeProps,
 		sketch::SketchProps,
 		texture::Texture2DProps,
 		uniform::{Mat3U, UniformBuffer},
 		wgpu::{self, VertexFormat::*},
 		winit::event::{DeviceEvent, WindowEvent},
-		CanvasApp, Painter,
+		CanvasApp, Painter, UniformType,
 	},
 	prelude::*,
 	rendering::{
@@ -82,10 +81,10 @@ impl CanvasApp<RenderState, ()> for App {
 		let form = p.form_from_buffer(create_ball_geom(), default());
 
 		let sampler = p.sampler_create(&default());
-		let tex = tex_type.create_tex2d(p, texture, &sampler);
+		let tex = tex_type.const_tex2d(p, texture, &sampler);
 
-		let mvp = uniform_type.create_buff(p, Mat4::IDENTITY);
-		let norm = uniform_type.create_mat3(p, Mat3::IDENTITY);
+		let mvp = uniform_type.create_mat4(p);
+		let norm = uniform_type.create_mat3(p);
 
 		let sketch = p.sketch_create(
 			form,
@@ -94,7 +93,7 @@ impl CanvasApp<RenderState, ()> for App {
 				uniforms: bmap! {
 					0 => mvp.uniform,
 					1 => norm.uniform,
-					2 => tex.uniform,
+					2 => tex,
 				},
 				..default()
 			},

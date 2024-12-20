@@ -1,0 +1,7 @@
+[package]
+name = "draft_layer_tex"
+edition.workspace = true
+
+[dependencies]
+trivalibs.workspace = true
+bytemuck.workspace = true

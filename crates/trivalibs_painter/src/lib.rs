@@ -23,6 +23,7 @@ pub mod shaders;
 pub mod sketch;
 pub mod texture;
 pub mod uniform;
+pub use uniform::UniformType;
 
 pub trait CanvasApp<RenderState, UserEvent> {
 	fn init(&self, painter: &mut Painter) -> RenderState;

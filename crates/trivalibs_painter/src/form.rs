@@ -71,8 +71,9 @@ impl Form {
 		}
 	}
 
-	pub fn update_buffer(&self, painter: &mut Painter, buffers: RenderableBuffer) {
+	pub fn update_buffer(&self, painter: &mut Painter, buffers: impl Into<RenderableBuffer>) {
 		let f = &mut painter.forms[self.0];
+		let buffers = buffers.into();
 
 		f.vertex_count = buffers.vertex_count;
 
@@ -135,7 +136,12 @@ impl Form {
 		form
 	}
 
-	pub fn from_buffer(painter: &mut Painter, buffer: RenderableBuffer, props: FormProps) -> Self {
+	pub fn from_buffer(
+		painter: &mut Painter,
+		buffer: impl Into<RenderableBuffer>,
+		props: FormProps,
+	) -> Self {
+		let buffer = buffer.into();
 		let form = Form::new_with_size(painter, buffer.vertex_buffer.len() as u64, props);
 
 		form.update_buffer(painter, buffer);

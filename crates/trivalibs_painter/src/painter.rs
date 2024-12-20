@@ -6,58 +6,14 @@ use super::{
 	shaders::FULL_SCREEN_QUAD,
 	sketch::{Sketch, SketchProps, SketchStorage},
 	texture::{SamplerProps, Texture, Texture2DProps, TextureStorage, UniformTex2D},
-	uniform::{get_uniform_layout_buffered, Mat3U, UniformBuffer, Vec3U},
+	uniform::{get_uniform_layout_buffered, UniformType},
 };
 use std::{collections::BTreeMap, sync::Arc};
-use trivalibs_core::{
-	glam::{Mat3, Vec3},
-	rendering::RenderableBuffer,
-	utils::default,
-};
+use trivalibs_core::{rendering::RenderableBuffer, utils::default};
 use wgpu::util::make_spirv;
 use winit::window::Window;
 
 pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0xff, 0xff];
-
-pub trait UniformType {
-	fn create_buff<T: bytemuck::Pod>(&self, painter: &mut Painter, data: T) -> UniformBuffer<T>;
-	fn create_mat3(&self, painter: &mut Painter, mat: Mat3) -> UniformBuffer<Mat3U>;
-	fn create_vec3(&self, painter: &mut Painter, vec: Vec3) -> UniformBuffer<Vec3U>;
-	fn create_tex2d(
-		&self,
-		painter: &mut Painter,
-		texture: Texture,
-		sampler: &wgpu::Sampler,
-	) -> UniformTex2D;
-	fn layout(&self) -> &wgpu::BindGroupLayout;
-}
-
-impl UniformType for wgpu::BindGroupLayout {
-	fn create_buff<T: bytemuck::Pod>(&self, painter: &mut Painter, data: T) -> UniformBuffer<T> {
-		UniformBuffer::new(painter, self, data)
-	}
-
-	fn create_mat3(&self, painter: &mut Painter, mat: Mat3) -> UniformBuffer<Mat3U> {
-		UniformBuffer::new_mat3(painter, self, mat)
-	}
-
-	fn create_vec3(&self, painter: &mut Painter, vec: Vec3) -> UniformBuffer<Vec3U> {
-		UniformBuffer::new_vec3(painter, self, vec)
-	}
-
-	fn create_tex2d(
-		&self,
-		painter: &mut Painter,
-		texture: Texture,
-		sampler: &wgpu::Sampler,
-	) -> UniformTex2D {
-		UniformTex2D::new(painter, self, texture, sampler)
-	}
-
-	fn layout(&self) -> &wgpu::BindGroupLayout {
-		self
-	}
-}
 
 pub struct Painter {
 	pub surface: wgpu::Surface<'static>,
@@ -211,7 +167,7 @@ impl Painter {
 		form.update(self, props);
 	}
 
-	pub fn form_update_buffer(&mut self, form: &Form, buffers: RenderableBuffer) {
+	pub fn form_update_buffer(&mut self, form: &Form, buffers: impl Into<RenderableBuffer>) {
 		form.update_buffer(self, buffers);
 	}
 
@@ -226,7 +182,11 @@ impl Painter {
 		Form::new(self, data, props)
 	}
 
-	pub fn form_from_buffer(&mut self, buffer: RenderableBuffer, props: FormProps) -> Form {
+	pub fn form_from_buffer(
+		&mut self,
+		buffer: impl Into<RenderableBuffer>,
+		props: FormProps,
+	) -> Form {
 		Form::from_buffer(self, buffer, props)
 	}
 

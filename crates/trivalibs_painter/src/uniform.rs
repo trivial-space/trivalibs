@@ -1,5 +1,6 @@
 use super::{painter::get_padded_size, Painter};
-use trivalibs_core::glam::{Mat3, Mat3A, Vec3, Vec3A};
+use crate::texture::{Texture, UniformTex2D};
+use trivalibs_core::glam::{Mat3, Mat3A, Mat4, UVec2, Vec2, Vec3, Vec3A, Vec4};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Uniform(pub(crate) usize);
@@ -103,5 +104,101 @@ impl UniformBuffer<Vec3U> {
 
 	pub fn update_vec3(&self, painter: &Painter, data: Vec3) {
 		self.update(painter, Vec3U(Vec3A::from(data)));
+	}
+}
+
+pub trait UniformType {
+	fn create_buff<T: bytemuck::Pod>(&self, painter: &mut Painter, data: T) -> UniformBuffer<T>;
+	fn create_tex2d(
+		&self,
+		painter: &mut Painter,
+		texture: Texture,
+		sampler: &wgpu::Sampler,
+	) -> UniformTex2D;
+	fn layout(&self) -> &wgpu::BindGroupLayout;
+
+	fn create_mat3(&self, painter: &mut Painter) -> UniformBuffer<Mat3U> {
+		self.create_buff(painter, Mat3U(Mat3A::IDENTITY))
+	}
+	fn create_mat4(&self, painter: &mut Painter) -> UniformBuffer<Mat4> {
+		self.create_buff(painter, Mat4::IDENTITY)
+	}
+	fn create_vec2(&self, painter: &mut Painter) -> UniformBuffer<Vec2> {
+		self.create_buff(painter, Vec2::ZERO)
+	}
+	fn create_vec3(&self, painter: &mut Painter) -> UniformBuffer<Vec3U> {
+		self.create_buff(painter, Vec3U(Vec3A::ZERO))
+	}
+	fn create_vec4(&self, painter: &mut Painter) -> UniformBuffer<Vec4> {
+		self.create_buff(painter, Vec4::ZERO)
+	}
+	fn create_uvec2(&self, painter: &mut Painter) -> UniformBuffer<UVec2> {
+		self.create_buff(painter, UVec2::ZERO)
+	}
+	fn create_f32(&self, painter: &mut Painter) -> UniformBuffer<f32> {
+		self.create_buff(painter, 0.0f32)
+	}
+	fn create_u32(&self, painter: &mut Painter) -> UniformBuffer<u32> {
+		self.create_buff(painter, 0u32)
+	}
+
+	fn const_buff<T: bytemuck::Pod>(&self, painter: &mut Painter, data: T) -> Uniform {
+		self.create_buff(painter, data).uniform
+	}
+	fn const_mat3(&self, painter: &mut Painter, mat: Mat3) -> Uniform {
+		let u = self.create_mat3(painter);
+		u.update_mat3(painter, mat);
+		u.uniform
+	}
+	fn const_mat4(&self, painter: &mut Painter, mat: Mat4) -> Uniform {
+		self.create_buff(painter, mat).uniform
+	}
+	fn const_vec2(&self, painter: &mut Painter, vec: Vec2) -> Uniform {
+		self.create_vec2(painter).update(painter, vec);
+		self.create_vec2(painter).uniform
+	}
+	fn const_vec3(&self, painter: &mut Painter, vec: Vec3) -> Uniform {
+		let u = self.create_vec3(painter);
+		u.update_vec3(painter, vec);
+		u.uniform
+	}
+	fn const_vec4(&self, painter: &mut Painter, vec: Vec4) -> Uniform {
+		self.create_buff(painter, vec).uniform
+	}
+	fn const_uvec2(&self, painter: &mut Painter, vec: UVec2) -> Uniform {
+		self.create_buff(painter, vec).uniform
+	}
+	fn const_f32(&self, painter: &mut Painter, f: f32) -> Uniform {
+		self.create_buff(painter, f).uniform
+	}
+	fn const_u32(&self, painter: &mut Painter, u: u32) -> Uniform {
+		self.create_buff(painter, u).uniform
+	}
+	fn const_tex2d(
+		&self,
+		painter: &mut Painter,
+		texture: Texture,
+		sampler: &wgpu::Sampler,
+	) -> Uniform {
+		self.create_tex2d(painter, texture, sampler).uniform
+	}
+}
+
+impl UniformType for wgpu::BindGroupLayout {
+	fn create_buff<T: bytemuck::Pod>(&self, painter: &mut Painter, data: T) -> UniformBuffer<T> {
+		UniformBuffer::new(painter, self, data)
+	}
+
+	fn create_tex2d(
+		&self,
+		painter: &mut Painter,
+		texture: Texture,
+		sampler: &wgpu::Sampler,
+	) -> UniformTex2D {
+		UniformTex2D::new(painter, self, texture, sampler)
+	}
+
+	fn layout(&self) -> &wgpu::BindGroupLayout {
+		self
 	}
 }

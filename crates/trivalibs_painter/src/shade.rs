@@ -1,4 +1,5 @@
-use super::{painter::UniformType, Painter};
+use super::Painter;
+use crate::uniform::UniformType;
 use std::fs;
 
 pub(crate) struct ShadeStorage {

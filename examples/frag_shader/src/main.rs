@@ -5,12 +5,11 @@ use trivalibs::{
 		effect::EffectProps,
 		layer::{Layer, LayerProps},
 		load_fragment_shader,
-		painter::UniformType,
 		shade::ShadeEffectProps,
 		uniform::UniformBuffer,
 		wgpu::SurfaceError,
 		winit::event::{DeviceEvent, WindowEvent},
-		CanvasApp, Painter,
+		CanvasApp, Painter, UniformType,
 	},
 	prelude::*,
 };

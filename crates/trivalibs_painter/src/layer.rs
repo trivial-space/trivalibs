@@ -1,9 +1,8 @@
 use super::{
 	effect::Effect,
-	painter::UniformType,
 	sketch::Sketch,
 	texture::{Texture, Texture2DProps, TextureDepthProps, UniformTex2D},
-	uniform::Uniform,
+	uniform::{Uniform, UniformType},
 	Painter,
 };
 use std::collections::BTreeMap;

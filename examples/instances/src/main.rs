@@ -4,13 +4,12 @@ use trivalibs::{
 		create_canvas_app,
 		form::FormData,
 		load_fragment_shader, load_vertex_shader,
-		painter::UniformType,
 		shade::ShadeProps,
 		sketch::{Sketch, SketchProps},
 		uniform::UniformBuffer,
 		wgpu::{self, VertexFormat},
 		winit::event::{DeviceEvent, WindowEvent},
-		CanvasApp, Painter,
+		CanvasApp, Painter, UniformType,
 	},
 	prelude::*,
 	rendering::{
@@ -92,18 +91,16 @@ impl CanvasApp<RenderState, ()> for App {
 			default(),
 		);
 
-		let uniforms = self
-			.triangles
-			.iter()
-			.map(|t| {
+		let uniforms = (0..self.triangles.len())
+			.map(|_| {
 				(
-					vert_u_type.create_buff(p, t.transform.model_mat()),
-					frag_u_type.create_buff(p, rand_vec4()),
+					vert_u_type.create_mat4(p),
+					frag_u_type.const_vec4(p, rand_vec4()),
 				)
 			})
 			.collect::<Vec<_>>();
 
-		let cam = vert_u_type.create_buff(p, self.cam.view_proj_mat());
+		let cam = vert_u_type.create_mat4(p);
 
 		let sketch = p.sketch_create(
 			form,
@@ -117,7 +114,7 @@ impl CanvasApp<RenderState, ()> for App {
 					.map(|(model, color)| {
 						bmap! {
 							1 => model.uniform,
-							2 => color.uniform,
+							2 => *color,
 						}
 					})
 					.collect(),
