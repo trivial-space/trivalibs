@@ -23,7 +23,7 @@ use trivalibs::{
 
 mod geom;
 
-struct RenderState {
+struct ViewState {
 	canvas: Layer,
 	mvp: UniformBuffer<Mat4>,
 	norm: UniformBuffer<Mat3U>,
@@ -46,8 +46,8 @@ impl Default for App {
 	}
 }
 
-impl CanvasApp<RenderState, ()> for App {
-	fn init(&self, p: &mut Painter) -> RenderState {
+impl CanvasApp<ViewState, ()> for App {
+	fn init(&self, p: &mut Painter) -> ViewState {
 		let tex_bytes = include_bytes!("../texture.png");
 		let mut reader = png::Decoder::new(std::io::Cursor::new(tex_bytes))
 			.read_info()
@@ -110,17 +110,17 @@ impl CanvasApp<RenderState, ()> for App {
 			..default()
 		});
 
-		RenderState { canvas, mvp, norm }
+		ViewState { canvas, mvp, norm }
 	}
 
-	fn resize(&mut self, p: &mut Painter, _rs: &mut RenderState) {
+	fn resize(&mut self, p: &mut Painter, _rs: &mut ViewState) {
 		let size = p.canvas_size();
 
 		self.cam
 			.set_aspect_ratio(size.width as f32 / size.height as f32);
 	}
 
-	fn update(&mut self, p: &mut Painter, rs: &mut RenderState, tpf: f32) {
+	fn update(&mut self, p: &mut Painter, rs: &mut ViewState, tpf: f32) {
 		self.ball_transform.rotate_y(tpf * 0.5);
 
 		rs.mvp
@@ -135,7 +135,7 @@ impl CanvasApp<RenderState, ()> for App {
 	fn render(
 		&self,
 		p: &mut Painter,
-		state: &RenderState,
+		state: &ViewState,
 	) -> std::result::Result<(), wgpu::SurfaceError> {
 		p.paint(&state.canvas)?;
 		p.show(&state.canvas)

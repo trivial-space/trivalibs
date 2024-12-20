@@ -63,14 +63,14 @@ impl Default for App {
 	}
 }
 
-struct RenderState {
+struct ViewState {
 	sketch: Sketch,
 	model_mats: Vec<UniformBuffer<Mat4>>,
 	vp_mat: UniformBuffer<Mat4>,
 }
 
-impl CanvasApp<RenderState, ()> for App {
-	fn init(&self, p: &mut Painter) -> RenderState {
+impl CanvasApp<ViewState, ()> for App {
+	fn init(&self, p: &mut Painter) -> ViewState {
 		let vert_u_type = p.uniform_type_buffered_vert();
 		let frag_u_type = p.uniform_type_buffered_frag();
 
@@ -113,14 +113,14 @@ impl CanvasApp<RenderState, ()> for App {
 			},
 		);
 
-		RenderState {
+		ViewState {
 			sketch,
 			model_mats,
 			vp_mat: cam,
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter, rs: &mut RenderState) {
+	fn resize(&mut self, p: &mut Painter, rs: &mut ViewState) {
 		let size = p.canvas_size();
 		self.cam
 			.set_aspect_ratio(size.width as f32 / size.height as f32);
@@ -128,7 +128,7 @@ impl CanvasApp<RenderState, ()> for App {
 		rs.vp_mat.update(p, self.cam.view_proj_mat());
 	}
 
-	fn update(&mut self, p: &mut Painter, rs: &mut RenderState, tpf: f32) {
+	fn update(&mut self, p: &mut Painter, rs: &mut ViewState, tpf: f32) {
 		for (tri, model) in self.triangles.iter_mut().zip(rs.model_mats.iter_mut()) {
 			tri.transform.rotate_y(tpf * tri.speed);
 
@@ -136,7 +136,7 @@ impl CanvasApp<RenderState, ()> for App {
 		}
 	}
 
-	fn render(&self, p: &mut Painter, rs: &RenderState) -> Result<(), wgpu::SurfaceError> {
+	fn render(&self, p: &mut Painter, rs: &ViewState) -> Result<(), wgpu::SurfaceError> {
 		p.request_next_frame();
 		p.draw(&rs.sketch)
 	}

@@ -7,7 +7,7 @@ use trivalibs::painter::{
 };
 use trivalibs::prelude::*;
 
-struct RenderState {
+struct ViewState {
 	pipeline: wgpu::RenderPipeline,
 	buffer: wgpu::Buffer,
 	diffuse_bind_group: wgpu::BindGroup,
@@ -34,8 +34,8 @@ const VERTICES: &[Vertex] = &[
 #[derive(Default)]
 struct App {}
 
-impl CanvasApp<RenderState, ()> for App {
-	fn init(&self, painter: &mut Painter) -> RenderState {
+impl CanvasApp<ViewState, ()> for App {
+	fn init(&self, painter: &mut Painter) -> ViewState {
 		// Initialize the app
 
 		let buffer = painter
@@ -213,7 +213,7 @@ impl CanvasApp<RenderState, ()> for App {
 				cache: None,
 			});
 
-		RenderState {
+		ViewState {
 			pipeline,
 			buffer,
 			diffuse_bind_group,
@@ -223,7 +223,7 @@ impl CanvasApp<RenderState, ()> for App {
 	fn render(
 		&self,
 		painter: &mut Painter,
-		state: &RenderState,
+		state: &ViewState,
 	) -> std::result::Result<(), wgpu::SurfaceError> {
 		let frame = painter.surface.get_current_texture()?;
 
@@ -264,8 +264,8 @@ impl CanvasApp<RenderState, ()> for App {
 	fn user_event(&mut self, _e: (), _p: &Painter) {}
 	fn window_event(&mut self, _e: WindowEvent, _p: &Painter) {}
 	fn device_event(&mut self, _e: DeviceEvent, _p: &Painter) {}
-	fn resize(&mut self, _p: &mut Painter, _r: &mut RenderState) {}
-	fn update(&mut self, _p: &mut Painter, _r: &mut RenderState, _tpf: f32) {}
+	fn resize(&mut self, _p: &mut Painter, _r: &mut ViewState) {}
+	fn update(&mut self, _p: &mut Painter, _r: &mut ViewState, _tpf: f32) {}
 }
 
 pub fn main() {

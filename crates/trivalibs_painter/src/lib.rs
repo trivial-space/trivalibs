@@ -25,12 +25,11 @@ pub mod texture;
 pub mod uniform;
 pub use uniform::UniformType;
 
-pub trait CanvasApp<RenderState, UserEvent> {
-	fn init(&self, painter: &mut Painter) -> RenderState;
-	fn resize(&mut self, painter: &mut Painter, render_state: &mut RenderState);
-	fn update(&mut self, painter: &mut Painter, render_state: &mut RenderState, tpf: f32);
-	fn render(&self, painter: &mut Painter, render_state: &RenderState)
-		-> Result<(), SurfaceError>;
+pub trait CanvasApp<ViewState, UserEvent> {
+	fn init(&self, painter: &mut Painter) -> ViewState;
+	fn resize(&mut self, painter: &mut Painter, render_state: &mut ViewState);
+	fn update(&mut self, painter: &mut Painter, render_state: &mut ViewState, tpf: f32);
+	fn render(&self, painter: &mut Painter, render_state: &ViewState) -> Result<(), SurfaceError>;
 	fn window_event(&mut self, event: WindowEvent, painter: &Painter);
 	fn device_event(&mut self, event: DeviceEvent, painter: &Painter);
 	fn user_event(&mut self, event: UserEvent, painter: &Painter);
@@ -48,15 +47,15 @@ pub enum CustomEvent<UserEvent> {
 	ReloadShaders(String),
 }
 
-pub struct CanvasAppRunner<RenderState, UserEvent, App>
+pub struct CanvasAppRunner<ViewState, UserEvent, App>
 where
 	UserEvent: 'static,
-	App: CanvasApp<RenderState, UserEvent>,
+	App: CanvasApp<ViewState, UserEvent>,
 {
 	state: WindowState,
 	event_loop_proxy: EventLoopProxy<CustomEvent<UserEvent>>,
 	app: App,
-	render_state: Option<RenderState>,
+	render_state: Option<ViewState>,
 	is_running: bool,
 	is_resizing: bool,
 	now: Instant,
@@ -79,19 +78,19 @@ impl<UserEvent> CanvasHandle<UserEvent> {
 	}
 }
 
-pub struct CanvasAppStarter<RenderState, UserEvent, App>
+pub struct CanvasAppStarter<ViewState, UserEvent, App>
 where
 	UserEvent: 'static,
-	App: CanvasApp<RenderState, UserEvent>,
+	App: CanvasApp<ViewState, UserEvent>,
 {
-	app: CanvasAppRunner<RenderState, UserEvent, App>,
+	app: CanvasAppRunner<ViewState, UserEvent, App>,
 	event_loop: EventLoop<CustomEvent<UserEvent>>,
 }
 
-impl<RenderState, UserEvent, App> CanvasAppStarter<RenderState, UserEvent, App>
+impl<ViewState, UserEvent, App> CanvasAppStarter<ViewState, UserEvent, App>
 where
 	UserEvent: std::marker::Send,
-	App: CanvasApp<RenderState, UserEvent> + std::marker::Send + 'static,
+	App: CanvasApp<ViewState, UserEvent> + std::marker::Send + 'static,
 {
 	pub fn start(self) {
 		let event_loop = self.event_loop;
@@ -155,13 +154,9 @@ where
 	}
 }
 
-pub fn create_canvas_app<
-	RenderState,
-	UserEvent,
-	App: CanvasApp<RenderState, UserEvent> + 'static,
->(
+pub fn create_canvas_app<ViewState, UserEvent, App: CanvasApp<ViewState, UserEvent> + 'static>(
 	app: App,
-) -> CanvasAppStarter<RenderState, UserEvent, App> {
+) -> CanvasAppStarter<ViewState, UserEvent, App> {
 	#[cfg(not(target_arch = "wasm32"))]
 	env_logger::init();
 
@@ -193,10 +188,10 @@ pub fn create_canvas_app<
 	};
 }
 
-impl<RenderState, UserEvent, App> ApplicationHandler<CustomEvent<UserEvent>>
-	for CanvasAppRunner<RenderState, UserEvent, App>
+impl<ViewState, UserEvent, App> ApplicationHandler<CustomEvent<UserEvent>>
+	for CanvasAppRunner<ViewState, UserEvent, App>
 where
-	App: CanvasApp<RenderState, UserEvent>,
+	App: CanvasApp<ViewState, UserEvent>,
 {
 	// This is a common indicator that you can create a window.
 	fn resumed(&mut self, event_loop: &ActiveEventLoop) {

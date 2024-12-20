@@ -14,7 +14,7 @@ use trivalibs::{
 	prelude::*,
 };
 
-struct RenderState {
+struct ViewState {
 	time: UniformBuffer<f32>,
 	size: UniformBuffer<UVec2>,
 	canvas: Layer,
@@ -25,8 +25,8 @@ struct App {
 	time: f32,
 }
 
-impl CanvasApp<RenderState, ()> for App {
-	fn init(&self, p: &mut Painter) -> RenderState {
+impl CanvasApp<ViewState, ()> for App {
+	fn init(&self, p: &mut Painter) -> ViewState {
 		let u_type = p.uniform_type_buffered_frag();
 
 		let shade = p.shade_create_effect(ShadeEffectProps {
@@ -53,22 +53,22 @@ impl CanvasApp<RenderState, ()> for App {
 			..default()
 		});
 
-		RenderState { canvas, time, size }
+		ViewState { canvas, time, size }
 	}
 
-	fn resize(&mut self, p: &mut Painter, rs: &mut RenderState) {
+	fn resize(&mut self, p: &mut Painter, rs: &mut ViewState) {
 		let size = p.canvas_size();
 		rs.size.update(p, uvec2(size.width, size.height));
 	}
 
-	fn update(&mut self, p: &mut Painter, rs: &mut RenderState, tpf: f32) {
+	fn update(&mut self, p: &mut Painter, rs: &mut ViewState, tpf: f32) {
 		self.time += tpf;
 		rs.time.update(p, self.time);
 
 		p.request_next_frame();
 	}
 
-	fn render(&self, p: &mut Painter, state: &RenderState) -> Result<(), SurfaceError> {
+	fn render(&self, p: &mut Painter, state: &ViewState) -> Result<(), SurfaceError> {
 		p.paint(&state.canvas)?;
 		p.show(&state.canvas)
 	}

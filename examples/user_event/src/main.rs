@@ -5,7 +5,7 @@ use trivalibs::painter::{
 	CanvasApp, Painter,
 };
 
-struct RenderState {
+struct ViewState {
 	pipeline: wgpu::RenderPipeline,
 }
 
@@ -22,8 +22,8 @@ impl Default for App {
 
 struct UserEvent(wgpu::Color);
 
-impl CanvasApp<RenderState, UserEvent> for App {
-	fn init(&self, painter: &mut Painter) -> RenderState {
+impl CanvasApp<ViewState, UserEvent> for App {
+	fn init(&self, painter: &mut Painter) -> ViewState {
 		// Initialize the app
 
 		let pipeline_layout =
@@ -74,13 +74,13 @@ impl CanvasApp<RenderState, UserEvent> for App {
 				cache: None,
 			});
 
-		RenderState { pipeline }
+		ViewState { pipeline }
 	}
 
 	fn render(
 		&self,
 		painter: &mut Painter,
-		state: &RenderState,
+		state: &ViewState,
 	) -> std::result::Result<(), wgpu::SurfaceError> {
 		let frame = painter.surface.get_current_texture()?;
 
@@ -121,8 +121,8 @@ impl CanvasApp<RenderState, UserEvent> for App {
 		painter.request_next_frame();
 	}
 
-	fn resize(&mut self, _p: &mut Painter, _r: &mut RenderState) {}
-	fn update(&mut self, _p: &mut Painter, _r: &mut RenderState, _tpf: f32) {}
+	fn resize(&mut self, _p: &mut Painter, _r: &mut ViewState) {}
+	fn update(&mut self, _p: &mut Painter, _r: &mut ViewState, _tpf: f32) {}
 	fn window_event(&mut self, _e: WindowEvent, _p: &Painter) {}
 	fn device_event(&mut self, _e: DeviceEvent, _p: &Painter) {}
 }
