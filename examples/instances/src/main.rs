@@ -1,9 +1,7 @@
 use trivalibs::{
 	bmap,
 	painter::{
-		create_canvas_app,
-		form::FormData,
-		load_fragment_shader, load_vertex_shader,
+		create_canvas_app, load_fragment_shader, load_vertex_shader,
 		shade::ShadeProps,
 		sketch::{Sketch, SketchProps},
 		uniform::UniformBuffer,
