@@ -1,6 +1,6 @@
 use super::{
 	effect::{Effect, EffectProps, EffectStorage},
-	form::{Form, FormData, FormProps, FormStorage},
+	form::{Form, FormProps, FormStorage},
 	layer::{Layer, LayerProps, LayerStorage},
 	shade::{AttribsFormat, Shade, ShadeEffectProps, ShadeProps, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
@@ -160,34 +160,12 @@ impl Painter {
 
 	// form helpers
 
-	pub fn form_update<T>(&mut self, form: &Form, props: &FormData<T>)
-	where
-		T: bytemuck::Pod,
-	{
-		form.update(self, props);
+	pub fn form_update(&mut self, form: &Form, buffers: impl Into<RenderableBuffer>) {
+		form.update(self, buffers);
 	}
 
-	pub fn form_update_buffer(&mut self, form: &Form, buffers: impl Into<RenderableBuffer>) {
-		form.update_buffer(self, buffers);
-	}
-
-	pub fn form_create_with_size(&mut self, size: u64, props: FormProps) -> Form {
-		Form::new_with_size(self, size, props)
-	}
-
-	pub fn form_create<T>(&mut self, data: &FormData<T>, props: FormProps) -> Form
-	where
-		T: bytemuck::Pod,
-	{
-		Form::new(self, data, props)
-	}
-
-	pub fn form_from_buffer(
-		&mut self,
-		buffer: impl Into<RenderableBuffer>,
-		props: FormProps,
-	) -> Form {
-		Form::from_buffer(self, buffer, props)
+	pub fn form_create(&mut self, buffer: impl Into<RenderableBuffer>, props: FormProps) -> Form {
+		Form::new(self, buffer, props)
 	}
 
 	// shade helpers

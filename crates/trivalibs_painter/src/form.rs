@@ -31,47 +31,25 @@ where
 	pub index_buffer: Option<&'a [u32]>,
 }
 
+impl<'a, T> Into<RenderableBuffer> for FormData<'a, T>
+where
+	T: bytemuck::Pod + bytemuck::Zeroable,
+{
+	fn into(self) -> RenderableBuffer {
+		RenderableBuffer {
+			vertex_buffer: bytemuck::cast_slice(self.vertex_buffer).to_vec(),
+			vertex_count: self.vertex_buffer.len() as u32,
+			index_buffer: self.index_buffer.map(|i| bytemuck::cast_slice(i).to_vec()),
+			index_count: self.index_buffer.map(|i| i.len() as u32).unwrap_or(0),
+		}
+	}
+}
+
 #[derive(Clone, Copy)]
 pub struct Form(pub(crate) usize);
 
 impl Form {
-	pub fn update<T>(&self, painter: &mut Painter, data: &FormData<T>)
-	where
-		T: bytemuck::Pod + bytemuck::Zeroable,
-	{
-		let f = &mut painter.forms[self.0];
-
-		f.vertex_count = data.vertex_buffer.len() as u32;
-
-		painter.queue.write_buffer(
-			&f.vertex_buffer,
-			0,
-			bytemuck::cast_slice(data.vertex_buffer),
-		);
-
-		if let Some(index_data) = data.index_buffer {
-			f.index_count = index_data.len() as u32;
-
-			let index_buffer = f.index_buffer.get_or_insert(painter.device.create_buffer(
-				&wgpu::BufferDescriptor {
-					label: None,
-					usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-					size: get_padded_size(
-						index_data.len() as u64 * std::mem::size_of::<u32>() as u64,
-					),
-					mapped_at_creation: false,
-				},
-			));
-
-			painter.queue.write_buffer(
-				index_buffer,
-				0,
-				bytemuck::cast_slice(data.index_buffer.unwrap()),
-			);
-		}
-	}
-
-	pub fn update_buffer(&self, painter: &mut Painter, buffers: impl Into<RenderableBuffer>) {
+	pub fn update(&self, painter: &mut Painter, buffers: impl Into<RenderableBuffer>) {
 		let f = &mut painter.forms[self.0];
 		let buffers = buffers.into();
 
@@ -121,22 +99,7 @@ impl Form {
 		return Form(i);
 	}
 
-	pub fn new<T>(painter: &mut Painter, data: &FormData<T>, props: FormProps) -> Self
-	where
-		T: bytemuck::Pod,
-	{
-		let form = Form::new_with_size(
-			painter,
-			data.vertex_buffer.len() as u64 * std::mem::size_of::<T>() as u64,
-			props,
-		);
-
-		form.update(painter, data);
-
-		form
-	}
-
-	pub fn from_buffer(
+	pub fn new(
 		painter: &mut Painter,
 		buffer: impl Into<RenderableBuffer>,
 		props: FormProps,
@@ -144,7 +107,7 @@ impl Form {
 		let buffer = buffer.into();
 		let form = Form::new_with_size(painter, buffer.vertex_buffer.len() as u64, props);
 
-		form.update_buffer(painter, buffer);
+		form.update(painter, buffer);
 
 		form
 	}

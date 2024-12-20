@@ -95,8 +95,8 @@ impl CanvasApp<RenderState, ()> for App {
 		load_vertex_shader!(tex_shader, p, "../tex_shader/vs_main.spv");
 		load_fragment_shader!(tex_shader, p, "../tex_shader/fs_main.spv");
 
-		let quad_form = p.form_from_buffer(QUAD, default());
-		let triangle_form = p.form_from_buffer(TRIANGLE, default());
+		let quad_form = p.form_create(QUAD, default());
+		let triangle_form = p.form_create(TRIANGLE, default());
 
 		let quad_mvp = u_vs_type.create_mat4(p);
 		let triangle_mvp = u_vs_type.create_mat4(p);
