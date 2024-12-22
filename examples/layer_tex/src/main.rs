@@ -7,7 +7,7 @@ use trivalibs::{
 		sketch::SketchProps,
 		uniform::UniformBuffer,
 		wgpu::{self, SurfaceError, VertexFormat::*},
-		CanvasApp, Event, Painter, UniformType,
+		CanvasApp, Event, Painter,
 	},
 	prelude::*,
 	rendering::{
@@ -66,7 +66,7 @@ const QUAD: &[Vertex] = &[
 ];
 
 const COLOR_TEX_SIZE_BIG: (u32, u32) = (800, 800);
-const COLOR_TEX_SIZE_SMALL: (u32, u32) = (200, 200);
+const COLOR_TEX_SIZE_SMALL: (u32, u32) = (100, 100);
 
 struct App {
 	color_cam: PerspectiveCamera,
@@ -86,6 +86,20 @@ struct App {
 	is_big_tex: bool,
 }
 
+const YELLOW: wgpu::Color = wgpu::Color {
+	r: 1.0,
+	g: 1.0,
+	b: 0.0,
+	a: 1.0,
+};
+
+const GREEN: wgpu::Color = wgpu::Color {
+	r: 0.0,
+	g: 1.0,
+	b: 0.0,
+	a: 1.0,
+};
+
 #[derive(Debug, Clone, Copy)]
 struct ResizeEvent;
 
@@ -96,14 +110,14 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_type = p.uniform_type_tex_2d_frag();
 
 		let color_shade = p.shade_create(ShadeProps {
-			uniform_types: &[&u_vs_type, &u_fs_type],
+			uniform_types: &[u_vs_type, u_fs_type],
 			vertex_format: &[Float32x3, Float32x2],
 		});
 		load_vertex_shader!(color_shade, p, "../color_shader/vs_main.spv");
 		load_fragment_shader!(color_shade, p, "../color_shader/fs_main.spv");
 
 		let tex_shader = p.shade_create(ShadeProps {
-			uniform_types: &[&u_vs_type, &tex_type],
+			uniform_types: &[u_vs_type, tex_type],
 			vertex_format: &[Float32x3, Float32x2],
 		});
 		load_vertex_shader!(tex_shader, p, "../tex_shader/vs_main.spv");
@@ -148,12 +162,7 @@ impl CanvasApp<ResizeEvent> for App {
 			sketches: vec![color_triangle_sketch],
 			width: COLOR_TEX_SIZE_BIG.0,
 			height: COLOR_TEX_SIZE_BIG.1,
-			clear_color: Some(wgpu::Color {
-				r: 1.0,
-				g: 1.0,
-				b: 0.0,
-				a: 1.0,
-			}),
+			clear_color: Some(YELLOW),
 			..default()
 		});
 
@@ -161,16 +170,11 @@ impl CanvasApp<ResizeEvent> for App {
 			sketches: vec![color_quad_sketch],
 			width: COLOR_TEX_SIZE_BIG.0,
 			height: COLOR_TEX_SIZE_BIG.1,
-			clear_color: Some(wgpu::Color {
-				r: 0.0,
-				g: 1.0,
-				b: 0.0,
-				a: 1.0,
-			}),
+			clear_color: Some(GREEN),
 			..default()
 		});
 
-		let tri_tex = color_triangle_layer.get_uniform(p);
+		let tri_tex = color_triangle_layer.get_uniform(p, p.sampler_default());
 		let tex_triangle_mvp = u_vs_type.create_mat4(p);
 		let tex_quad_mvp = u_vs_type.create_mat4(p);
 
@@ -266,6 +270,14 @@ impl CanvasApp<ResizeEvent> for App {
 
 				self.color_triangle_layer.resize(p, size.0, size.1);
 				self.color_quad_layer.resize(p, size.0, size.1);
+
+				if self.is_big_tex {
+					self.color_triangle_layer.set_clear_color(p, Some(GREEN));
+					self.color_quad_layer.set_clear_color(p, Some(YELLOW));
+				} else {
+					self.color_triangle_layer.set_clear_color(p, Some(YELLOW));
+					self.color_quad_layer.set_clear_color(p, Some(GREEN));
+				}
 
 				self.is_big_tex = !self.is_big_tex;
 			}

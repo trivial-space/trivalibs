@@ -6,7 +6,7 @@ use trivalibs::{
 		sketch::{Sketch, SketchProps},
 		uniform::UniformBuffer,
 		wgpu::{self, VertexFormat},
-		CanvasApp, Event, Painter, UniformType,
+		CanvasApp, Event, Painter,
 	},
 	prelude::*,
 	rendering::{
@@ -61,7 +61,7 @@ impl CanvasApp<()> for App {
 
 		let shade = p.shade_create(ShadeProps {
 			vertex_format: vec![VertexFormat::Float32x3],
-			uniform_types: &[&vert_u_type, &vert_u_type, &frag_u_type],
+			uniform_types: &[vert_u_type, vert_u_type, frag_u_type],
 		});
 		load_vertex_shader!(shade, p, "../shader/vertex.spv");
 		load_fragment_shader!(shade, p, "../shader/fragment.spv");

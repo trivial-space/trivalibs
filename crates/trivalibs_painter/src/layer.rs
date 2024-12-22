@@ -1,12 +1,11 @@
-use super::{
+use crate::{
 	effect::Effect,
 	sketch::Sketch,
-	texture::{Texture, Texture2DProps, TextureDepthProps, UniformTex2D},
-	uniform::{Uniform, UniformType},
+	texture::{Sampler, Texture, Texture2DProps, TextureDepthProps},
+	uniform::{Uniform, UniformTex2D, UniformType},
 	Painter,
 };
 use std::collections::BTreeMap;
-use trivalibs_core::utils::default;
 
 fn map_format_to_u8(format: wgpu::TextureFormat) -> u8 {
 	match format {
@@ -102,7 +101,7 @@ pub(crate) struct LayerStorage {
 	pub height: u32,
 	pub use_window_size: bool,
 	pub clear_color: Option<wgpu::Color>,
-	pub binding_visibility: wgpu::ShaderStages,
+	pub uniform_type: UniformType,
 	pub pipeline_key: Vec<u8>,
 	pub format: wgpu::TextureFormat,
 	pub multisampled: bool,
@@ -193,7 +192,7 @@ impl Layer {
 			depth_texture,
 			use_window_size,
 			clear_color: props.clear_color,
-			binding_visibility: props.binding_visibility,
+			uniform_type: UniformType::tex_2d(painter, props.binding_visibility),
 			format,
 			pipeline_key,
 			multisampled: props.multisampled,
@@ -203,19 +202,20 @@ impl Layer {
 		Layer(painter.layers.len() - 1)
 	}
 
-	pub fn get_uniform(&self, painter: &mut Painter) -> UniformTex2D {
+	pub fn get_uniform(&self, painter: &mut Painter, sampler: Sampler) -> UniformTex2D {
 		if let Some(uniform) = painter.layers[self.0].target_uniforms.get(0) {
 			return *uniform;
 		}
-		let visibility = painter.layers[self.0].binding_visibility;
-		let uniform = UniformTex2D::get_layout(painter, visibility).create_tex2d(
-			painter,
-			painter.layers[self.0].target_textures[0],
-			&painter.sampler_create(&default()),
-		);
+		let u_type = painter.layers[self.0].uniform_type;
+		let uniform =
+			u_type.create_tex2d(painter, painter.layers[self.0].target_textures[0], sampler);
 
 		painter.layers[self.0].target_uniforms.push(uniform);
 		uniform
+	}
+
+	pub fn set_clear_color(&mut self, painter: &mut Painter, color: Option<wgpu::Color>) {
+		painter.layers[self.0].clear_color = color;
 	}
 
 	pub fn resize(&mut self, painter: &mut Painter, width: u32, height: u32) {
@@ -239,7 +239,6 @@ impl Layer {
 		storage.width = width;
 		storage.height = height;
 		storage.use_window_size = use_window_size;
-		storage.target_uniforms.clear();
 
 		let targets = storage.target_textures.clone();
 		let depth_texture = storage.depth_texture.clone();
@@ -260,6 +259,11 @@ impl Layer {
 
 		if let Some(depth_texture) = depth_texture {
 			depth_texture.replace_depth(painter, &TextureDepthProps { width, height });
+		}
+
+		for i in 0..painter.layers[self.0].target_uniforms.len() {
+			let u = painter.layers[self.0].target_uniforms[i];
+			u.recreate(painter);
 		}
 	}
 }

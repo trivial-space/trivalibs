@@ -11,13 +11,13 @@ pub(crate) struct ShadeStorage {
 	pub pipeline_layout: wgpu::PipelineLayout,
 }
 
-pub struct ShadeProps<'a, Format: Into<AttribsFormat>, UType: UniformType> {
+pub struct ShadeProps<'a, Format: Into<AttribsFormat>> {
 	pub vertex_format: Format,
-	pub uniform_types: &'a [&'a UType],
+	pub uniform_types: &'a [UniformType],
 }
 
-pub struct ShadeEffectProps<'a, UType: UniformType> {
-	pub uniform_types: &'a [&'a UType],
+pub struct ShadeEffectProps<'a> {
+	pub uniform_types: &'a [UniformType],
 }
 
 pub struct AttribsFormat {
@@ -97,9 +97,9 @@ impl Into<AttribsFormat> for wgpu::VertexFormat {
 pub struct Shade(pub(crate) usize);
 
 impl Shade {
-	pub fn new<Format: Into<AttribsFormat>, UType: UniformType>(
+	pub fn new<Format: Into<AttribsFormat>>(
 		painter: &mut Painter,
-		props: ShadeProps<Format, UType>,
+		props: ShadeProps<Format>,
 	) -> Self {
 		let pipeline_layout =
 			painter
@@ -109,7 +109,7 @@ impl Shade {
 					bind_group_layouts: props
 						.uniform_types
 						.iter()
-						.map(|t| t.layout())
+						.map(|t| &painter.uniform_types[t.0].layout)
 						.collect::<Vec<_>>()
 						.as_slice(),
 					push_constant_ranges: &[],
@@ -132,10 +132,7 @@ impl Shade {
 		Shade(i)
 	}
 
-	pub fn new_effect<UType: UniformType>(
-		painter: &mut Painter,
-		props: ShadeEffectProps<UType>,
-	) -> Self {
+	pub fn new_effect(painter: &mut Painter, props: ShadeEffectProps) -> Self {
 		let pipeline_layout =
 			painter
 				.device
@@ -144,7 +141,7 @@ impl Shade {
 					bind_group_layouts: props
 						.uniform_types
 						.iter()
-						.map(|t| t.layout())
+						.map(|t| &painter.uniform_types[t.0].layout)
 						.collect::<Vec<_>>()
 						.as_slice(),
 					push_constant_ranges: &[],

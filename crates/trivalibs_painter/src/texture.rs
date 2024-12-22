@@ -1,6 +1,5 @@
-use super::{uniform::Uniform, Painter};
+use super::Painter;
 use trivalibs_core::utils::default;
-use wgpu::BindGroupLayout;
 
 pub struct Texture2DProps {
 	pub width: u32,
@@ -141,8 +140,18 @@ impl Texture {
 		);
 	}
 
-	pub fn create_sampler(painter: &Painter, props: &SamplerProps) -> wgpu::Sampler {
-		painter.device.create_sampler(&wgpu::SamplerDescriptor {
+	pub fn destroy(self, painter: &mut Painter) {
+		let t = &mut painter.textures[self.0];
+		t.texture.destroy();
+	}
+}
+
+#[derive(Clone, Copy)]
+pub struct Sampler(pub(crate) usize);
+
+impl Sampler {
+	pub fn create(painter: &mut Painter, props: &SamplerProps) -> Self {
+		let sampler = painter.device.create_sampler(&wgpu::SamplerDescriptor {
 			address_mode_u: props.address_mode_u,
 			address_mode_v: props.address_mode_v,
 			address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -151,77 +160,10 @@ impl Texture {
 			mipmap_filter: wgpu::FilterMode::Nearest,
 			compare: props.sample_depth.then(|| wgpu::CompareFunction::LessEqual),
 			..Default::default()
-		})
-	}
+		});
 
-	pub fn destroy(self, painter: &mut Painter) {
-		let t = &mut painter.textures[self.0];
-		t.texture.destroy();
-	}
-}
+		painter.samplers.push(sampler);
 
-#[derive(Clone, Copy)]
-pub struct UniformTex2D {
-	pub texture: Texture,
-	pub uniform: Uniform,
-}
-
-impl UniformTex2D {
-	pub fn get_layout(painter: &Painter, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayout {
-		painter
-			.device
-			.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-				entries: &[
-					wgpu::BindGroupLayoutEntry {
-						binding: 0,
-						visibility,
-						ty: wgpu::BindingType::Texture {
-							multisampled: false,
-							view_dimension: wgpu::TextureViewDimension::D2,
-							sample_type: wgpu::TextureSampleType::Float { filterable: true },
-						},
-						count: None,
-					},
-					wgpu::BindGroupLayoutEntry {
-						binding: 1,
-						visibility,
-						ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-						count: None,
-					},
-				],
-				label: None,
-			})
-	}
-
-	pub fn new(
-		painter: &mut Painter,
-		layout: &BindGroupLayout,
-		texture: Texture,
-		sampler: &wgpu::Sampler,
-	) -> Self {
-		let t = &painter.textures[texture.0];
-
-		let binding = painter
-			.device
-			.create_bind_group(&wgpu::BindGroupDescriptor {
-				layout,
-				entries: &[
-					wgpu::BindGroupEntry {
-						binding: 0,
-						resource: wgpu::BindingResource::TextureView(&t.view),
-					},
-					wgpu::BindGroupEntry {
-						binding: 1,
-						resource: wgpu::BindingResource::Sampler(sampler),
-					},
-				],
-				label: None,
-			});
-
-		painter.bindings.push(binding);
-
-		let uniform = Uniform(painter.bindings.len() - 1);
-
-		UniformTex2D { texture, uniform }
+		Self(painter.samplers.len() - 1)
 	}
 }

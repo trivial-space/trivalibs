@@ -9,7 +9,7 @@ use trivalibs::{
 		texture::Texture2DProps,
 		uniform::{Mat3U, UniformBuffer},
 		wgpu::{self, VertexFormat::*},
-		CanvasApp, Event, Painter, UniformType,
+		CanvasApp, Event, Painter,
 	},
 	prelude::*,
 	rendering::{
@@ -57,17 +57,16 @@ impl CanvasApp<()> for App {
 
 		let shade = p.shade_create(ShadeProps {
 			vertex_format: &[Float32x3, Float32x2, Float32x3, Float32x3],
-			uniform_types: &[&uniform_type, &uniform_type, &tex_type],
+			uniform_types: &[uniform_type, uniform_type, tex_type],
 		});
 		load_vertex_shader!(shade, p, "../shader/vertex.spv");
 		load_fragment_shader!(shade, p, "../shader/fragment.spv");
 
 		let form = p.form_create(create_ball_geom(), default());
 
-		let sampler = p.sampler_create(&default());
-		let tex = tex_type.const_tex2d(p, texture, &sampler);
-
+		let tex = tex_type.const_tex2d(p, texture, p.sampler_default());
 		let mvp = uniform_type.create_mat4(p);
+
 		let norm = uniform_type.create_mat3(p);
 
 		let sketch = p.sketch_create(

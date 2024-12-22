@@ -23,7 +23,6 @@ pub mod shaders;
 pub mod sketch;
 pub mod texture;
 pub mod uniform;
-pub use uniform::UniformType;
 
 #[derive(Debug)]
 pub enum Event<UserEvent> {
