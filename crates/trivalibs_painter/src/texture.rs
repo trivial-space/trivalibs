@@ -1,4 +1,4 @@
-use super::Painter;
+use crate::Painter;
 use trivalibs_core::utils::default;
 
 pub struct Texture2DProps {

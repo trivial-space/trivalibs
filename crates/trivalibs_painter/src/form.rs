@@ -1,4 +1,4 @@
-use super::{painter::get_padded_size, Painter};
+use crate::{painter::get_padded_size, Painter};
 use trivalibs_core::rendering::RenderableBuffer;
 
 pub struct FormProps {

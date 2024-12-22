@@ -349,7 +349,7 @@ impl Painter {
 						unclipped_depth: false,
 						conservative: false,
 					},
-					depth_stencil: if sketch.depth_test {
+					depth_stencil: if layer.map_or(false, |l| l.depth_texture.is_some()) {
 						Some(wgpu::DepthStencilState {
 							format: wgpu::TextureFormat::Depth24Plus,
 							depth_write_enabled: true,

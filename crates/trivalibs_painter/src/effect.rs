@@ -1,4 +1,4 @@
-use super::{shade::Shade, uniform::Uniform, Painter};
+use crate::{shade::Shade, uniform::Uniform, Painter};
 use std::collections::BTreeMap;
 
 pub(crate) struct EffectStorage {

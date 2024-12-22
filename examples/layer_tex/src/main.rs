@@ -5,6 +5,7 @@ use trivalibs::{
 		load_fragment_shader, load_vertex_shader,
 		shade::ShadeProps,
 		sketch::SketchProps,
+		texture::SamplerProps,
 		uniform::UniformBuffer,
 		wgpu::{self, SurfaceError, VertexFormat::*},
 		CanvasApp, Event, Painter,
@@ -26,42 +27,42 @@ struct Vertex {
 const TRIANGLE: &[Vertex] = &[
 	Vertex {
 		pos: vec3(-1.0, -1.0, 0.0),
-		uv: vec2(0.0, 0.0),
+		uv: vec2(0.0, 1.0),
 	},
 	Vertex {
 		pos: vec3(1.0, -1.0, 0.0),
-		uv: vec2(1.0, 0.0),
+		uv: vec2(1.0, 1.0),
 	},
 	Vertex {
 		pos: vec3(0.0, 1.0, 0.0),
-		uv: vec2(0.5, 1.0),
+		uv: vec2(0.5, 0.0),
 	},
 ];
 
 const QUAD: &[Vertex] = &[
 	Vertex {
 		pos: vec3(-1.0, -1.0, 0.0),
+		uv: vec2(0.0, 1.0),
+	},
+	Vertex {
+		pos: vec3(1.0, -1.0, 0.0),
+		uv: vec2(1.0, 1.0),
+	},
+	Vertex {
+		pos: vec3(-1.0, 1.0, 0.0),
+		uv: vec2(0.0, 0.0),
+	},
+	Vertex {
+		pos: vec3(-1.0, 1.0, 0.0),
 		uv: vec2(0.0, 0.0),
 	},
 	Vertex {
 		pos: vec3(1.0, -1.0, 0.0),
-		uv: vec2(1.0, 0.0),
-	},
-	Vertex {
-		pos: vec3(-1.0, 1.0, 0.0),
-		uv: vec2(0.0, 1.0),
-	},
-	Vertex {
-		pos: vec3(-1.0, 1.0, 0.0),
-		uv: vec2(0.0, 1.0),
-	},
-	Vertex {
-		pos: vec3(1.0, -1.0, 0.0),
-		uv: vec2(1.0, 0.0),
+		uv: vec2(1.0, 1.0),
 	},
 	Vertex {
 		pos: vec3(1.0, 1.0, 0.0),
-		uv: vec2(1.0, 1.0),
+		uv: vec2(1.0, 0.0),
 	},
 ];
 
@@ -174,7 +175,13 @@ impl CanvasApp<ResizeEvent> for App {
 			..default()
 		});
 
-		let tri_tex = color_triangle_layer.get_uniform(p, p.sampler_default());
+		let sampler = p.sampler_create(&SamplerProps {
+			mag_filter: wgpu::FilterMode::Nearest,
+			min_filter: wgpu::FilterMode::Nearest,
+			..default()
+		});
+		let tri_tex = color_triangle_layer.get_uniform(p, sampler);
+		let quad_tex = color_quad_layer.get_uniform(p, sampler);
 		let tex_triangle_mvp = u_vs_type.create_mat4(p);
 		let tex_quad_mvp = u_vs_type.create_mat4(p);
 
@@ -191,9 +198,22 @@ impl CanvasApp<ResizeEvent> for App {
 			},
 		);
 
-		let canvas = p.layer_create(&LayerProps {
-			sketches: vec![tex_quad_sketch],
+		let tex_triangle_sketch = p.sketch_create(
+			triangle_form,
+			tex_shader,
+			&SketchProps {
+				cull_mode: None,
+				uniforms: bmap! {
+					0 => tex_triangle_mvp.uniform,
+					1 => quad_tex.uniform,
+				},
+				..default()
+			},
+		);
 
+		let canvas = p.layer_create(&LayerProps {
+			sketches: vec![tex_quad_sketch, tex_triangle_sketch],
+			depth_test: true,
 			clear_color: Some(wgpu::Color::BLACK),
 			..default()
 		});

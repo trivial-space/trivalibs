@@ -82,7 +82,7 @@ impl UniformType {
 		texture: Texture,
 		sampler: Sampler,
 	) -> UniformTex2D {
-		UniformTex2D::new(painter, self, texture, sampler)
+		UniformTex2D::new(painter, *self, texture, sampler)
 	}
 
 	pub fn create_mat3(&self, painter: &mut Painter) -> UniformBuffer<Mat3U> {
@@ -243,12 +243,13 @@ pub struct UniformTex2D {
 	pub texture: Texture,
 	pub sampler: Sampler,
 	pub uniform: Uniform,
+	pub uniform_type: UniformType,
 }
 
 impl UniformTex2D {
 	pub fn new(
 		painter: &mut Painter,
-		u_type: &UniformType,
+		u_type: UniformType,
 		texture: Texture,
 		sampler: Sampler,
 	) -> Self {
@@ -281,13 +282,14 @@ impl UniformTex2D {
 			texture,
 			sampler,
 			uniform,
+			uniform_type: u_type,
 		}
 	}
 
 	pub fn recreate(&self, painter: &mut Painter) {
 		let t = &painter.textures[self.texture.0];
 		let s = &painter.samplers[self.sampler.0];
-		let layout = &painter.uniform_types[self.uniform.0].layout;
+		let layout = &painter.uniform_types[self.uniform_type.0].layout;
 
 		let binding = painter
 			.device

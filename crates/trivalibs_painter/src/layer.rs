@@ -114,6 +114,7 @@ pub struct LayerProps {
 	pub height: u32,
 	pub format: Option<wgpu::TextureFormat>,
 	pub clear_color: Option<wgpu::Color>,
+	pub depth_test: bool,
 	pub binding_visibility: wgpu::ShaderStages,
 	pub uniforms: BTreeMap<u32, Uniform>,
 	pub multisampled: bool,
@@ -130,6 +131,7 @@ impl Default for LayerProps {
 			uniforms: BTreeMap::new(),
 			binding_visibility: wgpu::ShaderStages::FRAGMENT,
 			clear_color: None,
+			depth_test: false,
 			multisampled: false,
 		}
 	}
@@ -168,19 +170,18 @@ impl Layer {
 		));
 		let len = target_texture.len();
 
-		let mut use_depth: bool = false;
-		for s in &props.sketches {
-			let sketch = &painter.sketches[s.0];
-			if sketch.depth_test {
-				use_depth = true;
-				break;
-			}
-		}
+		let depth_texture = props
+			.depth_test
+			.then(|| Texture::create_depth(painter, &TextureDepthProps { width, height }));
 
-		let depth_texture =
-			use_depth.then(|| Texture::create_depth(painter, &TextureDepthProps { width, height }));
-
-		let pipeline_key = vec![map_format_to_u8(format), props.multisampled as u8];
+		let pipeline_key = vec![
+			vec![map_format_to_u8(format)],
+			(props.depth_test as u8).to_le_bytes().to_vec(),
+			vec![props.multisampled as u8],
+		]
+		.into_iter()
+		.flatten()
+		.collect();
 
 		let storage = LayerStorage {
 			width,
