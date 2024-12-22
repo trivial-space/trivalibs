@@ -1,7 +1,7 @@
 use trivalibs::{
 	bmap,
 	painter::{
-		create_canvas_app, load_fragment_shader, load_vertex_shader,
+		load_fragment_shader, load_vertex_shader,
 		shade::ShadeProps,
 		sketch::{Sketch, SketchProps},
 		uniform::UniformBuffer,
@@ -26,11 +26,16 @@ struct Triangle {
 struct App {
 	cam: PerspectiveCamera,
 	triangles: Vec<Triangle>,
+
+	sketch: Sketch,
+	model_mats: Vec<UniformBuffer<Mat4>>,
+	vp_mat: UniformBuffer<Mat4>,
 }
 
 const TRIANGLE_COUNT: usize = 1100;
-impl Default for App {
-	fn default() -> Self {
+
+impl CanvasApp<()> for App {
+	fn init(p: &mut Painter) -> Self {
 		let mut triangles = Vec::with_capacity(TRIANGLE_COUNT);
 
 		for _ in 0..TRIANGLE_COUNT {
@@ -51,25 +56,6 @@ impl Default for App {
 				.unwrap()
 		});
 
-		Self {
-			cam: PerspectiveCamera::create(CamProps {
-				fov: Some(0.6),
-				translation: Some(vec3(0.0, 0.0, 80.0)),
-				..default()
-			}),
-			triangles,
-		}
-	}
-}
-
-struct ViewState {
-	sketch: Sketch,
-	model_mats: Vec<UniformBuffer<Mat4>>,
-	vp_mat: UniformBuffer<Mat4>,
-}
-
-impl CanvasApp<ViewState, ()> for App {
-	fn init(&self, p: &mut Painter) -> ViewState {
 		let vert_u_type = p.uniform_type_buffered_vert();
 		let frag_u_type = p.uniform_type_buffered_frag();
 
@@ -82,7 +68,7 @@ impl CanvasApp<ViewState, ()> for App {
 
 		let form = p.form_create(VERTICES, default());
 
-		let model_mats = (0..self.triangles.len())
+		let model_mats = (0..triangles.len())
 			.map(|_| vert_u_type.create_mat4(p))
 			.collect::<Vec<_>>();
 
@@ -112,37 +98,44 @@ impl CanvasApp<ViewState, ()> for App {
 			},
 		);
 
-		ViewState {
+		Self {
+			cam: PerspectiveCamera::create(CamProps {
+				fov: Some(0.6),
+				translation: Some(vec3(0.0, 0.0, 80.0)),
+				..default()
+			}),
+			triangles,
+
 			sketch,
 			model_mats,
 			vp_mat: cam,
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter, v: &mut ViewState) {
+	fn resize(&mut self, p: &mut Painter) {
 		let size = p.canvas_size();
 		self.cam
 			.set_aspect_ratio(size.width as f32 / size.height as f32);
 
-		v.vp_mat.update(p, self.cam.view_proj_mat());
+		self.vp_mat.update(p, self.cam.view_proj_mat());
 	}
 
-	fn update(&mut self, p: &mut Painter, v: &mut ViewState, tpf: f32) {
-		for (tri, model) in self.triangles.iter_mut().zip(v.model_mats.iter_mut()) {
+	fn update(&mut self, p: &mut Painter, tpf: f32) {
+		for (tri, model) in self.triangles.iter_mut().zip(self.model_mats.iter_mut()) {
 			tri.transform.rotate_y(tpf * tri.speed);
 
 			model.update(p, tri.transform.model_mat());
 		}
 	}
 
-	fn render(&self, p: &mut Painter, v: &ViewState) -> Result<(), wgpu::SurfaceError> {
+	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
 		p.request_next_frame();
-		p.draw(&v.sketch)
+		p.draw(&self.sketch)
 	}
 
-	fn event(&mut self, _e: Event<()>, _p: &Painter) {}
+	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {
-	create_canvas_app(App::default()).start();
+	App::create().start();
 }

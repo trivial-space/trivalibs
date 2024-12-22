@@ -1,16 +1,9 @@
 use shader::Vertex;
 use trivalibs::painter::{
-	create_canvas_app,
 	wgpu::{self, include_spirv, util::DeviceExt},
 	CanvasApp, Event, Painter,
 };
 use trivalibs::prelude::*;
-
-struct ViewState {
-	pipeline: wgpu::RenderPipeline,
-	buffer: wgpu::Buffer,
-	diffuse_bind_group: wgpu::BindGroup,
-}
 
 const VERTICES: &[Vertex] = &[
 	Vertex {
@@ -30,11 +23,14 @@ const VERTICES: &[Vertex] = &[
 	},
 ];
 
-#[derive(Default)]
-struct App {}
+struct App {
+	pipeline: wgpu::RenderPipeline,
+	buffer: wgpu::Buffer,
+	diffuse_bind_group: wgpu::BindGroup,
+}
 
-impl CanvasApp<ViewState, ()> for App {
-	fn init(&self, painter: &mut Painter) -> ViewState {
+impl CanvasApp<()> for App {
+	fn init(painter: &mut Painter) -> Self {
 		// Initialize the app
 
 		let buffer = painter
@@ -212,14 +208,14 @@ impl CanvasApp<ViewState, ()> for App {
 				cache: None,
 			});
 
-		ViewState {
+		Self {
 			pipeline,
 			buffer,
 			diffuse_bind_group,
 		}
 	}
 
-	fn render(&self, painter: &mut Painter, state: &ViewState) -> Result<(), wgpu::SurfaceError> {
+	fn render(&self, painter: &mut Painter) -> Result<(), wgpu::SurfaceError> {
 		let frame = painter.surface.get_current_texture()?;
 
 		let view = frame
@@ -244,9 +240,9 @@ impl CanvasApp<ViewState, ()> for App {
 				timestamp_writes: None,
 				occlusion_query_set: None,
 			});
-			rpass.set_pipeline(&state.pipeline);
-			rpass.set_bind_group(0, &state.diffuse_bind_group, &[]);
-			rpass.set_vertex_buffer(0, state.buffer.slice(..));
+			rpass.set_pipeline(&self.pipeline);
+			rpass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+			rpass.set_vertex_buffer(0, self.buffer.slice(..));
 			rpass.draw(0..3, 0..1);
 		}
 
@@ -256,11 +252,11 @@ impl CanvasApp<ViewState, ()> for App {
 		Ok(())
 	}
 
-	fn event(&mut self, _e: Event<()>, _p: &Painter) {}
-	fn resize(&mut self, _p: &mut Painter, _r: &mut ViewState) {}
-	fn update(&mut self, _p: &mut Painter, _r: &mut ViewState, _tpf: f32) {}
+	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
+	fn resize(&mut self, _p: &mut Painter) {}
+	fn update(&mut self, _p: &mut Painter, _tpf: f32) {}
 }
 
 pub fn main() {
-	create_canvas_app(App::default()).start();
+	App::create().start();
 }

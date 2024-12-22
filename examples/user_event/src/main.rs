@@ -1,28 +1,17 @@
 use trivalibs::painter::{
-	create_canvas_app,
 	wgpu::{self, include_spirv},
 	CanvasApp, Event, Painter,
 };
 
-struct ViewState {
-	pipeline: wgpu::RenderPipeline,
-}
-
 struct App {
 	color: wgpu::Color,
-}
-impl Default for App {
-	fn default() -> Self {
-		Self {
-			color: wgpu::Color::BLUE,
-		}
-	}
+	pipeline: wgpu::RenderPipeline,
 }
 
 struct UserEvent(wgpu::Color);
 
-impl CanvasApp<ViewState, UserEvent> for App {
-	fn init(&self, painter: &mut Painter) -> ViewState {
+impl CanvasApp<UserEvent> for App {
+	fn init(painter: &mut Painter) -> Self {
 		// Initialize the app
 
 		let pipeline_layout =
@@ -73,10 +62,13 @@ impl CanvasApp<ViewState, UserEvent> for App {
 				cache: None,
 			});
 
-		ViewState { pipeline }
+		Self {
+			color: wgpu::Color::BLUE,
+			pipeline,
+		}
 	}
 
-	fn render(&self, painter: &mut Painter, state: &ViewState) -> Result<(), wgpu::SurfaceError> {
+	fn render(&self, painter: &mut Painter) -> Result<(), wgpu::SurfaceError> {
 		let frame = painter.surface.get_current_texture()?;
 
 		let view = frame
@@ -101,7 +93,7 @@ impl CanvasApp<ViewState, UserEvent> for App {
 				timestamp_writes: None,
 				occlusion_query_set: None,
 			});
-			rpass.set_pipeline(&state.pipeline);
+			rpass.set_pipeline(&self.pipeline);
 			rpass.draw(0..3, 0..1);
 		}
 
@@ -111,7 +103,7 @@ impl CanvasApp<ViewState, UserEvent> for App {
 		Ok(())
 	}
 
-	fn event(&mut self, event: Event<UserEvent>, painter: &Painter) {
+	fn event(&mut self, event: Event<UserEvent>, painter: &mut Painter) {
 		match event {
 			Event::UserEvent(event) => {
 				self.color = event.0;
@@ -121,12 +113,12 @@ impl CanvasApp<ViewState, UserEvent> for App {
 		}
 	}
 
-	fn resize(&mut self, _p: &mut Painter, _r: &mut ViewState) {}
-	fn update(&mut self, _p: &mut Painter, _r: &mut ViewState, _tpf: f32) {}
+	fn resize(&mut self, _p: &mut Painter) {}
+	fn update(&mut self, _p: &mut Painter, _tpf: f32) {}
 }
 
 pub fn main() {
-	let app = create_canvas_app(App::default());
+	let app = App::create();
 	let handle = app.get_handle();
 
 	std::thread::spawn(move || loop {

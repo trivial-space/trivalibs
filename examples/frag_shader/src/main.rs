@@ -1,7 +1,6 @@
 use trivalibs::{
 	bmap,
 	painter::{
-		create_canvas_app,
 		effect::EffectProps,
 		layer::{Layer, LayerProps},
 		load_fragment_shader,
@@ -13,19 +12,16 @@ use trivalibs::{
 	prelude::*,
 };
 
-struct ViewState {
-	time: UniformBuffer<f32>,
-	size: UniformBuffer<UVec2>,
+struct App {
+	time: f32,
+
+	u_time: UniformBuffer<f32>,
+	u_size: UniformBuffer<UVec2>,
 	canvas: Layer,
 }
 
-#[derive(Default)]
-struct App {
-	time: f32,
-}
-
-impl CanvasApp<ViewState, ()> for App {
-	fn init(&self, p: &mut Painter) -> ViewState {
+impl CanvasApp<()> for App {
+	fn init(p: &mut Painter) -> Self {
 		let u_type = p.uniform_type_buffered_frag();
 
 		let shade = p.shade_create_effect(ShadeEffectProps {
@@ -33,15 +29,15 @@ impl CanvasApp<ViewState, ()> for App {
 		});
 		load_fragment_shader!(shade, p, "../shader/main.spv");
 
-		let time = u_type.create_buff(p, 0.0f32);
-		let size = u_type.create_buff(p, uvec2(0, 0));
+		let u_time = u_type.create_buff(p, 0.0f32);
+		let u_size = u_type.create_buff(p, uvec2(0, 0));
 
 		let effect = p.effect_create(
 			shade,
 			&EffectProps {
 				uniforms: bmap! {
-					0 => size.uniform,
-					1 => time.uniform,
+					0 => u_size.uniform,
+					1 => u_time.uniform,
 				},
 				..default()
 			},
@@ -52,29 +48,35 @@ impl CanvasApp<ViewState, ()> for App {
 			..default()
 		});
 
-		ViewState { canvas, time, size }
+		Self {
+			time: 0.0,
+
+			u_time,
+			u_size,
+			canvas,
+		}
 	}
 
-	fn resize(&mut self, p: &mut Painter, v: &mut ViewState) {
+	fn resize(&mut self, p: &mut Painter) {
 		let size = p.canvas_size();
-		v.size.update(p, uvec2(size.width, size.height));
+		self.u_size.update(p, uvec2(size.width, size.height));
 	}
 
-	fn update(&mut self, p: &mut Painter, v: &mut ViewState, tpf: f32) {
+	fn update(&mut self, p: &mut Painter, tpf: f32) {
 		self.time += tpf;
-		v.time.update(p, self.time);
+		self.u_time.update(p, self.time);
 
 		p.request_next_frame();
 	}
 
-	fn render(&self, p: &mut Painter, state: &ViewState) -> Result<(), SurfaceError> {
-		p.paint(&state.canvas)?;
-		p.show(&state.canvas)
+	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
+		p.paint(&self.canvas)?;
+		p.show(&self.canvas)
 	}
 
-	fn event(&mut self, _e: Event<()>, _p: &Painter) {}
+	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {
-	create_canvas_app(App::default()).start();
+	App::create().start();
 }

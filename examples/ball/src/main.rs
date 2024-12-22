@@ -2,7 +2,6 @@ use geom::create_ball_geom;
 use trivalibs::{
 	bmap,
 	painter::{
-		create_canvas_app,
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
 		shade::ShadeProps,
@@ -22,31 +21,17 @@ use trivalibs::{
 
 mod geom;
 
-struct ViewState {
+struct App {
+	cam: PerspectiveCamera,
+	ball_transform: Transform,
+
 	canvas: Layer,
 	mvp: UniformBuffer<Mat4>,
 	norm: UniformBuffer<Mat3U>,
 }
 
-struct App {
-	cam: PerspectiveCamera,
-	ball_transform: Transform,
-}
-
-impl Default for App {
-	fn default() -> Self {
-		Self {
-			cam: PerspectiveCamera::create(CamProps {
-				fov: Some(0.6),
-				..default()
-			}),
-			ball_transform: Transform::from_translation(vec3(0.0, 0.0, -20.0)),
-		}
-	}
-}
-
-impl CanvasApp<ViewState, ()> for App {
-	fn init(&self, p: &mut Painter) -> ViewState {
+impl CanvasApp<()> for App {
+	fn init(p: &mut Painter) -> Self {
 		let tex_bytes = include_bytes!("../texture.png");
 		let mut reader = png::Decoder::new(std::io::Cursor::new(tex_bytes))
 			.read_info()
@@ -109,36 +94,46 @@ impl CanvasApp<ViewState, ()> for App {
 			..default()
 		});
 
-		ViewState { canvas, mvp, norm }
+		Self {
+			canvas,
+			mvp,
+			norm,
+
+			cam: PerspectiveCamera::create(CamProps {
+				fov: Some(0.6),
+				..default()
+			}),
+			ball_transform: Transform::from_translation(vec3(0.0, 0.0, -20.0)),
+		}
 	}
 
-	fn resize(&mut self, p: &mut Painter, _v: &mut ViewState) {
+	fn resize(&mut self, p: &mut Painter) {
 		let size = p.canvas_size();
 
 		self.cam
 			.set_aspect_ratio(size.width as f32 / size.height as f32);
 	}
 
-	fn update(&mut self, p: &mut Painter, v: &mut ViewState, tpf: f32) {
+	fn update(&mut self, p: &mut Painter, tpf: f32) {
 		self.ball_transform.rotate_y(tpf * 0.5);
 
-		v.mvp
+		self.mvp
 			.update(p, self.ball_transform.model_view_proj_mat(&self.cam));
 
-		v.norm
+		self.norm
 			.update_mat3(p, self.ball_transform.view_normal_mat(&self.cam));
 
 		p.request_next_frame();
 	}
 
-	fn render(&self, p: &mut Painter, state: &ViewState) -> Result<(), wgpu::SurfaceError> {
-		p.paint(&state.canvas)?;
-		p.show(&state.canvas)
+	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
+		p.paint(&self.canvas)?;
+		p.show(&self.canvas)
 	}
 
-	fn event(&mut self, _e: Event<()>, _p: &Painter) {}
+	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {
-	create_canvas_app(App::default()).start();
+	App::create().start();
 }

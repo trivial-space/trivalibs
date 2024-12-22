@@ -25,24 +25,59 @@ pub mod texture;
 pub mod uniform;
 pub use uniform::UniformType;
 
+#[derive(Debug)]
 pub enum Event<UserEvent> {
 	WindowEvent(WindowEvent),
 	DeviceEvent(DeviceEvent),
 	UserEvent(UserEvent),
 }
 
-pub trait CanvasApp<ViewState, UserEvent> {
-	fn init(&self, painter: &mut Painter) -> ViewState;
-	fn resize(&mut self, painter: &mut Painter, render_state: &mut ViewState);
-	fn update(&mut self, painter: &mut Painter, render_state: &mut ViewState, tpf: f32);
-	fn render(&self, painter: &mut Painter, render_state: &ViewState) -> Result<(), SurfaceError>;
-	fn event(&mut self, event: Event<UserEvent>, painter: &Painter);
+pub trait CanvasApp<UserEvent> {
+	fn init(painter: &mut Painter) -> Self;
+	fn resize(&mut self, painter: &mut Painter);
+	fn update(&mut self, painter: &mut Painter, tpf: f32);
+	fn render(&self, painter: &mut Painter) -> Result<(), SurfaceError>;
+	fn event(&mut self, event: Event<UserEvent>, painter: &mut Painter);
+
+	fn create() -> CanvasAppStarter<UserEvent, Self>
+	where
+		Self: Sized,
+	{
+		#[cfg(not(target_arch = "wasm32"))]
+		env_logger::init();
+
+		#[cfg(target_arch = "wasm32")]
+		{
+			std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+			console_log::init().expect("could not initialize logger");
+		}
+
+		let event_loop = EventLoop::<CustomEvent<UserEvent>>::with_user_event()
+			.build()
+			.unwrap();
+
+		let event_loop_proxy = event_loop.create_proxy();
+
+		let runner = CanvasAppRunner {
+			state: WindowState::Uninitialized,
+			event_loop_proxy,
+			is_running: true,
+			is_resizing: false,
+			now: Instant::now(),
+		};
+
+		CanvasAppStarter {
+			app: runner,
+			event_loop,
+		}
+	}
 }
 
-enum WindowState {
+enum WindowState<UserEvent, App: CanvasApp<UserEvent>> {
 	Uninitialized,
 	Initializing,
-	Initialized(Painter),
+	Initialized(Painter, App),
+	_PHANTOM(std::marker::PhantomData<UserEvent>),
 }
 
 pub enum CustomEvent<UserEvent> {
@@ -51,15 +86,13 @@ pub enum CustomEvent<UserEvent> {
 	ReloadShaders(String),
 }
 
-pub struct CanvasAppRunner<ViewState, UserEvent, App>
+pub struct CanvasAppRunner<UserEvent, App>
 where
 	UserEvent: 'static,
-	App: CanvasApp<ViewState, UserEvent>,
+	App: CanvasApp<UserEvent>,
 {
-	state: WindowState,
+	state: WindowState<UserEvent, App>,
 	event_loop_proxy: EventLoopProxy<CustomEvent<UserEvent>>,
-	app: App,
-	render_state: Option<ViewState>,
 	is_running: bool,
 	is_resizing: bool,
 	now: Instant,
@@ -82,19 +115,19 @@ impl<UserEvent> CanvasHandle<UserEvent> {
 	}
 }
 
-pub struct CanvasAppStarter<ViewState, UserEvent, App>
+pub struct CanvasAppStarter<UserEvent, App>
 where
 	UserEvent: 'static,
-	App: CanvasApp<ViewState, UserEvent>,
+	App: CanvasApp<UserEvent>,
 {
-	app: CanvasAppRunner<ViewState, UserEvent, App>,
+	app: CanvasAppRunner<UserEvent, App>,
 	event_loop: EventLoop<CustomEvent<UserEvent>>,
 }
 
-impl<ViewState, UserEvent, App> CanvasAppStarter<ViewState, UserEvent, App>
+impl<UserEvent, App> CanvasAppStarter<UserEvent, App>
 where
 	UserEvent: std::marker::Send,
-	App: CanvasApp<ViewState, UserEvent> + std::marker::Send + 'static,
+	App: CanvasApp<UserEvent> + std::marker::Send + 'static,
 {
 	pub fn start(self) {
 		let event_loop = self.event_loop;
@@ -158,123 +191,88 @@ where
 	}
 }
 
-pub fn create_canvas_app<ViewState, UserEvent, App: CanvasApp<ViewState, UserEvent> + 'static>(
-	app: App,
-) -> CanvasAppStarter<ViewState, UserEvent, App> {
-	#[cfg(not(target_arch = "wasm32"))]
-	env_logger::init();
-
-	#[cfg(target_arch = "wasm32")]
-	{
-		std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-		console_log::init().expect("could not initialize logger");
-	}
-
-	let event_loop = EventLoop::<CustomEvent<UserEvent>>::with_user_event()
-		.build()
-		.unwrap();
-
-	let event_loop_proxy = event_loop.create_proxy();
-
-	let runner = CanvasAppRunner {
-		state: WindowState::Uninitialized,
-		render_state: None,
-		event_loop_proxy,
-		app,
-		is_running: true,
-		is_resizing: false,
-		now: Instant::now(),
-	};
-
-	return CanvasAppStarter {
-		app: runner,
-		event_loop,
-	};
-}
-
-impl<ViewState, UserEvent, App> ApplicationHandler<CustomEvent<UserEvent>>
-	for CanvasAppRunner<ViewState, UserEvent, App>
+impl<UserEvent, App> ApplicationHandler<CustomEvent<UserEvent>> for CanvasAppRunner<UserEvent, App>
 where
-	App: CanvasApp<ViewState, UserEvent>,
+	App: CanvasApp<UserEvent>,
 {
 	// This is a common indicator that you can create a window.
 	fn resumed(&mut self, event_loop: &ActiveEventLoop) {
 		match self.state {
-			WindowState::Initializing | WindowState::Initialized(_) => return,
 			WindowState::Uninitialized => {
 				self.state = WindowState::Initializing;
-			}
-		}
-		let window = event_loop
-			.create_window(Window::default_attributes())
-			.unwrap();
 
-		let window = Arc::new(window);
+				let window = event_loop
+					.create_window(Window::default_attributes())
+					.unwrap();
 
-		#[cfg(target_arch = "wasm32")]
-		{
-			// TODO: initialize canvas
-			// web_sys::window()
-			// 	.and_then(|win| win.document())
-			// 	.and_then(|doc| {
-			// 		let dst = doc.get_element_by_id("kloenk-wasm")?;
-			// 		let canvas = window.canvas()?;
-			// 		canvas
-			// 			.set_attribute("tabindex", "0")
-			// 			.expect("failed to set tabindex");
-			// 		dst.append_child(&canvas).ok()?;
-			// 		canvas.focus().expect("Unable to focus on canvas");
-			// 		Some(())
-			// 	})
-			// 	.expect("Couldn't append canvas to document body.");
-		}
+				let window = Arc::new(window);
 
-		let renderer_future = Painter::new(window);
+				#[cfg(target_arch = "wasm32")]
+				{
+					// TODO: initialize canvas
+					// web_sys::window()
+					// 	.and_then(|win| win.document())
+					// 	.and_then(|doc| {
+					// 		let dst = doc.get_element_by_id("kloenk-wasm")?;
+					// 		let canvas = window.canvas()?;
+					// 		canvas
+					// 			.set_attribute("tabindex", "0")
+					// 			.expect("failed to set tabindex");
+					// 		dst.append_child(&canvas).ok()?;
+					// 		canvas.focus().expect("Unable to focus on canvas");
+					// 		Some(())
+					// 	})
+					// 	.expect("Couldn't append canvas to document body.");
+				}
 
-		#[cfg(target_arch = "wasm32")]
-		{
-			let event_loop_proxy = self.event_loop_proxy.clone();
-			spawn_local(async move {
-				let painter = renderer_future.await;
+				let renderer_future = Painter::new(window);
 
-				event_loop_proxy
-					.send_event(CustomEvent(painter))
-					.unwrap_or_else(|_| {
-						panic!("Failed to send initialization event");
+				#[cfg(target_arch = "wasm32")]
+				{
+					let event_loop_proxy = self.event_loop_proxy.clone();
+					spawn_local(async move {
+						let painter = renderer_future.await;
+
+						event_loop_proxy
+							.send_event(CustomEvent(painter))
+							.unwrap_or_else(|_| {
+								panic!("Failed to send initialization event");
+							});
 					});
-			});
-		}
+				}
 
-		#[cfg(not(target_arch = "wasm32"))]
-		{
-			let painter = pollster::block_on(renderer_future);
+				#[cfg(not(target_arch = "wasm32"))]
+				{
+					let painter = pollster::block_on(renderer_future);
 
-			self.event_loop_proxy
-				.send_event(CustomEvent::StateInitializationEvent(painter))
-				.unwrap_or_else(|_| {
-					panic!("Failed to send initialization event");
-				});
+					self.event_loop_proxy
+						.send_event(CustomEvent::StateInitializationEvent(painter))
+						.unwrap_or_else(|_| {
+							panic!("Failed to send initialization event");
+						});
+				}
+			}
+			_ => {}
 		}
 	}
 
 	fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: CustomEvent<UserEvent>) {
 		match event {
 			CustomEvent::StateInitializationEvent(mut painter) => {
-				self.render_state = Some(self.app.init(&mut painter));
-				self.app
-					.resize(&mut painter, self.render_state.as_mut().unwrap());
+				let mut app = App::init(&mut painter);
+				app.resize(&mut painter);
 				painter.request_next_frame();
-				self.state = WindowState::Initialized(painter);
+				self.state = WindowState::Initialized(painter, app);
 			}
 			CustomEvent::UserEvent(user_event) => {
-				if let WindowState::Initialized(painter) = &self.state {
-					self.app.event(Event::UserEvent(user_event), painter);
+				if let WindowState::Initialized(painter, app) = &mut self.state {
+					app.event(Event::UserEvent(user_event), painter);
 				}
 			}
 			CustomEvent::ReloadShaders(path) => {
 				#[cfg(debug_assertions)]
 				{
-					if let WindowState::Initialized(painter) = &mut self.state {
+					if let WindowState::Initialized(painter, _) = &mut self.state {
 						painter.reload_shader(path);
 					}
 				}
@@ -289,13 +287,12 @@ where
 		event: WindowEvent,
 	) {
 		match &mut self.state {
-			WindowState::Initialized(painter) => {
+			WindowState::Initialized(painter, app) => {
 				match event {
 					WindowEvent::Resized(new_size) => {
 						// Reconfigure the surface with the new size
 						painter.resize(new_size);
-						self.app
-							.resize(painter, self.render_state.as_mut().unwrap());
+						app.resize(painter);
 						// On macos the window needs to be redrawn manually after resizing
 						painter.request_next_frame();
 						self.is_resizing = true;
@@ -308,11 +305,9 @@ where
 
 							let elapsed = if self.is_running { elapsed } else { 0.0 };
 
-							let render_state = &mut self.render_state.as_mut().unwrap();
+							app.update(painter, elapsed);
 
-							self.app.update(painter, render_state, elapsed);
-
-							match self.app.render(painter, render_state) {
+							match app.render(painter) {
 								Ok(_) => {}
 								// Reconfigure the surface if it's lost or outdated
 								Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
@@ -320,7 +315,7 @@ where
 										width: painter.config.width,
 										height: painter.config.height,
 									});
-									self.app.resize(painter, render_state);
+									app.resize(painter);
 								}
 								// The system is out of memory, we should probably quit
 								Err(wgpu::SurfaceError::OutOfMemory) => {
@@ -357,7 +352,7 @@ where
 					}
 
 					rest => {
-						self.app.event(Event::WindowEvent(rest), painter);
+						app.event(Event::WindowEvent(rest), painter);
 					}
 				};
 			}
@@ -371,8 +366,8 @@ where
 		_device_id: DeviceId,
 		event: DeviceEvent,
 	) {
-		if let WindowState::Initialized(painter) = &mut self.state {
-			self.app.event(Event::DeviceEvent(event), painter);
+		if let WindowState::Initialized(painter, app) = &mut self.state {
+			app.event(Event::DeviceEvent(event), painter);
 		}
 	}
 }
