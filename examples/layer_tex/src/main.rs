@@ -1,7 +1,6 @@
 use trivalibs::{
 	bmap,
 	painter::{
-		create_canvas_app,
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
 		shade::ShadeProps,
@@ -66,44 +65,32 @@ const QUAD: &[Vertex] = &[
 	},
 ];
 
-const COLOR_TEX_SIZE: (u32, u32) = (800, 800);
-
-struct ViewState {
-	quad_mvp: UniformBuffer<Mat4>,
-	triangle_mvp: UniformBuffer<Mat4>,
-	color_triangle_layer: Layer,
-	color_quad_layer: Layer,
-	canvas: Layer,
-}
+const COLOR_TEX_SIZE_BIG: (u32, u32) = (800, 800);
+const COLOR_TEX_SIZE_SMALL: (u32, u32) = (200, 200);
 
 struct App {
 	color_cam: PerspectiveCamera,
 	tex_cam: PerspectiveCamera,
 	triangle_transform: Transform,
 	quad_transform: Transform,
+
+	color_quad_mvp: UniformBuffer<Mat4>,
+	color_triangle_mvp: UniformBuffer<Mat4>,
+	tex_quad_mvp: UniformBuffer<Mat4>,
+	tex_triangle_mvp: UniformBuffer<Mat4>,
+
+	color_triangle_layer: Layer,
+	color_quad_layer: Layer,
+	canvas: Layer,
+
+	is_big_tex: bool,
 }
 
-impl Default for App {
-	fn default() -> Self {
-		Self {
-			color_cam: PerspectiveCamera::create(CamProps {
-				fov: Some(0.6),
-				translation: vec3(0.0, 0.0, 5.0).into(),
-				..default()
-			}),
-			tex_cam: PerspectiveCamera::create(CamProps {
-				fov: Some(0.6),
-				translation: vec3(0.0, 0.0, 2.0).into(),
-				..default()
-			}),
-			triangle_transform: Transform::default(),
-			quad_transform: Transform::default(),
-		}
-	}
-}
+#[derive(Debug, Clone, Copy)]
+struct ResizeEvent;
 
-impl CanvasApp<ViewState, ()> for App {
-	fn init(&self, p: &mut Painter) -> ViewState {
+impl CanvasApp<ResizeEvent> for App {
+	fn init(p: &mut Painter) -> Self {
 		let u_fs_type = p.uniform_type_buffered_frag();
 		let u_vs_type = p.uniform_type_buffered_vert();
 		let tex_type = p.uniform_type_tex_2d_frag();
@@ -125,8 +112,8 @@ impl CanvasApp<ViewState, ()> for App {
 		let quad_form = p.form_create(QUAD, default());
 		let triangle_form = p.form_create(TRIANGLE, default());
 
-		let quad_mvp = u_vs_type.create_mat4(p);
-		let triangle_mvp = u_vs_type.create_mat4(p);
+		let color_quad_mvp = u_vs_type.create_mat4(p);
+		let color_triangle_mvp = u_vs_type.create_mat4(p);
 
 		let quad_color = u_fs_type.const_vec3(p, vec3(0.0, 0.0, 1.0));
 		let triangle_color = u_fs_type.const_vec3(p, vec3(1.0, 0.0, 0.0));
@@ -137,7 +124,7 @@ impl CanvasApp<ViewState, ()> for App {
 			&SketchProps {
 				cull_mode: None,
 				uniforms: bmap! {
-					0 => quad_mvp.uniform,
+					0 => color_quad_mvp.uniform,
 					1 => quad_color
 				},
 				..default()
@@ -150,7 +137,7 @@ impl CanvasApp<ViewState, ()> for App {
 			&SketchProps {
 				cull_mode: None,
 				uniforms: bmap! {
-					0 => triangle_mvp.uniform,
+					0 => color_triangle_mvp.uniform,
 					1 => triangle_color,
 				},
 				..default()
@@ -159,8 +146,8 @@ impl CanvasApp<ViewState, ()> for App {
 
 		let color_triangle_layer = p.layer_create(&LayerProps {
 			sketches: vec![color_triangle_sketch],
-			width: COLOR_TEX_SIZE.0,
-			height: COLOR_TEX_SIZE.1,
+			width: COLOR_TEX_SIZE_BIG.0,
+			height: COLOR_TEX_SIZE_BIG.1,
 			clear_color: Some(wgpu::Color {
 				r: 1.0,
 				g: 1.0,
@@ -172,8 +159,8 @@ impl CanvasApp<ViewState, ()> for App {
 
 		let color_quad_layer = p.layer_create(&LayerProps {
 			sketches: vec![color_quad_sketch],
-			width: COLOR_TEX_SIZE.0,
-			height: COLOR_TEX_SIZE.1,
+			width: COLOR_TEX_SIZE_BIG.0,
+			height: COLOR_TEX_SIZE_BIG.1,
 			clear_color: Some(wgpu::Color {
 				r: 0.0,
 				g: 1.0,
@@ -183,52 +170,118 @@ impl CanvasApp<ViewState, ()> for App {
 			..default()
 		});
 
+		let tri_tex = color_triangle_layer.get_uniform(p);
+		let tex_triangle_mvp = u_vs_type.create_mat4(p);
+		let tex_quad_mvp = u_vs_type.create_mat4(p);
+
+		let tex_quad_sketch = p.sketch_create(
+			quad_form,
+			tex_shader,
+			&SketchProps {
+				cull_mode: None,
+				uniforms: bmap! {
+					0 => tex_quad_mvp.uniform,
+					1 => tri_tex.uniform,
+				},
+				..default()
+			},
+		);
+
 		let canvas = p.layer_create(&LayerProps {
-			sketches: vec![],
+			sketches: vec![tex_quad_sketch],
+
+			clear_color: Some(wgpu::Color::BLACK),
 			..default()
 		});
 
-		ViewState {
-			quad_mvp,
-			triangle_mvp,
+		Self {
+			color_cam: PerspectiveCamera::create(CamProps {
+				fov: Some(0.6),
+				translation: vec3(0.0, 0.0, 5.0).into(),
+				..default()
+			}),
+			tex_cam: PerspectiveCamera::create(CamProps {
+				fov: Some(0.6),
+				translation: vec3(0.0, 0.0, 5.0).into(),
+				..default()
+			}),
+			triangle_transform: Transform::default(),
+			quad_transform: Transform::default(),
+
+			color_quad_mvp,
+			color_triangle_mvp,
+			tex_quad_mvp,
+			tex_triangle_mvp,
 
 			canvas,
 			color_triangle_layer,
 			color_quad_layer,
+
+			is_big_tex: true,
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter, _v: &mut ViewState) {
+	fn resize(&mut self, p: &mut Painter) {
 		let size = p.canvas_size();
 		self.tex_cam
 			.set_aspect_ratio(size.width as f32 / size.height as f32);
 	}
 
-	fn update(&mut self, p: &mut Painter, v: &mut ViewState, tpf: f32) {
+	fn update(&mut self, p: &mut Painter, tpf: f32) {
 		self.triangle_transform.rotate_y(0.25 * tpf);
 		self.quad_transform.rotate_y(0.3 * tpf);
 
-		v.triangle_mvp.update(
+		self.color_triangle_mvp.update(
 			p,
 			self.triangle_transform.model_view_proj_mat(&self.color_cam),
 		);
+		self.tex_triangle_mvp.update(
+			p,
+			self.triangle_transform.model_view_proj_mat(&self.tex_cam),
+		);
 
-		v.quad_mvp
+		self.color_quad_mvp
 			.update(p, self.quad_transform.model_view_proj_mat(&self.color_cam));
+		self.tex_quad_mvp
+			.update(p, self.quad_transform.model_view_proj_mat(&self.tex_cam));
 
 		p.request_next_frame();
 	}
 
-	fn render(&self, p: &mut Painter, v: &ViewState) -> Result<(), SurfaceError> {
-		p.paint(&v.canvas)?;
-		p.paint(&v.color_triangle_layer)?;
-		p.paint(&v.color_quad_layer)?;
-		p.show(&v.color_quad_layer)
+	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
+		p.paint(&self.color_triangle_layer)?;
+		p.paint(&self.color_quad_layer)?;
+		p.paint(&self.canvas)?;
+		p.show(&self.canvas)
 	}
 
-	fn event(&mut self, _e: Event<()>, _p: &Painter) {}
+	fn event(&mut self, e: Event<ResizeEvent>, p: &mut Painter) {
+		match e {
+			Event::UserEvent(ResizeEvent) => {
+				let size = if self.is_big_tex {
+					COLOR_TEX_SIZE_SMALL
+				} else {
+					COLOR_TEX_SIZE_BIG
+				};
+
+				self.color_triangle_layer.resize(p, size.0, size.1);
+				self.color_quad_layer.resize(p, size.0, size.1);
+
+				self.is_big_tex = !self.is_big_tex;
+			}
+			_ => {}
+		}
+	}
 }
 
 pub fn main() {
-	create_canvas_app(App::default()).start();
+	let app = App::create();
+	let handle = app.get_handle();
+
+	std::thread::spawn(move || loop {
+		std::thread::sleep(std::time::Duration::from_secs(2));
+		let _ = handle.send_event(ResizeEvent);
+	});
+
+	app.start();
 }
