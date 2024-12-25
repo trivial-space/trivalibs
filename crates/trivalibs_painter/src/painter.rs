@@ -1,6 +1,6 @@
 use crate::{
 	effect::{Effect, EffectProps, EffectStorage},
-	form::{Form, FormProps, FormStorage},
+	form::{Form, FormBuffers, FormProps, FormStorage},
 	layer::{Layer, LayerProps, LayerStorage},
 	shade::{AttribsFormat, Shade, ShadeEffectProps, ShadeProps, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
@@ -9,7 +9,7 @@ use crate::{
 	uniform::{UniformType, UniformTypeStorage},
 };
 use std::{collections::BTreeMap, sync::Arc};
-use trivalibs_core::{rendering::RenderableBuffer, utils::default};
+use trivalibs_core::utils::default;
 use wgpu::util::make_spirv;
 use winit::window::Window;
 
@@ -167,11 +167,15 @@ impl Painter {
 
 	// form helpers
 
-	pub fn form_update(&mut self, form: &Form, buffers: impl Into<RenderableBuffer>) {
+	pub fn form_update<'a>(&mut self, form: &Form, buffers: impl Into<FormBuffers<'a>>) {
 		form.update(self, buffers);
 	}
 
-	pub fn form_create(&mut self, buffer: impl Into<RenderableBuffer>, props: FormProps) -> Form {
+	pub fn form_create<'a>(
+		&mut self,
+		buffer: impl Into<FormBuffers<'a>>,
+		props: FormProps,
+	) -> Form {
 		Form::new(self, buffer, props)
 	}
 

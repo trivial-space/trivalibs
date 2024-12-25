@@ -62,7 +62,7 @@ impl CanvasApp<()> for App {
 		load_vertex_shader!(shade, p, "../shader/vertex.spv");
 		load_fragment_shader!(shade, p, "../shader/fragment.spv");
 
-		let form = p.form_create(create_ball_geom(), default());
+		let form = p.form_create(&create_ball_geom(), default());
 
 		let tex = tex_type.const_tex2d(p, texture, p.sampler_default());
 		let mvp = uniform_type.create_mat4(p);

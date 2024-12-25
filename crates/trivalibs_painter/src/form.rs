@@ -31,16 +31,45 @@ where
 	pub index_buffer: Option<&'a [u32]>,
 }
 
-impl<'a, T> Into<RenderableBuffer> for FormData<'a, T>
+pub struct FormBuffers<'a> {
+	vertex_buffer: &'a [u8],
+	vertex_count: u32,
+	index_buffer: Option<&'a [u8]>,
+	index_count: u32,
+}
+
+impl<'a, T> Into<FormBuffers<'a>> for FormData<'a, T>
 where
 	T: bytemuck::Pod + bytemuck::Zeroable,
 {
-	fn into(self) -> RenderableBuffer {
-		RenderableBuffer {
-			vertex_buffer: bytemuck::cast_slice(self.vertex_buffer).to_vec(),
+	fn into(self) -> FormBuffers<'a> {
+		FormBuffers {
+			vertex_buffer: bytemuck::cast_slice(self.vertex_buffer),
 			vertex_count: self.vertex_buffer.len() as u32,
-			index_buffer: self.index_buffer.map(|i| bytemuck::cast_slice(i).to_vec()),
+			index_buffer: self.index_buffer.map(|i| bytemuck::cast_slice(i)),
 			index_count: self.index_buffer.map(|i| i.len() as u32).unwrap_or(0),
+		}
+	}
+}
+
+impl<'a> Into<FormBuffers<'a>> for &'a RenderableBuffer {
+	fn into(self) -> FormBuffers<'a> {
+		FormBuffers {
+			vertex_buffer: self.vertex_buffer.as_slice(),
+			vertex_count: self.vertex_count,
+			index_buffer: self.index_buffer.as_deref(),
+			index_count: self.index_count,
+		}
+	}
+}
+
+impl<'a, T: bytemuck::Pod> Into<FormBuffers<'a>> for &'a [T] {
+	fn into(self) -> FormBuffers<'a> {
+		FormBuffers {
+			vertex_buffer: bytemuck::cast_slice(self),
+			index_buffer: None,
+			vertex_count: self.len() as u32,
+			index_count: 0,
 		}
 	}
 }
@@ -49,7 +78,7 @@ where
 pub struct Form(pub(crate) usize);
 
 impl Form {
-	pub fn update(&self, painter: &mut Painter, buffers: impl Into<RenderableBuffer>) {
+	pub fn update<'a>(&self, painter: &mut Painter, buffers: impl Into<FormBuffers<'a>>) {
 		let f = &mut painter.forms[self.0];
 		let buffers = buffers.into();
 
@@ -99,9 +128,9 @@ impl Form {
 		return Form(i);
 	}
 
-	pub fn new(
+	pub fn new<'a>(
 		painter: &mut Painter,
-		buffer: impl Into<RenderableBuffer>,
+		buffer: impl Into<FormBuffers<'a>>,
 		props: FormProps,
 	) -> Self {
 		let buffer = buffer.into();
