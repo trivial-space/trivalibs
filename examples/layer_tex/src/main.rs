@@ -8,7 +8,7 @@ use trivalibs::{
 		texture::SamplerProps,
 		uniform::UniformBuffer,
 		wgpu::{self, SurfaceError, VertexFormat::*},
-		CanvasApp, Event, Painter,
+		AppConfig, CanvasApp, Event, Painter,
 	},
 	prelude::*,
 	rendering::{
@@ -310,7 +310,8 @@ impl CanvasApp<ResizeEvent> for App {
 }
 
 pub fn main() {
-	let app = App::create();
+	let app = App::create().setup(AppConfig { show_fps: true });
+
 	let handle = app.get_handle();
 
 	std::thread::spawn(move || loop {
