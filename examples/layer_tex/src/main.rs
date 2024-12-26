@@ -164,6 +164,7 @@ impl CanvasApp<ResizeEvent> for App {
 			width: COLOR_TEX_SIZE_BIG.0,
 			height: COLOR_TEX_SIZE_BIG.1,
 			clear_color: Some(YELLOW),
+			multisampled: false,
 			..default()
 		});
 
@@ -172,6 +173,7 @@ impl CanvasApp<ResizeEvent> for App {
 			width: COLOR_TEX_SIZE_BIG.0,
 			height: COLOR_TEX_SIZE_BIG.1,
 			clear_color: Some(GREEN),
+			multisampled: true,
 			..default()
 		});
 
@@ -181,7 +183,7 @@ impl CanvasApp<ResizeEvent> for App {
 			..default()
 		});
 		let tri_tex = color_triangle_layer.get_uniform(p, sampler);
-		let quad_tex = color_quad_layer.get_uniform(p, sampler);
+		let quad_tex = color_quad_layer.get_uniform(p, p.sampler_default());
 		let tex_triangle_mvp = u_vs_type.create_mat4(p);
 		let tex_quad_mvp = u_vs_type.create_mat4(p);
 
@@ -215,6 +217,7 @@ impl CanvasApp<ResizeEvent> for App {
 			sketches: vec![tex_quad_sketch, tex_triangle_sketch],
 			depth_test: true,
 			clear_color: Some(wgpu::Color::BLACK),
+			multisampled: true,
 			..default()
 		});
 

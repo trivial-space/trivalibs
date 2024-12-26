@@ -104,7 +104,7 @@ pub(crate) struct LayerStorage {
 	pub uniform_type: UniformType,
 	pub pipeline_key: Vec<u8>,
 	pub format: wgpu::TextureFormat,
-	pub multisampled: bool,
+	pub multisampled_texture: Option<Texture>,
 }
 
 pub struct LayerProps {
@@ -167,18 +167,36 @@ impl Layer {
 				usage: wgpu::TextureUsages::RENDER_ATTACHMENT
 					| wgpu::TextureUsages::TEXTURE_BINDING,
 			},
+			false,
 		));
 		let len = target_texture.len();
 
-		let depth_texture = props
-			.depth_test
-			.then(|| Texture::create_depth(painter, &TextureDepthProps { width, height }));
+		let depth_texture = props.depth_test.then(|| {
+			Texture::create_depth(
+				painter,
+				&TextureDepthProps { width, height },
+				props.multisampled,
+			)
+		});
 
 		let pipeline_key = vec![
 			map_format_to_u8(format),
 			(props.depth_test as u8),
 			props.multisampled as u8,
 		];
+
+		let multisampled_texture = props.multisampled.then(|| {
+			Texture::create_2d(
+				painter,
+				&Texture2DProps {
+					width,
+					height,
+					format,
+					usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+				},
+				true,
+			)
+		});
 
 		let storage = LayerStorage {
 			width,
@@ -193,7 +211,7 @@ impl Layer {
 			uniform_type: UniformType::tex_2d(painter, props.binding_visibility),
 			format,
 			pipeline_key,
-			multisampled: props.multisampled,
+			multisampled_texture,
 		};
 
 		painter.layers.push(storage);
@@ -240,6 +258,7 @@ impl Layer {
 
 		let targets = storage.target_textures.clone();
 		let depth_texture = storage.depth_texture.clone();
+		let multisampled_texture = storage.multisampled_texture.clone();
 
 		for texture in targets.iter() {
 			let format = painter.textures[texture.0].texture.format();
@@ -252,11 +271,30 @@ impl Layer {
 					usage: wgpu::TextureUsages::RENDER_ATTACHMENT
 						| wgpu::TextureUsages::TEXTURE_BINDING,
 				},
+				false,
 			);
 		}
 
 		if let Some(depth_texture) = depth_texture {
-			depth_texture.replace_depth(painter, &TextureDepthProps { width, height });
+			depth_texture.replace_depth(
+				painter,
+				&TextureDepthProps { width, height },
+				multisampled_texture.is_some(),
+			);
+		}
+
+		if let Some(multisampled_texture) = multisampled_texture {
+			let format = painter.textures[multisampled_texture.0].texture.format();
+			multisampled_texture.replace_2d(
+				painter,
+				&Texture2DProps {
+					width,
+					height,
+					format,
+					usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+				},
+				true,
+			);
 		}
 
 		for i in 0..painter.layers[self.0].target_uniforms.len() {

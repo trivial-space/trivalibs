@@ -19,6 +19,7 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-	return textureSample(ourTexture, ourSampler, in.coord);
+	var coord = vec2f(in.coord.x, 1.0 - in.coord.y);
+	return textureSample(ourTexture, ourSampler, coord);
 }
 "#;
