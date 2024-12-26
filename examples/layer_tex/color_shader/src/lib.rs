@@ -1,13 +1,12 @@
 #![no_std]
 #![allow(unexpected_cfgs)]
 
-use spirv_std::glam::{vec4, Mat4, Vec2, Vec3, Vec4};
+use spirv_std::glam::{vec4, Mat4, Vec3, Vec4};
 use spirv_std::spirv;
 
 #[spirv(vertex)]
 pub fn vs_main(
 	pos: Vec3,
-	_uv: Vec2,
 	#[spirv(uniform, descriptor_set = 0, binding = 0)] mvp: &Mat4,
 	#[spirv(position)] out_pos: &mut Vec4,
 ) {

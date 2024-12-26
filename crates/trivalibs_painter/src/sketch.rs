@@ -38,26 +38,14 @@ impl Sketch {
 
 		let pipeline_key = vec![
 			(shade.0 as u16).to_le_bytes().to_vec(),
-			(f.props.topology as u8).to_le_bytes().to_vec(),
-			(f.props.front_face as u8).to_le_bytes().to_vec(),
-			(props.blend_state.alpha.dst_factor as u8)
-				.to_le_bytes()
-				.to_vec(),
-			(props.blend_state.alpha.src_factor as u8)
-				.to_le_bytes()
-				.to_vec(),
-			(props.blend_state.alpha.operation as u8)
-				.to_le_bytes()
-				.to_vec(),
-			(props.blend_state.color.dst_factor as u8)
-				.to_le_bytes()
-				.to_vec(),
-			(props.blend_state.color.src_factor as u8)
-				.to_le_bytes()
-				.to_vec(),
-			(props.blend_state.color.operation as u8)
-				.to_le_bytes()
-				.to_vec(),
+			vec![f.props.topology as u8],
+			vec![f.props.front_face as u8],
+			vec![props.blend_state.alpha.dst_factor as u8],
+			vec![props.blend_state.alpha.src_factor as u8],
+			vec![props.blend_state.alpha.operation as u8],
+			vec![props.blend_state.color.dst_factor as u8],
+			vec![props.blend_state.color.src_factor as u8],
+			vec![props.blend_state.color.operation as u8],
 		]
 		.into_iter()
 		.flatten()

@@ -175,13 +175,10 @@ impl Layer {
 			.then(|| Texture::create_depth(painter, &TextureDepthProps { width, height }));
 
 		let pipeline_key = vec![
-			vec![map_format_to_u8(format)],
-			(props.depth_test as u8).to_le_bytes().to_vec(),
-			vec![props.multisampled as u8],
-		]
-		.into_iter()
-		.flatten()
-		.collect();
+			map_format_to_u8(format),
+			(props.depth_test as u8),
+			props.multisampled as u8,
+		];
 
 		let storage = LayerStorage {
 			width,

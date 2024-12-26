@@ -29,8 +29,8 @@ impl CanvasApp<()> for App {
 		});
 		load_fragment_shader!(shade, p, "../shader/main.spv");
 
-		let u_time = u_type.create_buff(p, 0.0f32);
-		let u_size = u_type.create_buff(p, uvec2(0, 0));
+		let u_time = u_type.create_f32(p);
+		let u_size = u_type.create_uvec2(p);
 
 		let effect = p.effect_create(
 			shade,
