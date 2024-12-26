@@ -136,7 +136,7 @@ where
 	UserEvent: std::marker::Send,
 	App: CanvasApp<UserEvent> + std::marker::Send + 'static,
 {
-	pub fn setup(mut self, config: AppConfig) -> Self {
+	pub fn config(mut self, config: AppConfig) -> Self {
 		self.runner.show_fps = config.show_fps;
 		self
 	}
