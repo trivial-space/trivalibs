@@ -1,29 +1,17 @@
 use trivalibs::painter::{
-	create_canvas_app,
 	wgpu::{self, include_spirv},
-	winit::event::{DeviceEvent, WindowEvent},
-	CanvasApp, Painter,
+	CanvasApp, Event, Painter,
 };
-
-struct RenderState {
-	pipeline: wgpu::RenderPipeline,
-}
 
 struct App {
 	color: wgpu::Color,
-}
-impl Default for App {
-	fn default() -> Self {
-		Self {
-			color: wgpu::Color::BLUE,
-		}
-	}
+	pipeline: wgpu::RenderPipeline,
 }
 
 struct UserEvent(wgpu::Color);
 
-impl CanvasApp<RenderState, UserEvent> for App {
-	fn init(&self, painter: &mut Painter) -> RenderState {
+impl CanvasApp<UserEvent> for App {
+	fn init(painter: &mut Painter) -> Self {
 		// Initialize the app
 
 		let pipeline_layout =
@@ -74,14 +62,13 @@ impl CanvasApp<RenderState, UserEvent> for App {
 				cache: None,
 			});
 
-		RenderState { pipeline }
+		Self {
+			color: wgpu::Color::BLUE,
+			pipeline,
+		}
 	}
 
-	fn render(
-		&self,
-		painter: &mut Painter,
-		state: &RenderState,
-	) -> std::result::Result<(), wgpu::SurfaceError> {
+	fn render(&self, painter: &mut Painter) -> Result<(), wgpu::SurfaceError> {
 		let frame = painter.surface.get_current_texture()?;
 
 		let view = frame
@@ -106,7 +93,7 @@ impl CanvasApp<RenderState, UserEvent> for App {
 				timestamp_writes: None,
 				occlusion_query_set: None,
 			});
-			rpass.set_pipeline(&state.pipeline);
+			rpass.set_pipeline(&self.pipeline);
 			rpass.draw(0..3, 0..1);
 		}
 
@@ -116,19 +103,22 @@ impl CanvasApp<RenderState, UserEvent> for App {
 		Ok(())
 	}
 
-	fn user_event(&mut self, event: UserEvent, painter: &Painter) {
-		self.color = event.0;
-		painter.request_next_frame();
+	fn event(&mut self, event: Event<UserEvent>, painter: &mut Painter) {
+		match event {
+			Event::UserEvent(event) => {
+				self.color = event.0;
+				painter.request_next_frame();
+			}
+			_ => {}
+		}
 	}
 
-	fn resize(&mut self, _p: &mut Painter, _r: &mut RenderState) {}
-	fn update(&mut self, _p: &mut Painter, _r: &mut RenderState, _tpf: f32) {}
-	fn window_event(&mut self, _e: WindowEvent, _p: &Painter) {}
-	fn device_event(&mut self, _e: DeviceEvent, _p: &Painter) {}
+	fn resize(&mut self, _p: &mut Painter) {}
+	fn update(&mut self, _p: &mut Painter, _tpf: f32) {}
 }
 
 pub fn main() {
-	let app = create_canvas_app(App::default());
+	let app = App::create();
 	let handle = app.get_handle();
 
 	std::thread::spawn(move || loop {

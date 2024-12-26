@@ -9,7 +9,12 @@ trivalibs_painter = { path = "crates/trivalibs_painter" }
 
 [workspace]
 resolver = "2"
-members = ["crates/*", "examples/*", "examples/**/shader"]
+members = [
+	"crates/*",
+	"examples/*",
+	"examples/**/shader",
+	"examples/**/*_shader",
+]
 
 [workspace.package]
 edition = "2021"

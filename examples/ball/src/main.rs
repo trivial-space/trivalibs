@@ -2,17 +2,14 @@ use geom::create_ball_geom;
 use trivalibs::{
 	bmap,
 	painter::{
-		create_canvas_app,
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
-		painter::UniformType,
 		shade::ShadeProps,
 		sketch::SketchProps,
 		texture::Texture2DProps,
 		uniform::{Mat3U, UniformBuffer},
 		wgpu::{self, VertexFormat::*},
-		winit::event::{DeviceEvent, WindowEvent},
-		CanvasApp, Painter,
+		CanvasApp, Event, Painter,
 	},
 	prelude::*,
 	rendering::{
@@ -24,31 +21,17 @@ use trivalibs::{
 
 mod geom;
 
-struct RenderState {
+struct App {
+	cam: PerspectiveCamera,
+	ball_transform: Transform,
+
 	canvas: Layer,
 	mvp: UniformBuffer<Mat4>,
 	norm: UniformBuffer<Mat3U>,
 }
 
-struct App {
-	cam: PerspectiveCamera,
-	ball_transform: Transform,
-}
-
-impl Default for App {
-	fn default() -> Self {
-		Self {
-			cam: PerspectiveCamera::create(CamProps {
-				fov: Some(0.6),
-				..default()
-			}),
-			ball_transform: Transform::from_translation(vec3(0.0, 0.0, -20.0)),
-		}
-	}
-}
-
-impl CanvasApp<RenderState, ()> for App {
-	fn init(&self, p: &mut Painter) -> RenderState {
+impl CanvasApp<()> for App {
+	fn init(p: &mut Painter) -> Self {
 		let tex_bytes = include_bytes!("../texture.png");
 		let mut reader = png::Decoder::new(std::io::Cursor::new(tex_bytes))
 			.read_info()
@@ -74,18 +57,17 @@ impl CanvasApp<RenderState, ()> for App {
 
 		let shade = p.shade_create(ShadeProps {
 			vertex_format: &[Float32x3, Float32x2, Float32x3, Float32x3],
-			uniform_types: &[&uniform_type, &uniform_type, &tex_type],
+			uniform_types: &[uniform_type, uniform_type, tex_type],
 		});
 		load_vertex_shader!(shade, p, "../shader/vertex.spv");
 		load_fragment_shader!(shade, p, "../shader/fragment.spv");
 
-		let form = p.form_from_buffer(create_ball_geom(), default());
+		let form = p.form_create(&create_ball_geom(), default());
 
-		let sampler = p.sampler_create(&default());
-		let tex = tex_type.create_tex2d(p, texture, &sampler);
+		let tex = tex_type.const_tex2d(p, texture, p.sampler_default());
+		let mvp = uniform_type.create_mat4(p);
 
-		let mvp = uniform_type.create_buff(p, Mat4::IDENTITY);
-		let norm = uniform_type.create_mat3(p, Mat3::IDENTITY);
+		let norm = uniform_type.create_mat3(p);
 
 		let sketch = p.sketch_create(
 			form,
@@ -94,7 +76,7 @@ impl CanvasApp<RenderState, ()> for App {
 				uniforms: bmap! {
 					0 => mvp.uniform,
 					1 => norm.uniform,
-					2 => tex.uniform,
+					2 => tex,
 				},
 				..default()
 			},
@@ -111,44 +93,46 @@ impl CanvasApp<RenderState, ()> for App {
 			..default()
 		});
 
-		RenderState { canvas, mvp, norm }
+		Self {
+			canvas,
+			mvp,
+			norm,
+
+			cam: PerspectiveCamera::create(CamProps {
+				fov: Some(0.6),
+				..default()
+			}),
+			ball_transform: Transform::from_translation(vec3(0.0, 0.0, -20.0)),
+		}
 	}
 
-	fn resize(&mut self, p: &mut Painter, _rs: &mut RenderState) {
+	fn resize(&mut self, p: &mut Painter) {
 		let size = p.canvas_size();
 
 		self.cam
 			.set_aspect_ratio(size.width as f32 / size.height as f32);
 	}
 
-	fn update(&mut self, p: &mut Painter, rs: &mut RenderState, tpf: f32) {
+	fn update(&mut self, p: &mut Painter, tpf: f32) {
 		self.ball_transform.rotate_y(tpf * 0.5);
 
-		rs.mvp
+		self.mvp
 			.update(p, self.ball_transform.model_view_proj_mat(&self.cam));
 
-		rs.norm
+		self.norm
 			.update_mat3(p, self.ball_transform.view_normal_mat(&self.cam));
-	}
-
-	fn render(
-		&self,
-		p: &mut Painter,
-		state: &RenderState,
-	) -> std::result::Result<(), wgpu::SurfaceError> {
-		p.paint(&state.canvas)?;
-		p.show(&state.canvas)?;
 
 		p.request_next_frame();
-
-		Ok(())
 	}
 
-	fn user_event(&mut self, _e: (), _p: &Painter) {}
-	fn window_event(&mut self, _e: WindowEvent, _p: &Painter) {}
-	fn device_event(&mut self, _e: DeviceEvent, _p: &Painter) {}
+	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
+		p.paint(&self.canvas)?;
+		p.show(&self.canvas)
+	}
+
+	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {
-	create_canvas_app(App::default()).start();
+	App::create().start();
 }

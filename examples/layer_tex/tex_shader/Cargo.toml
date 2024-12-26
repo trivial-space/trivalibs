@@ -1,5 +1,5 @@
 [package]
-name = "draft_ball_shader"
+name = "draft_layer_tex_tex_shader"
 edition.workspace = true
 version = "0.1.0"
 

@@ -1,6 +1,7 @@
 [package]
 name = "draft_mouse_color"
 edition.workspace = true
+version = "0.1.0"
 
 [dependencies]
 trivalibs.workspace = true

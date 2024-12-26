@@ -1,15 +1,11 @@
-use trivalibs::painter::{
-	create_canvas_app, wgpu,
-	winit::event::{DeviceEvent, WindowEvent},
-	CanvasApp, Painter,
-};
+use trivalibs::painter::{wgpu, winit::event::WindowEvent, CanvasApp, Event, Painter};
 
 struct App {
 	color: wgpu::Color,
 }
 
-impl App {
-	fn new() -> Self {
+impl CanvasApp<()> for App {
+	fn init(_painter: &mut Painter) -> Self {
 		Self {
 			color: wgpu::Color {
 				r: 0.3,
@@ -19,14 +15,8 @@ impl App {
 			},
 		}
 	}
-}
 
-impl CanvasApp<(), ()> for App {
-	fn render(
-		&self,
-		painter: &mut Painter,
-		_state: &(),
-	) -> std::result::Result<(), wgpu::SurfaceError> {
+	fn render(&self, painter: &mut Painter) -> Result<(), wgpu::SurfaceError> {
 		let frame = painter.surface.get_current_texture()?;
 
 		let view = frame
@@ -59,12 +49,12 @@ impl CanvasApp<(), ()> for App {
 		Ok(())
 	}
 
-	fn window_event(&mut self, event: WindowEvent, painter: &Painter) {
+	fn event(&mut self, event: Event<()>, painter: &mut Painter) {
 		match event {
-			WindowEvent::CursorMoved {
+			Event::WindowEvent(WindowEvent::CursorMoved {
 				device_id: _,
 				position,
-			} => {
+			}) => {
 				let size = painter.canvas_size();
 				self.color = wgpu::Color {
 					r: position.x / size.width as f64,
@@ -78,13 +68,10 @@ impl CanvasApp<(), ()> for App {
 		}
 	}
 
-	fn init(&self, _painter: &mut Painter) {}
-	fn resize(&mut self, _painter: &mut Painter, _r: &mut ()) {}
-	fn update(&mut self, _painter: &mut Painter, _render_state: &mut (), _tpf: f32) {}
-	fn device_event(&mut self, _event: DeviceEvent, _painter: &Painter) {}
-	fn user_event(&mut self, _event: (), _painter: &Painter) {}
+	fn resize(&mut self, _painter: &mut Painter) {}
+	fn update(&mut self, _painter: &mut Painter, _tpf: f32) {}
 }
 
 pub fn main() {
-	create_canvas_app(App::new()).start();
+	App::create().start();
 }
