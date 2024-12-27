@@ -1,0 +1,10 @@
+[package]
+name = "draft_blur_triangle_shader"
+version = "0.1.0"
+edition.workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+spirv-std.workspace = true
