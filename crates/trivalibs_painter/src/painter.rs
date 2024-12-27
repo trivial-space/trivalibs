@@ -195,7 +195,7 @@ impl Painter {
 	// texture helpers
 
 	pub fn texture_2d_create(&mut self, props: &Texture2DProps) -> Texture {
-		Texture::create_2d(self, props)
+		Texture::create_2d(self, props, false)
 	}
 
 	pub fn sampler_create(&mut self, props: &SamplerProps) -> Sampler {
@@ -365,7 +365,13 @@ impl Painter {
 						None
 					},
 					multisample: wgpu::MultisampleState {
-						count: layer.map_or(1, |l| if l.multisampled { 4 } else { 1 }),
+						count: layer.map_or(1, |l| {
+							if l.multisampled_texture.is_some() {
+								4
+							} else {
+								1
+							}
+						}),
 						mask: !0,
 						alpha_to_coverage_enabled: false,
 					},
@@ -567,7 +573,15 @@ impl Painter {
 		let l = &self.layers[layer.0];
 
 		if l.sketches.len() > 0 {
-			let view = &self.textures[l.target_textures[0].0].view;
+			let view = l
+				.multisampled_texture
+				.map_or(&self.textures[l.target_textures[0].0].view, |t| {
+					&self.textures[t.0].view
+				});
+
+			let resolve_target = l
+				.multisampled_texture
+				.map(|_| &self.textures[l.target_textures[0].0].view);
 
 			let mut encoder = self
 				.device
@@ -578,7 +592,7 @@ impl Painter {
 					label: None,
 					color_attachments: &[Some(wgpu::RenderPassColorAttachment {
 						view,
-						resolve_target: None,
+						resolve_target,
 						ops: wgpu::Operations {
 							load: l
 								.clear_color

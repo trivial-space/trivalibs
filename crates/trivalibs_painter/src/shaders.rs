@@ -9,8 +9,10 @@ struct VertexOutput {
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
   var out: VertexOutput;
-  out.coord = vec2f(f32((vertex_index << 1) & 2), f32(vertex_index & 2));
-  out.position = vec4f(out.coord * 2.0 - 1.0, 0.0, 1.0);
+  var coord = vec2f(f32((vertex_index << 1) & 2), f32(vertex_index & 2));
+  out.position = vec4f(coord * 2.0 - 1.0, 0.0, 1.0);
+	coord.y = 1.0 - coord.y;
+	out.coord = coord;
   return out;
 }
 

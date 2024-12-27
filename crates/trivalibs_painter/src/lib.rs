@@ -62,13 +62,13 @@ pub trait CanvasApp<UserEvent> {
 			event_loop_proxy,
 			is_running: true,
 			is_resizing: false,
+			show_fps: false,
+			frame_count: 0,
+			frame_time: 0.0,
 			now: Instant::now(),
 		};
 
-		CanvasAppStarter {
-			app: runner,
-			event_loop,
-		}
+		CanvasAppStarter { runner, event_loop }
 	}
 }
 
@@ -94,6 +94,9 @@ where
 	event_loop_proxy: EventLoopProxy<CustomEvent<UserEvent>>,
 	is_running: bool,
 	is_resizing: bool,
+	show_fps: bool,
+	frame_count: u32,
+	frame_time: f32,
 	now: Instant,
 }
 
@@ -114,12 +117,17 @@ impl<UserEvent> CanvasHandle<UserEvent> {
 	}
 }
 
+#[derive(Debug, Default)]
+pub struct AppConfig {
+	pub show_fps: bool,
+}
+
 pub struct CanvasAppStarter<UserEvent, App>
 where
 	UserEvent: 'static,
 	App: CanvasApp<UserEvent>,
 {
-	app: CanvasAppRunner<UserEvent, App>,
+	runner: CanvasAppRunner<UserEvent, App>,
 	event_loop: EventLoop<CustomEvent<UserEvent>>,
 }
 
@@ -128,9 +136,14 @@ where
 	UserEvent: std::marker::Send,
 	App: CanvasApp<UserEvent> + std::marker::Send + 'static,
 {
+	pub fn config(mut self, config: AppConfig) -> Self {
+		self.runner.show_fps = config.show_fps;
+		self
+	}
+
 	pub fn start(self) {
 		let event_loop = self.event_loop;
-		let mut app = self.app;
+		let mut runner = self.runner;
 
 		#[cfg(debug_assertions)]
 		let (tx, rx) = std::sync::mpsc::channel::<notify::Result<notify::Event>>();
@@ -150,7 +163,7 @@ where
 			.unwrap();
 
 		#[cfg(debug_assertions)]
-		let proxy = app.event_loop_proxy.clone();
+		let proxy = runner.event_loop_proxy.clone();
 
 		#[cfg(debug_assertions)]
 		std::thread::spawn(move || {
@@ -180,12 +193,12 @@ where
 			}
 		});
 
-		let _ = event_loop.run_app(&mut app);
+		let _ = event_loop.run_app(&mut runner);
 	}
 
 	pub fn get_handle(&self) -> CanvasHandle<UserEvent> {
 		CanvasHandle {
-			event_loop_proxy: self.app.event_loop_proxy.clone(),
+			event_loop_proxy: self.runner.event_loop_proxy.clone(),
 		}
 	}
 }
@@ -303,6 +316,17 @@ where
 							self.now = Instant::now();
 
 							let elapsed = if self.is_running { elapsed } else { 0.0 };
+
+							if self.show_fps && self.is_running {
+								self.frame_count += 1;
+								self.frame_time += elapsed;
+								if self.frame_time >= 2.0 {
+									// TODO: setup logger
+									println!("FPS: {}", self.frame_count as f32 / self.frame_time);
+									self.frame_count = 0;
+									self.frame_time = 0.0;
+								}
+							}
 
 							app.update(painter, elapsed);
 

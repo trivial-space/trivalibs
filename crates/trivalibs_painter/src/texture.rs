@@ -41,7 +41,7 @@ pub(crate) struct TextureStorage {
 #[derive(Clone, Copy)]
 pub struct Texture(pub(crate) usize);
 
-fn create_2d(painter: &mut Painter, props: &Texture2DProps) -> wgpu::Texture {
+fn create_2d(painter: &mut Painter, props: &Texture2DProps, multi_sampled: bool) -> wgpu::Texture {
 	painter.device.create_texture(&wgpu::TextureDescriptor {
 		label: None,
 		size: wgpu::Extent3d {
@@ -50,7 +50,7 @@ fn create_2d(painter: &mut Painter, props: &Texture2DProps) -> wgpu::Texture {
 			depth_or_array_layers: 1,
 		},
 		mip_level_count: 1,
-		sample_count: 1,
+		sample_count: if multi_sampled { 4 } else { 1 },
 		dimension: wgpu::TextureDimension::D2,
 		format: props.format,
 		usage: props.usage,
@@ -58,7 +58,11 @@ fn create_2d(painter: &mut Painter, props: &Texture2DProps) -> wgpu::Texture {
 	})
 }
 
-fn create_depth(painter: &mut Painter, props: &TextureDepthProps) -> wgpu::Texture {
+fn create_depth(
+	painter: &mut Painter,
+	props: &TextureDepthProps,
+	multi_sampled: bool,
+) -> wgpu::Texture {
 	painter.device.create_texture(&wgpu::TextureDescriptor {
 		label: None,
 		size: wgpu::Extent3d {
@@ -67,7 +71,7 @@ fn create_depth(painter: &mut Painter, props: &TextureDepthProps) -> wgpu::Textu
 			depth_or_array_layers: 1,
 		},
 		mip_level_count: 1,
-		sample_count: 1,
+		sample_count: if multi_sampled { 4 } else { 1 },
 		dimension: wgpu::TextureDimension::D2,
 		format: wgpu::TextureFormat::Depth24Plus,
 		usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
@@ -76,8 +80,8 @@ fn create_depth(painter: &mut Painter, props: &TextureDepthProps) -> wgpu::Textu
 }
 
 impl Texture {
-	pub fn create_2d(painter: &mut Painter, props: &Texture2DProps) -> Self {
-		let texture = create_2d(painter, props);
+	pub fn create_2d(painter: &mut Painter, props: &Texture2DProps, multi_sampled: bool) -> Self {
+		let texture = create_2d(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
 		let storage = TextureStorage { texture, view };
 		painter.textures.push(storage);
@@ -85,8 +89,8 @@ impl Texture {
 		Self(painter.textures.len() - 1)
 	}
 
-	pub fn replace_2d(&self, painter: &mut Painter, props: &Texture2DProps) {
-		let texture = create_2d(painter, props);
+	pub fn replace_2d(&self, painter: &mut Painter, props: &Texture2DProps, multi_sampled: bool) {
+		let texture = create_2d(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
 		let storage = TextureStorage { texture, view };
 
@@ -96,8 +100,12 @@ impl Texture {
 		painter.textures[self.0] = storage;
 	}
 
-	pub fn create_depth(painter: &mut Painter, props: &TextureDepthProps) -> Self {
-		let texture = create_depth(painter, props);
+	pub fn create_depth(
+		painter: &mut Painter,
+		props: &TextureDepthProps,
+		multi_sampled: bool,
+	) -> Self {
+		let texture = create_depth(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
 		let storage = TextureStorage { texture, view };
 		painter.textures.push(storage);
@@ -105,8 +113,13 @@ impl Texture {
 		Self(painter.textures.len() - 1)
 	}
 
-	pub fn replace_depth(&self, painter: &mut Painter, props: &TextureDepthProps) {
-		let texture = create_depth(painter, props);
+	pub fn replace_depth(
+		&self,
+		painter: &mut Painter,
+		props: &TextureDepthProps,
+		multi_sampled: bool,
+	) {
+		let texture = create_depth(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
 		let storage = TextureStorage { texture, view };
 
