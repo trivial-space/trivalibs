@@ -215,8 +215,8 @@ impl CanvasApp<ResizeEvent> for App {
 
 		let canvas = p.layer_create(&LayerProps {
 			sketches: vec![tex_quad_sketch, tex_triangle_sketch],
-			depth_test: true,
 			clear_color: Some(wgpu::Color::BLACK),
+			depth_test: true,
 			multisampled: true,
 			..default()
 		});
