@@ -107,6 +107,7 @@ pub(crate) struct LayerStorage {
 	pub multisampled_texture: Option<Texture>,
 }
 
+#[derive(Clone)]
 pub struct LayerProps {
 	pub sketches: Vec<Sketch>,
 	pub effects: Vec<Effect>,
@@ -141,7 +142,7 @@ impl Default for LayerProps {
 pub struct Layer(pub(crate) usize);
 
 impl Layer {
-	pub fn new(painter: &mut Painter, props: &LayerProps) -> Self {
+	pub fn new(painter: &mut Painter, props: LayerProps) -> Self {
 		let use_window_size = props.width == 0 || props.height == 0;
 		let width = if use_window_size {
 			painter.config.width
@@ -160,7 +161,7 @@ impl Layer {
 
 		target_texture.push(Texture::create_2d(
 			painter,
-			&Texture2DProps {
+			Texture2DProps {
 				width,
 				height,
 				format,
@@ -174,7 +175,7 @@ impl Layer {
 		let depth_texture = props.depth_test.then(|| {
 			Texture::create_depth(
 				painter,
-				&TextureDepthProps { width, height },
+				TextureDepthProps { width, height },
 				props.multisampled,
 			)
 		});
@@ -188,7 +189,7 @@ impl Layer {
 		let multisampled_texture = props.multisampled.then(|| {
 			Texture::create_2d(
 				painter,
-				&Texture2DProps {
+				Texture2DProps {
 					width,
 					height,
 					format,
@@ -264,7 +265,7 @@ impl Layer {
 			let format = painter.textures[texture.0].texture.format();
 			texture.replace_2d(
 				painter,
-				&Texture2DProps {
+				Texture2DProps {
 					width,
 					height,
 					format,
@@ -278,7 +279,7 @@ impl Layer {
 		if let Some(depth_texture) = depth_texture {
 			depth_texture.replace_depth(
 				painter,
-				&TextureDepthProps { width, height },
+				TextureDepthProps { width, height },
 				multisampled_texture.is_some(),
 			);
 		}
@@ -287,7 +288,7 @@ impl Layer {
 			let format = painter.textures[multisampled_texture.0].texture.format();
 			multisampled_texture.replace_2d(
 				painter,
-				&Texture2DProps {
+				Texture2DProps {
 					width,
 					height,
 					format,

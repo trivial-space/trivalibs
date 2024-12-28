@@ -136,7 +136,7 @@ impl CanvasApp<ResizeEvent> for App {
 		let color_quad_sketch = p.sketch_create(
 			quad_form,
 			color_shade,
-			&SketchProps {
+			SketchProps {
 				cull_mode: None,
 				uniforms: bmap! {
 					0 => color_quad_mvp.uniform,
@@ -149,7 +149,7 @@ impl CanvasApp<ResizeEvent> for App {
 		let color_triangle_sketch = p.sketch_create(
 			triangle_form,
 			color_shade,
-			&SketchProps {
+			SketchProps {
 				cull_mode: None,
 				uniforms: bmap! {
 					0 => color_triangle_mvp.uniform,
@@ -159,7 +159,7 @@ impl CanvasApp<ResizeEvent> for App {
 			},
 		);
 
-		let color_triangle_layer = p.layer_create(&LayerProps {
+		let color_triangle_layer = p.layer_create(LayerProps {
 			sketches: vec![color_triangle_sketch],
 			width: COLOR_TEX_SIZE_BIG.0,
 			height: COLOR_TEX_SIZE_BIG.1,
@@ -168,7 +168,7 @@ impl CanvasApp<ResizeEvent> for App {
 			..default()
 		});
 
-		let color_quad_layer = p.layer_create(&LayerProps {
+		let color_quad_layer = p.layer_create(LayerProps {
 			sketches: vec![color_quad_sketch],
 			width: COLOR_TEX_SIZE_BIG.0,
 			height: COLOR_TEX_SIZE_BIG.1,
@@ -177,7 +177,7 @@ impl CanvasApp<ResizeEvent> for App {
 			..default()
 		});
 
-		let sampler = p.sampler_create(&SamplerProps {
+		let sampler = p.sampler_create(SamplerProps {
 			mag_filter: wgpu::FilterMode::Nearest,
 			min_filter: wgpu::FilterMode::Nearest,
 			..default()
@@ -190,7 +190,7 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_quad_sketch = p.sketch_create(
 			quad_form,
 			tex_shader,
-			&SketchProps {
+			SketchProps {
 				cull_mode: None,
 				uniforms: bmap! {
 					0 => tex_quad_mvp.uniform,
@@ -203,7 +203,7 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_triangle_sketch = p.sketch_create(
 			triangle_form,
 			tex_shader,
-			&SketchProps {
+			SketchProps {
 				cull_mode: None,
 				uniforms: bmap! {
 					0 => tex_triangle_mvp.uniform,
@@ -213,7 +213,7 @@ impl CanvasApp<ResizeEvent> for App {
 			},
 		);
 
-		let canvas = p.layer_create(&LayerProps {
+		let canvas = p.layer_create(LayerProps {
 			sketches: vec![tex_quad_sketch, tex_triangle_sketch],
 			clear_color: Some(wgpu::Color::BLACK),
 			depth_test: true,

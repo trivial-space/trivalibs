@@ -34,7 +34,7 @@ impl CanvasApp<()> for App {
 
 		let effect = p.effect_create(
 			shade,
-			&EffectProps {
+			EffectProps {
 				uniforms: bmap! {
 					0 => u_size.uniform,
 					1 => u_time.uniform,
@@ -43,7 +43,7 @@ impl CanvasApp<()> for App {
 			},
 		);
 
-		let canvas = p.layer_create(&LayerProps {
+		let canvas = p.layer_create(LayerProps {
 			effects: vec![effect],
 			..default()
 		});

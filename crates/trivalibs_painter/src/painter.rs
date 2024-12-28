@@ -104,7 +104,7 @@ impl Painter {
 			fullscreen_quad_shader,
 		};
 
-		Sampler::create(&mut painter, &default());
+		Sampler::create(&mut painter, default());
 
 		let u_type = UniformType::tex_2d(&mut painter, wgpu::ShaderStages::FRAGMENT);
 
@@ -194,11 +194,11 @@ impl Painter {
 
 	// texture helpers
 
-	pub fn texture_2d_create(&mut self, props: &Texture2DProps) -> Texture {
+	pub fn texture_2d_create(&mut self, props: Texture2DProps) -> Texture {
 		Texture::create_2d(self, props, false)
 	}
 
-	pub fn sampler_create(&mut self, props: &SamplerProps) -> Sampler {
+	pub fn sampler_create(&mut self, props: SamplerProps) -> Sampler {
 		Sampler::create(self, props)
 	}
 
@@ -208,17 +208,17 @@ impl Painter {
 
 	// sketch utils
 
-	pub fn sketch_create(&mut self, form: Form, shade: Shade, props: &SketchProps) -> Sketch {
+	pub fn sketch_create(&mut self, form: Form, shade: Shade, props: SketchProps) -> Sketch {
 		Sketch::new(self, form, shade, props)
 	}
 
-	pub fn effect_create(&mut self, shade: Shade, props: &EffectProps) -> Effect {
+	pub fn effect_create(&mut self, shade: Shade, props: EffectProps) -> Effect {
 		Effect::new(self, shade, props)
 	}
 
 	// layer utils
 
-	pub fn layer_create(&mut self, props: &LayerProps) -> Layer {
+	pub fn layer_create(&mut self, props: LayerProps) -> Layer {
 		Layer::new(self, props)
 	}
 

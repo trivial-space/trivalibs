@@ -43,7 +43,7 @@ impl CanvasApp<()> for App {
 		// Grab the bytes of the image.
 		let tex_rgba = &buf[..info.buffer_size()];
 
-		let texture = p.texture_2d_create(&Texture2DProps {
+		let texture = p.texture_2d_create(Texture2DProps {
 			width: info.width,
 			height: info.height,
 			format: wgpu::TextureFormat::Rgba8UnormSrgb,
@@ -72,7 +72,7 @@ impl CanvasApp<()> for App {
 		let sketch = p.sketch_create(
 			form,
 			shade,
-			&SketchProps {
+			SketchProps {
 				uniforms: bmap! {
 					0 => mvp.uniform,
 					1 => norm.uniform,
@@ -82,7 +82,7 @@ impl CanvasApp<()> for App {
 			},
 		);
 
-		let canvas = p.layer_create(&LayerProps {
+		let canvas = p.layer_create(LayerProps {
 			clear_color: Some(wgpu::Color {
 				r: 0.5,
 				g: 0.6,

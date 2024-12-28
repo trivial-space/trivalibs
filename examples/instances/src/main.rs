@@ -87,7 +87,7 @@ impl CanvasApp<()> for App {
 		let sketch = p.sketch_create(
 			form,
 			shade,
-			&SketchProps {
+			SketchProps {
 				uniforms: bmap! {
 					0 => cam.uniform,
 				},
