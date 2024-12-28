@@ -1,5 +1,8 @@
+#![no_std]
+
 use spirv_std::{
 	glam::{Vec2, Vec4},
+	num_traits::Float,
 	Image, Sampler,
 };
 
@@ -45,7 +48,8 @@ pub fn gaussian_blur(
 	let mut sum = image.sample(*sampler, uv);
 	let mut weight_sum = 1.0;
 
-	for i in (1..=support).step_by(2) {
+	let mut i = 1;
+	while i <= support {
 		// This is a well-known trick to reduce the number of needed texture
 		// samples by a factor of two. We seek to accumulate two adjacent
 		// samples c₀ and c₁ with weights w₀ and w₁ respectively, with a single
@@ -69,6 +73,7 @@ pub fn gaussian_blur(
 		sum += (image.sample(*sampler, uv + uv_offset) + image.sample(*sampler, uv - uv_offset))
 			* weight;
 		weight_sum += weight * 2.0;
+		i += 2;
 	}
 
 	return sum / weight_sum;
