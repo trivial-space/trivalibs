@@ -6,7 +6,7 @@ use trivalibs::{
 		sketch::{Sketch, SketchProps},
 		uniform::UniformBuffer,
 		wgpu::{self, VertexFormat},
-		CanvasApp, Event, Painter,
+		AppConfig, CanvasApp, Event, Painter,
 	},
 	prelude::*,
 	rendering::{
@@ -135,5 +135,5 @@ impl CanvasApp<()> for App {
 }
 
 pub fn main() {
-	App::create().start();
+	App::create().config(AppConfig { show_fps: true }).start();
 }
