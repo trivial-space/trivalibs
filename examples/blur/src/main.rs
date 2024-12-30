@@ -11,10 +11,12 @@ use trivalibs::{
 		sketch::SketchProps,
 		uniform::UniformBuffer,
 		wgpu::{self, VertexFormat::*},
-		CanvasApp, Event, Painter,
+		AppConfig, CanvasApp, Event, Painter,
 	},
 	utils::default,
 };
+
+const BLUR_RADIUS: f32 = 200.0;
 
 #[apply(gpu_data)]
 struct Vertex {
@@ -55,7 +57,7 @@ impl CanvasApp<()> for App {
 		load_fragment_shader!(triangle_shade, p, "../triangle_shader/frag.spv");
 
 		let blur_shade = p.shade_create_effect(ShadeEffectProps {
-			uniform_types: &[tex_type, u_fs_type, u_fs_type],
+			uniform_types: &[tex_type, u_fs_type, u_fs_type, u_fs_type],
 		});
 		load_fragment_shader!(blur_shade, p, "../blur_shader/frag.spv");
 
@@ -64,35 +66,68 @@ impl CanvasApp<()> for App {
 		let tri_sketch = p.sketch_create(tri_form, triangle_shade, SketchProps { ..default() });
 
 		let size = u_fs_type.create_vec2(p);
-
 		let horiz = u_fs_type.const_vec2(p, vec2(1.0, 0.0));
 		let vertical = u_fs_type.const_vec2(p, vec2(0.0, 1.0));
 
-		let blur_horiz = p.effect_create(
-			blur_shade,
-			EffectProps {
-				uniforms: bmap! {
-					1 => size.uniform,
-					2 => horiz
-				},
-				..default()
-			},
-		);
+		let mut effects = vec![];
 
-		let blur_vert = p.effect_create(
-			blur_shade,
-			EffectProps {
-				uniforms: bmap! {
-					1 => size.uniform,
-					2 => vertical
+		let mut counter = BLUR_RADIUS / 5.0;
+		while counter > 1.0 {
+			let radius = u_fs_type.const_f32(p, counter);
+			effects.push(p.effect_create(
+				blur_shade,
+				EffectProps {
+					uniforms: bmap! {
+						1 => radius,
+						2 => size.uniform,
+						3 => horiz
+					},
+					..default()
 				},
-				..default()
-			},
-		);
+			));
+			effects.push(p.effect_create(
+				blur_shade,
+				EffectProps {
+					uniforms: bmap! {
+						1 => radius,
+						2 => size.uniform,
+						3 => vertical
+					},
+					..default()
+				},
+			));
+			counter /= 2.0;
+		}
+
+		println!("effects: {:?}", effects.len());
+
+		// let radius = u_fs_type.const_f32(p, BLUR_RADIUS);
+		// effects.push(p.effect_create(
+		// 	blur_shade,
+		// 	EffectProps {
+		// 		uniforms: bmap! {
+		// 			1 => radius,
+		// 			2 => size.uniform,
+		// 			3 => horiz
+		// 		},
+		// 		..default()
+		// 	},
+		// ));
+		// effects.push(p.effect_create(
+		// 	blur_shade,
+		// 	EffectProps {
+		// 		uniforms: bmap! {
+		// 			1 => radius,
+		// 			2 => size.uniform,
+		// 			3 => vertical
+		// 		},
+		// 		..default()
+		// 	},
+		// ));
 
 		let canvas = p.layer_create(LayerProps {
 			sketches: vec![tri_sketch],
-			effects: vec![blur_horiz, blur_vert],
+			effects,
 			clear_color: Some(wgpu::Color::BLUE),
 			..default()
 		});
@@ -104,15 +139,18 @@ impl CanvasApp<()> for App {
 		self.size.update(p, vec2(width as f32, height as f32));
 	}
 
+	fn update(&mut self, p: &mut Painter, _tpf: f32) {
+		p.request_next_frame();
+	}
+
 	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
 		p.paint(self.canvas)?;
 		p.show(self.canvas)
 	}
 
-	fn update(&mut self, _p: &mut Painter, _tpf: f32) {}
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {
-	App::create().start();
+	App::create().config(AppConfig { show_fps: true }).start();
 }

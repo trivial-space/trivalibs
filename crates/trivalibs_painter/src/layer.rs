@@ -105,11 +105,12 @@ pub(crate) struct LayerStorage {
 	pub format: wgpu::TextureFormat,
 	pub multisampled_texture: Option<Texture>,
 	pub current_target: usize,
+	pub texture_count: usize,
 }
 
 impl LayerStorage {
 	pub(crate) fn swap_targets(&mut self) {
-		let next = (self.current_target + 1) % self.target_textures.len();
+		let next = (self.current_target + 1) % self.texture_count;
 		self.current_target = next;
 	}
 
@@ -120,7 +121,7 @@ impl LayerStorage {
 	pub(crate) fn current_source<'a>(&'a self) -> &'a UniformTex2D {
 		let mut idx = self.current_target;
 		if idx == 0 {
-			idx = self.target_uniforms.len()
+			idx = self.texture_count;
 		}
 
 		&self.target_uniforms[idx - 1]
@@ -180,15 +181,15 @@ impl Layer {
 		let use_swap_targets =
 			props.effects.len() > 1 || (props.sketches.len() > 0 && props.effects.len() > 0);
 
-		let len = if use_swap_targets { 2 } else { 1 };
+		let texture_count = if use_swap_targets { 2 } else { 1 };
 
-		let mut target_textures = Vec::with_capacity(len);
-		let mut target_uniforms = Vec::with_capacity(len);
+		let mut target_textures = Vec::with_capacity(texture_count);
+		let mut target_uniforms = Vec::with_capacity(texture_count);
 
 		let format = props.format.unwrap_or(painter.config.format);
 		let uniform_type = UniformType::tex_2d(painter, props.binding_visibility);
 
-		for _ in 0..len {
+		for _ in 0..texture_count {
 			let tex = Texture::create_2d(
 				painter,
 				Texture2DProps {
@@ -245,6 +246,7 @@ impl Layer {
 			pipeline_key,
 			multisampled_texture,
 			current_target: 0,
+			texture_count,
 		};
 
 		painter.layers.push(storage);

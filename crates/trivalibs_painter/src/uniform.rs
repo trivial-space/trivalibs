@@ -119,11 +119,10 @@ impl UniformType {
 		u.uniform
 	}
 	pub fn const_mat4(&self, painter: &mut Painter, mat: Mat4) -> Uniform {
-		self.create_buff(painter, mat).uniform
+		self.const_buff(painter, mat)
 	}
 	pub fn const_vec2(&self, painter: &mut Painter, vec: Vec2) -> Uniform {
-		self.create_vec2(painter).update(painter, vec);
-		self.create_vec2(painter).uniform
+		self.const_buff(painter, vec)
 	}
 	pub fn const_vec3(&self, painter: &mut Painter, vec: Vec3) -> Uniform {
 		let u = self.create_vec3(painter);
@@ -131,16 +130,16 @@ impl UniformType {
 		u.uniform
 	}
 	pub fn const_vec4(&self, painter: &mut Painter, vec: Vec4) -> Uniform {
-		self.create_buff(painter, vec).uniform
+		self.const_buff(painter, vec)
 	}
 	pub fn const_uvec2(&self, painter: &mut Painter, vec: UVec2) -> Uniform {
-		self.create_buff(painter, vec).uniform
+		self.const_buff(painter, vec)
 	}
 	pub fn const_f32(&self, painter: &mut Painter, f: f32) -> Uniform {
-		self.create_buff(painter, f).uniform
+		self.const_buff(painter, f)
 	}
 	pub fn const_u32(&self, painter: &mut Painter, u: u32) -> Uniform {
-		self.create_buff(painter, u).uniform
+		self.const_buff(painter, u)
 	}
 	pub fn const_tex2d(
 		&self,
@@ -169,7 +168,7 @@ impl Uniform {
 			Uniform::Binding(UniformBinding(idx)) => &painter.bindings[*idx],
 			Uniform::Layer(UniformLayer(idx)) => {
 				let layer = &painter.layers[*idx];
-				let uniform = layer.target_uniforms[layer.current_target].uniform;
+				let uniform = layer.current_source().uniform;
 				if let Uniform::Binding(UniformBinding(idx)) = uniform {
 					&painter.bindings[idx]
 				} else {
