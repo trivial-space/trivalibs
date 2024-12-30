@@ -13,7 +13,7 @@ use spirv_std::{
 ///
 /// * `image` - The image to be blurred.
 /// * `sampler` - The sampler used for sampling the image.
-/// * `diameter` - The diameter (not the radius) of the circle of confusion for this fragment.
+/// * `radius` - The radius (not the radius) of the circle of confusion for this fragment.
 /// * `uv` - The texture coordinates of the fragment.
 /// * `res` - The resolution of the image.
 /// * `dir` - The vector, in screen-space units, from one sample to the next. For a horizontal blur this will be `vec2(1.0, 0.0)`; for a vertical blur this will be `vec2(0.0, 1.0)`.
@@ -25,14 +25,13 @@ use spirv_std::{
 pub fn gaussian_blur(
 	image: &Image!(2D, type=f32, sampled),
 	sampler: &Sampler,
-	diameter: f32,
+	radius: f32,
 	uv: Vec2,
 	res: Vec2,
 	dir: Vec2,
 ) -> Vec4 {
-	// Usually σ (the standard deviation) is half the radius, and the radius is
-	// half the CoC. So we multiply by 0.25.
-	let sigma = diameter * 0.25;
+	// Usually σ (the standard deviation) is half the radius
+	let sigma = radius * 0.5;
 
 	// 1.5σ is a good, somewhat aggressive default for support—the number of
 	// texels on each side of the center that we process.
@@ -86,7 +85,7 @@ pub fn gaussian_blur(
 ///
 /// * `image` - The image to be blurred.
 /// * `sampler` - The sampler used for sampling the image.
-/// * `diameter` - The diameter (not the radius) of the circle of confusion for this fragment.
+/// * `radius` - The radius (not the diameter) of the circle of confusion for this fragment.
 /// * `uv` - The texture coordinates of the fragment.
 /// * `res` - The resolution of the image.
 /// * `dir` - The vector, in screen-space units, from one sample to the next. This need not be horizontal or vertical.
@@ -97,12 +96,12 @@ pub fn gaussian_blur(
 pub fn box_blur(
 	image: &Image!(2D, type=f32, sampled),
 	sampler: &Sampler,
-	diameter: f32,
+	radius: f32,
 	uv: Vec2,
 	res: Vec2,
 	dir: Vec2,
 ) -> Vec4 {
-	let support = (diameter * 0.5).ceil() as i32;
+	let support = radius.ceil() as i32;
 	let offset = dir / res;
 
 	// Accumulate samples in a single direction.
