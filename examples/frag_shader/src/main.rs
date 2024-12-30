@@ -69,8 +69,8 @@ impl CanvasApp<()> for App {
 	}
 
 	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
-		p.paint(&self.canvas)?;
-		p.show(&self.canvas)
+		p.paint(self.canvas)?;
+		p.show(self.canvas)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

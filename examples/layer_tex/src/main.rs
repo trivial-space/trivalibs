@@ -159,8 +159,14 @@ impl CanvasApp<ResizeEvent> for App {
 			},
 		);
 
+		let sampler = p.sampler_create(SamplerProps {
+			mag_filter: wgpu::FilterMode::Nearest,
+			min_filter: wgpu::FilterMode::Nearest,
+			..default()
+		});
 		let color_triangle_layer = p.layer_create(LayerProps {
 			sketches: vec![color_triangle_sketch],
+			sampler,
 			width: COLOR_TEX_SIZE_BIG.0,
 			height: COLOR_TEX_SIZE_BIG.1,
 			clear_color: Some(YELLOW),
@@ -177,13 +183,8 @@ impl CanvasApp<ResizeEvent> for App {
 			..default()
 		});
 
-		let sampler = p.sampler_create(SamplerProps {
-			mag_filter: wgpu::FilterMode::Nearest,
-			min_filter: wgpu::FilterMode::Nearest,
-			..default()
-		});
-		let tri_tex = color_triangle_layer.get_uniform(p, sampler);
-		let quad_tex = color_quad_layer.get_uniform(p, p.sampler_default());
+		let tri_tex = color_triangle_layer.get_uniform();
+		let quad_tex = color_quad_layer.get_uniform();
 		let tex_triangle_mvp = u_vs_type.create_mat4(p);
 		let tex_quad_mvp = u_vs_type.create_mat4(p);
 
@@ -274,10 +275,10 @@ impl CanvasApp<ResizeEvent> for App {
 	}
 
 	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
-		p.paint(&self.color_triangle_layer)?;
-		p.paint(&self.color_quad_layer)?;
-		p.paint(&self.canvas)?;
-		p.show(&self.canvas)
+		p.paint(self.color_triangle_layer)?;
+		p.paint(self.color_quad_layer)?;
+		p.paint(self.canvas)?;
+		p.show(self.canvas)
 	}
 
 	fn event(&mut self, e: Event<ResizeEvent>, p: &mut Painter) {

@@ -286,8 +286,8 @@ impl Painter {
 	fn set_sketch_pipeline(
 		&mut self,
 		rpass: &mut wgpu::RenderPass,
-		sketch: &Sketch,
-		layer: Option<&Layer>,
+		sketch: Sketch,
+		layer: Option<Layer>,
 	) {
 		let layer = layer.map(|l| &self.layers[l.0]);
 
@@ -386,12 +386,7 @@ impl Painter {
 		rpass.set_pipeline(pipeline);
 	}
 
-	fn set_effect_pipeline(
-		&mut self,
-		rpass: &mut wgpu::RenderPass,
-		effect: &Effect,
-		layer: &Layer,
-	) {
+	fn set_effect_pipeline(&mut self, rpass: &mut wgpu::RenderPass, effect: Effect, layer: Layer) {
 		let layer = &self.layers[layer.0];
 		let effect = &self.effects[effect.0];
 
@@ -457,8 +452,8 @@ impl Painter {
 	fn render_sketch(
 		&mut self,
 		rpass: &mut wgpu::RenderPass<'_>,
-		sketch: &Sketch,
-		layer: Option<&Layer>,
+		sketch: Sketch,
+		layer: Option<Layer>,
 	) {
 		self.set_sketch_pipeline(rpass, sketch, layer);
 
@@ -490,10 +485,15 @@ impl Painter {
 		}
 	}
 
-	fn render_effect(&mut self, effect: &Effect, layer: &Layer) -> Result<(), wgpu::SurfaceError> {
+	fn render_effect(
+		&mut self,
+		effect: Effect,
+		layer: Layer,
+		skip_source: bool,
+	) -> Result<(), wgpu::SurfaceError> {
 		let l = &self.layers[layer.0];
 
-		let view = &self.textures[l.target_textures[0].0].view;
+		let view = &self.textures[l.current_target().0].view;
 
 		let mut encoder = self
 			.device
@@ -521,6 +521,11 @@ impl Painter {
 
 			let e = &self.effects[effect.0];
 
+			if !skip_source {
+				let tex = self.layers[layer.0].current_source();
+				rpass.set_bind_group(0, tex.uniform.binding(self), &[]);
+			}
+
 			for (index, uniform) in &e.uniforms {
 				rpass.set_bind_group(*index, uniform.binding(self), &[]);
 			}
@@ -533,7 +538,7 @@ impl Painter {
 		Ok(())
 	}
 
-	pub fn draw<'a>(&mut self, sketch: &Sketch) -> Result<(), wgpu::SurfaceError> {
+	pub fn draw<'a>(&mut self, sketch: Sketch) -> Result<(), wgpu::SurfaceError> {
 		let frame = self.surface.get_current_texture()?;
 
 		let view = frame
@@ -569,19 +574,20 @@ impl Painter {
 		Ok(())
 	}
 
-	pub fn paint(&mut self, layer: &Layer) -> Result<(), wgpu::SurfaceError> {
+	pub fn paint(&mut self, layer: Layer) -> Result<(), wgpu::SurfaceError> {
 		let l = &self.layers[layer.0];
+		let sketches_len = l.sketches.len();
+		let effects_len = l.effects.len();
+		let has_sketches = sketches_len > 0;
 
-		if l.sketches.len() > 0 {
+		if has_sketches {
+			let target_view = &self.textures[l.current_target().0].view;
+
 			let view = l
 				.multisampled_texture
-				.map_or(&self.textures[l.target_textures[0].0].view, |t| {
-					&self.textures[t.0].view
-				});
+				.map_or(target_view, |t| &self.textures[t.0].view);
 
-			let resolve_target = l
-				.multisampled_texture
-				.map(|_| &self.textures[l.target_textures[0].0].view);
+			let resolve_target = l.multisampled_texture.map(|_| target_view);
 
 			let mut encoder = self
 				.device
@@ -614,16 +620,28 @@ impl Painter {
 					occlusion_query_set: None,
 				});
 
-				for sketch in l.sketches.clone() {
-					self.render_sketch(&mut rpass, &sketch, Some(layer));
+				for i in 0..sketches_len {
+					let sketch = self.layers[layer.0].sketches[i];
+					self.render_sketch(&mut rpass, sketch, Some(layer));
 				}
 			}
 
 			self.queue.submit(Some(encoder.finish()));
 		}
 
-		for effect in self.layers[layer.0].effects.clone() {
-			self.render_effect(&effect, layer)?;
+		if effects_len == 0 {
+			return Ok(());
+		}
+
+		if has_sketches {
+			self.layers[layer.0].swap_targets();
+		}
+
+		for i in 0..effects_len {
+			let skip_source_tex = i == 0 && !has_sketches;
+			let effect = self.layers[layer.0].effects[i];
+			self.render_effect(effect, layer, skip_source_tex)?;
+			self.layers[layer.0].swap_targets();
 		}
 
 		Ok(())
@@ -631,12 +649,12 @@ impl Painter {
 
 	pub fn compose(&mut self, layers: &[Layer]) -> Result<(), wgpu::SurfaceError> {
 		for layer in layers {
-			self.paint(layer)?;
+			self.paint(*layer)?;
 		}
 		Ok(())
 	}
 
-	pub fn show(&mut self, layer: &Layer) -> Result<(), wgpu::SurfaceError> {
+	pub fn show(&mut self, layer: Layer) -> Result<(), wgpu::SurfaceError> {
 		let frame = self.surface.get_current_texture()?;
 
 		let view = frame
@@ -647,7 +665,7 @@ impl Painter {
 			.device
 			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-		let uniform = layer.get_uniform(self, self.sampler_default());
+		let uniform = layer.get_uniform();
 		let pipeline = &self.pipelines[FULL_SCREEN_TEXTURE_PIPELINE];
 
 		{

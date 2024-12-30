@@ -128,7 +128,7 @@ impl CanvasApp<()> for App {
 
 	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
 		p.request_next_frame();
-		p.draw(&self.sketch)
+		p.draw(self.sketch)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

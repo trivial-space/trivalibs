@@ -39,7 +39,6 @@ const TRIANGLE: &[Vertex] = &[
 
 struct App {
 	canvas: Layer,
-	triangle: Layer,
 	size: UniformBuffer<Vec2>,
 }
 
@@ -56,7 +55,7 @@ impl CanvasApp<()> for App {
 		load_fragment_shader!(triangle_shade, p, "../triangle_shader/frag.spv");
 
 		let blur_shade = p.shade_create_effect(ShadeEffectProps {
-			uniform_types: &[tex_type, u_fs_type],
+			uniform_types: &[tex_type, u_fs_type, u_fs_type],
 		});
 		load_fragment_shader!(blur_shade, p, "../blur_shader/frag.spv");
 
@@ -64,36 +63,41 @@ impl CanvasApp<()> for App {
 
 		let tri_sketch = p.sketch_create(tri_form, triangle_shade, SketchProps { ..default() });
 
-		let triangle = p.layer_create(LayerProps {
-			sketches: vec![tri_sketch],
-			clear_color: Some(wgpu::Color::BLUE),
-			..default()
-		});
-
-		let tex = triangle.get_uniform(p, p.sampler_default());
 		let size = u_fs_type.create_vec2(p);
 
-		let effect = p.effect_create(
+		let horiz = u_fs_type.const_vec2(p, vec2(1.0, 0.0));
+		let vertical = u_fs_type.const_vec2(p, vec2(0.0, 1.0));
+
+		let blur_horiz = p.effect_create(
 			blur_shade,
 			EffectProps {
 				uniforms: bmap! {
-					0 => tex,
 					1 => size.uniform,
+					2 => horiz
+				},
+				..default()
+			},
+		);
+
+		let blur_vert = p.effect_create(
+			blur_shade,
+			EffectProps {
+				uniforms: bmap! {
+					1 => size.uniform,
+					2 => vertical
 				},
 				..default()
 			},
 		);
 
 		let canvas = p.layer_create(LayerProps {
-			effects: vec![effect],
+			sketches: vec![tri_sketch],
+			effects: vec![blur_horiz, blur_vert],
+			clear_color: Some(wgpu::Color::BLUE),
 			..default()
 		});
 
-		Self {
-			canvas,
-			triangle,
-			size,
-		}
+		Self { canvas, size }
 	}
 
 	fn resize(&mut self, p: &mut Painter, width: u32, height: u32) {
@@ -101,9 +105,8 @@ impl CanvasApp<()> for App {
 	}
 
 	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
-		p.paint(&self.canvas)?;
-		p.paint(&self.triangle)?;
-		p.show(&self.canvas)
+		p.paint(self.canvas)?;
+		p.show(self.canvas)
 	}
 
 	fn update(&mut self, _p: &mut Painter, _tpf: f32) {}

@@ -101,17 +101,37 @@ pub(crate) struct LayerStorage {
 	pub height: u32,
 	pub use_window_size: bool,
 	pub clear_color: Option<wgpu::Color>,
-	pub uniform_type: UniformType,
 	pub pipeline_key: Vec<u8>,
 	pub format: wgpu::TextureFormat,
 	pub multisampled_texture: Option<Texture>,
 	pub current_target: usize,
 }
 
+impl LayerStorage {
+	pub(crate) fn swap_targets(&mut self) {
+		let next = (self.current_target + 1) % self.target_textures.len();
+		self.current_target = next;
+	}
+
+	pub(crate) fn current_target<'a>(&'a self) -> &'a Texture {
+		&self.target_textures[self.current_target]
+	}
+
+	pub(crate) fn current_source<'a>(&'a self) -> &'a UniformTex2D {
+		let mut idx = self.current_target;
+		if idx == 0 {
+			idx = self.target_uniforms.len()
+		}
+
+		&self.target_uniforms[idx - 1]
+	}
+}
+
 #[derive(Clone)]
 pub struct LayerProps {
 	pub sketches: Vec<Sketch>,
 	pub effects: Vec<Effect>,
+	pub sampler: Sampler,
 	pub width: u32,
 	pub height: u32,
 	pub format: Option<wgpu::TextureFormat>,
@@ -127,6 +147,7 @@ impl Default for LayerProps {
 		LayerProps {
 			sketches: Vec::with_capacity(0),
 			effects: Vec::with_capacity(0),
+			sampler: Sampler(0),
 			width: 0,
 			height: 0,
 			format: None,
@@ -161,12 +182,14 @@ impl Layer {
 
 		let len = if use_swap_targets { 2 } else { 1 };
 
-		let mut target_texture = Vec::with_capacity(len);
+		let mut target_textures = Vec::with_capacity(len);
+		let mut target_uniforms = Vec::with_capacity(len);
 
 		let format = props.format.unwrap_or(painter.config.format);
+		let uniform_type = UniformType::tex_2d(painter, props.binding_visibility);
 
 		for _ in 0..len {
-			target_texture.push(Texture::create_2d(
+			let tex = Texture::create_2d(
 				painter,
 				Texture2DProps {
 					width,
@@ -176,7 +199,9 @@ impl Layer {
 						| wgpu::TextureUsages::TEXTURE_BINDING,
 				},
 				false,
-			));
+			);
+			target_textures.push(tex);
+			target_uniforms.push(uniform_type.create_tex2d(painter, tex, props.sampler));
 		}
 
 		let depth_texture = props.depth_test.then(|| {
@@ -209,14 +234,13 @@ impl Layer {
 		let storage = LayerStorage {
 			width,
 			height,
-			target_textures: target_texture,
-			target_uniforms: Vec::with_capacity(len),
+			target_textures,
+			target_uniforms,
 			sketches: props.sketches.clone(),
 			effects: props.effects.clone(),
 			depth_texture,
 			use_window_size,
 			clear_color: props.clear_color,
-			uniform_type: UniformType::tex_2d(painter, props.binding_visibility),
 			format,
 			pipeline_key,
 			multisampled_texture,
@@ -227,19 +251,7 @@ impl Layer {
 		Layer(painter.layers.len() - 1)
 	}
 
-	pub fn get_uniform(&self, painter: &mut Painter, sampler: Sampler) -> Uniform {
-		let l = &painter.layers[self.0];
-		if l.target_uniforms.get(0).is_none() {
-			let u_type = l.uniform_type;
-
-			for idx in 0..l.target_textures.len() {
-				let tex = painter.layers[self.0].target_textures[idx];
-				let uniform = u_type.create_tex2d(painter, tex, sampler);
-
-				painter.layers[self.0].target_uniforms.push(uniform);
-			}
-		}
-
+	pub fn get_uniform(&self) -> Uniform {
 		Uniform::Layer(UniformLayer(self.0))
 	}
 
