@@ -30,10 +30,10 @@ struct App {
 }
 
 impl CanvasApp<()> for App {
-	fn init(painter: &mut Painter) -> Self {
+	fn init(p: &mut Painter) -> Self {
 		// Initialize the app
 
-		let buffer = painter
+		let buffer = p
 			.device
 			.create_buffer_init(&wgpu::util::BufferInitDescriptor {
 				label: Some("Vertex Buffer"),
@@ -59,7 +59,7 @@ impl CanvasApp<()> for App {
 			depth_or_array_layers: 1,
 		};
 
-		let diffuse_texture = painter.device.create_texture(&wgpu::TextureDescriptor {
+		let diffuse_texture = p.device.create_texture(&wgpu::TextureDescriptor {
 			// All textures are stored as 3D, we represent our 2D texture
 			// by setting depth to 1.
 			size: texture_size,
@@ -82,7 +82,7 @@ impl CanvasApp<()> for App {
 			view_formats: &[],
 		});
 
-		painter.queue.write_texture(
+		p.queue.write_texture(
 			// Tells wgpu where to copy the pixel data
 			wgpu::ImageCopyTexture {
 				texture: &diffuse_texture,
@@ -105,7 +105,7 @@ impl CanvasApp<()> for App {
 		// let wgpu define it.
 		let diffuse_texture_view =
 			diffuse_texture.create_view(&wgpu::TextureViewDescriptor::default());
-		let diffuse_sampler = painter.device.create_sampler(&wgpu::SamplerDescriptor {
+		let diffuse_sampler = p.device.create_sampler(&wgpu::SamplerDescriptor {
 			address_mode_u: wgpu::AddressMode::ClampToEdge,
 			address_mode_v: wgpu::AddressMode::ClampToEdge,
 			address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -116,8 +116,7 @@ impl CanvasApp<()> for App {
 		});
 
 		let texture_bind_group_layout =
-			painter
-				.device
+			p.device
 				.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
 					entries: &[
 						wgpu::BindGroupLayoutEntry {
@@ -142,41 +141,38 @@ impl CanvasApp<()> for App {
 					label: Some("texture_bind_group_layout"),
 				});
 
-		let diffuse_bind_group = painter
+		let diffuse_bind_group = p.device.create_bind_group(&wgpu::BindGroupDescriptor {
+			layout: &texture_bind_group_layout,
+			entries: &[
+				wgpu::BindGroupEntry {
+					binding: 0,
+					resource: wgpu::BindingResource::TextureView(&diffuse_texture_view),
+				},
+				wgpu::BindGroupEntry {
+					binding: 1,
+					resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
+				},
+			],
+			label: Some("diffuse_bind_group"),
+		});
+
+		let pipeline_layout = p
 			.device
-			.create_bind_group(&wgpu::BindGroupDescriptor {
-				layout: &texture_bind_group_layout,
-				entries: &[
-					wgpu::BindGroupEntry {
-						binding: 0,
-						resource: wgpu::BindingResource::TextureView(&diffuse_texture_view),
-					},
-					wgpu::BindGroupEntry {
-						binding: 1,
-						resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
-					},
-				],
-				label: Some("diffuse_bind_group"),
+			.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+				label: None,
+				bind_group_layouts: &[&texture_bind_group_layout],
+				push_constant_ranges: &[],
 			});
 
-		let pipeline_layout =
-			painter
-				.device
-				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-					label: None,
-					bind_group_layouts: &[&texture_bind_group_layout],
-					push_constant_ranges: &[],
-				});
-
 		// Load the shaders from disk
-		let vert_shader = painter
+		let vert_shader = p
 			.device
 			.create_shader_module(include_spirv!("../shader/vertex.spv"));
-		let frag_shader = painter
+		let frag_shader = p
 			.device
 			.create_shader_module(include_spirv!("../shader/fragment.spv"));
 
-		let pipeline = painter
+		let pipeline = p
 			.device
 			.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
 				label: None,
@@ -196,7 +192,7 @@ impl CanvasApp<()> for App {
 					entry_point: None,
 					compilation_options: Default::default(),
 					targets: &[Some(wgpu::ColorTargetState {
-						format: painter.config.format, // for direct rendering into te surface
+						format: p.config.format, // for direct rendering into te surface
 						blend: Some(wgpu::BlendState::REPLACE),
 						write_mask: wgpu::ColorWrites::ALL,
 					})],
@@ -215,14 +211,14 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn render(&self, painter: &mut Painter) -> Result<(), wgpu::SurfaceError> {
-		let frame = painter.surface.get_current_texture()?;
+	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
+		let frame = p.surface.get_current_texture()?;
 
 		let view = frame
 			.texture
 			.create_view(&wgpu::TextureViewDescriptor::default());
 
-		let mut encoder = painter
+		let mut encoder = p
 			.device
 			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 		{
@@ -246,14 +242,14 @@ impl CanvasApp<()> for App {
 			rpass.draw(0..3, 0..1);
 		}
 
-		painter.queue.submit(Some(encoder.finish()));
+		p.queue.submit(Some(encoder.finish()));
 		frame.present();
 
 		Ok(())
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
-	fn resize(&mut self, _p: &mut Painter) {}
+	fn resize(&mut self, _p: &mut Painter, _w: u32, _h: u32) {}
 	fn update(&mut self, _p: &mut Painter, _tpf: f32) {}
 }
 

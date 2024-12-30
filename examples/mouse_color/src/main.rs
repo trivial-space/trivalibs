@@ -5,7 +5,7 @@ struct App {
 }
 
 impl CanvasApp<()> for App {
-	fn init(_painter: &mut Painter) -> Self {
+	fn init(_p: &mut Painter) -> Self {
 		Self {
 			color: wgpu::Color {
 				r: 0.3,
@@ -16,14 +16,14 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn render(&self, painter: &mut Painter) -> Result<(), wgpu::SurfaceError> {
-		let frame = painter.surface.get_current_texture()?;
+	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
+		let frame = p.surface.get_current_texture()?;
 
 		let view = frame
 			.texture
 			.create_view(&wgpu::TextureViewDescriptor::default());
 
-		let mut encoder = painter
+		let mut encoder = p
 			.device
 			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 		{
@@ -43,33 +43,33 @@ impl CanvasApp<()> for App {
 			});
 		}
 
-		painter.queue.submit(Some(encoder.finish()));
+		p.queue.submit(Some(encoder.finish()));
 		frame.present();
 
 		Ok(())
 	}
 
-	fn event(&mut self, event: Event<()>, painter: &mut Painter) {
+	fn event(&mut self, event: Event<()>, p: &mut Painter) {
 		match event {
 			Event::WindowEvent(WindowEvent::CursorMoved {
 				device_id: _,
 				position,
 			}) => {
-				let size = painter.canvas_size();
+				let size = p.canvas_size();
 				self.color = wgpu::Color {
 					r: position.x / size.width as f64,
 					g: position.y / size.height as f64,
 					b: 0.3,
 					a: 1.0,
 				};
-				painter.request_next_frame();
+				p.request_next_frame();
 			}
 			_ => {}
 		}
 	}
 
-	fn resize(&mut self, _painter: &mut Painter) {}
-	fn update(&mut self, _painter: &mut Painter, _tpf: f32) {}
+	fn resize(&mut self, _p: &mut Painter, _w: u32, _h: u32) {}
+	fn update(&mut self, _p: &mut Painter, _tpf: f32) {}
 }
 
 pub fn main() {

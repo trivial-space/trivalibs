@@ -96,10 +96,8 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter) {
-		let size = p.canvas_size();
-		self.size
-			.update(p, vec2(size.width as f32, size.height as f32));
+	fn resize(&mut self, p: &mut Painter, width: u32, height: u32) {
+		self.size.update(p, vec2(width as f32, height as f32));
 	}
 
 	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {

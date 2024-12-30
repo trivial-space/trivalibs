@@ -106,11 +106,8 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter) {
-		let size = p.canvas_size();
-
-		self.cam
-			.set_aspect_ratio(size.width as f32 / size.height as f32);
+	fn resize(&mut self, _p: &mut Painter, width: u32, height: u32) {
+		self.cam.set_aspect_ratio(width as f32 / height as f32);
 	}
 
 	fn update(&mut self, p: &mut Painter, tpf: f32) {

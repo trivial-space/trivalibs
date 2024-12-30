@@ -57,9 +57,8 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter) {
-		let size = p.canvas_size();
-		self.u_size.update(p, uvec2(size.width, size.height));
+	fn resize(&mut self, p: &mut Painter, width: u32, height: u32) {
+		self.u_size.update(p, uvec2(width, height));
 	}
 
 	fn update(&mut self, p: &mut Painter, tpf: f32) {

@@ -33,7 +33,7 @@ pub enum Event<UserEvent> {
 
 pub trait CanvasApp<UserEvent> {
 	fn init(painter: &mut Painter) -> Self;
-	fn resize(&mut self, painter: &mut Painter);
+	fn resize(&mut self, painter: &mut Painter, width: u32, height: u32);
 	fn update(&mut self, painter: &mut Painter, tpf: f32);
 	fn render(&self, painter: &mut Painter) -> Result<(), SurfaceError>;
 	fn event(&mut self, event: Event<UserEvent>, painter: &mut Painter);
@@ -272,7 +272,8 @@ where
 		match event {
 			CustomEvent::StateInitializationEvent(mut painter) => {
 				let mut app = App::init(&mut painter);
-				app.resize(&mut painter);
+				let size = painter.canvas_size();
+				app.resize(&mut painter, size.width, size.height);
 				painter.request_next_frame();
 				self.state = WindowState::Initialized(painter, app);
 			}
@@ -304,7 +305,7 @@ where
 					WindowEvent::Resized(new_size) => {
 						// Reconfigure the surface with the new size
 						painter.resize(new_size);
-						app.resize(painter);
+						app.resize(painter, new_size.width, new_size.height);
 						// On macos the window needs to be redrawn manually after resizing
 						painter.request_next_frame();
 						self.is_resizing = true;
@@ -338,7 +339,11 @@ where
 										width: painter.config.width,
 										height: painter.config.height,
 									});
-									app.resize(painter);
+									app.resize(
+										painter,
+										painter.config.width,
+										painter.config.height,
+									);
 								}
 								// The system is out of memory, we should probably quit
 								Err(wgpu::SurfaceError::OutOfMemory) => {
