@@ -1,8 +1,9 @@
 #![no_std]
 
+#[allow(unused_imports)]
+use spirv_std::num_traits::Float;
 use spirv_std::{
 	glam::{Vec2, Vec4},
-	num_traits::Float,
 	Image, Sampler,
 };
 

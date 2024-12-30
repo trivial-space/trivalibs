@@ -467,7 +467,7 @@ impl Painter {
 
 		let draw = |rpass: &mut wgpu::RenderPass| {
 			for (index, uniform) in &sketch.uniforms {
-				rpass.set_bind_group(*index, &self.bindings[uniform.0], &[]);
+				rpass.set_bind_group(*index, uniform.binding(self), &[]);
 			}
 			rpass.set_vertex_buffer(0, form.vertex_buffer.slice(..));
 			if let Some(index_buffer) = &form.index_buffer {
@@ -481,7 +481,7 @@ impl Painter {
 		if sketch.instances.len() > 0 {
 			for uniforms in &sketch.instances {
 				for (index, uniform) in uniforms {
-					rpass.set_bind_group(*index, &self.bindings[uniform.0], &[]);
+					rpass.set_bind_group(*index, uniform.binding(self), &[]);
 				}
 				draw(rpass);
 			}
@@ -522,7 +522,7 @@ impl Painter {
 			let e = &self.effects[effect.0];
 
 			for (index, uniform) in &e.uniforms {
-				rpass.set_bind_group(*index, &self.bindings[uniform.0], &[]);
+				rpass.set_bind_group(*index, uniform.binding(self), &[]);
 			}
 
 			rpass.draw(0..3, 0..1);
@@ -647,9 +647,7 @@ impl Painter {
 			.device
 			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-		let uniform = layer.get_uniform(self, self.sampler_default()).uniform;
-		let binding = &self.bindings[uniform.0];
-
+		let uniform = layer.get_uniform(self, self.sampler_default());
 		let pipeline = &self.pipelines[FULL_SCREEN_TEXTURE_PIPELINE];
 
 		{
@@ -668,7 +666,7 @@ impl Painter {
 				occlusion_query_set: None,
 			});
 			rpass.set_pipeline(pipeline);
-			rpass.set_bind_group(0, binding, &[]);
+			rpass.set_bind_group(0, uniform.binding(self), &[]);
 			rpass.draw(0..3, 0..1);
 		}
 

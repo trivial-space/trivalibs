@@ -153,7 +153,32 @@ impl UniformType {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Uniform(pub(crate) usize);
+pub struct UniformBinding(pub(crate) usize);
+#[derive(Debug, Clone, Copy)]
+pub struct UniformLayer(pub(crate) usize);
+
+#[derive(Debug, Clone, Copy)]
+pub enum Uniform {
+	Binding(UniformBinding),
+	Layer(UniformLayer),
+}
+
+impl Uniform {
+	pub fn binding<'a>(&self, painter: &'a Painter) -> &'a wgpu::BindGroup {
+		match self {
+			Uniform::Binding(UniformBinding(idx)) => &painter.bindings[*idx],
+			Uniform::Layer(UniformLayer(idx)) => {
+				let layer = &painter.layers[*idx];
+				let uniform = layer.target_uniforms[layer.current_target].uniform;
+				if let Uniform::Binding(UniformBinding(idx)) = uniform {
+					&painter.bindings[idx]
+				} else {
+					unreachable!()
+				}
+			}
+		}
+	}
+}
 
 pub struct UniformBuffer<T> {
 	pub uniform: Uniform,
@@ -188,7 +213,7 @@ where
 
 		painter.bindings.push(bind_group);
 
-		let binding = Uniform(painter.bindings.len() - 1);
+		let binding = Uniform::Binding(UniformBinding(painter.bindings.len() - 1));
 
 		let uniform = UniformBuffer {
 			buffer,
@@ -276,7 +301,7 @@ impl UniformTex2D {
 
 		painter.bindings.push(binding);
 
-		let uniform = Uniform(painter.bindings.len() - 1);
+		let uniform = Uniform::Binding(UniformBinding(painter.bindings.len() - 1));
 
 		UniformTex2D {
 			texture,
@@ -308,7 +333,9 @@ impl UniformTex2D {
 				label: None,
 			});
 
-		painter.bindings[self.uniform.0] = binding;
+		if let Uniform::Binding(UniformBinding(idx)) = self.uniform {
+			painter.bindings[idx] = binding;
+		}
 	}
 }
 

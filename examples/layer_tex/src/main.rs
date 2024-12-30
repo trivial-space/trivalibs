@@ -194,7 +194,7 @@ impl CanvasApp<ResizeEvent> for App {
 				cull_mode: None,
 				uniforms: bmap! {
 					0 => tex_quad_mvp.uniform,
-					1 => tri_tex.uniform,
+					1 => tri_tex,
 				},
 				..default()
 			},
@@ -207,7 +207,7 @@ impl CanvasApp<ResizeEvent> for App {
 				cull_mode: None,
 				uniforms: bmap! {
 					0 => tex_triangle_mvp.uniform,
-					1 => quad_tex.uniform,
+					1 => quad_tex,
 				},
 				..default()
 			},

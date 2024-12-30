@@ -77,7 +77,7 @@ impl CanvasApp<()> for App {
 			blur_shade,
 			EffectProps {
 				uniforms: bmap! {
-					0 => tex.uniform,
+					0 => tex,
 					1 => size.uniform,
 				},
 				..default()
