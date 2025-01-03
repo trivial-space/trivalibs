@@ -1,5 +1,4 @@
 use trivalibs::{
-	bmap,
 	painter::{
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
@@ -138,10 +137,7 @@ impl CanvasApp<ResizeEvent> for App {
 			color_shade,
 			SketchProps {
 				cull_mode: None,
-				uniforms: bmap! {
-					0 => color_quad_mvp.uniform,
-					1 => quad_color
-				},
+				uniforms: vec![(0, color_quad_mvp.uniform), (1, quad_color)],
 				..default()
 			},
 		);
@@ -151,10 +147,7 @@ impl CanvasApp<ResizeEvent> for App {
 			color_shade,
 			SketchProps {
 				cull_mode: None,
-				uniforms: bmap! {
-					0 => color_triangle_mvp.uniform,
-					1 => triangle_color,
-				},
+				uniforms: vec![(0, color_triangle_mvp.uniform), (1, triangle_color)],
 				..default()
 			},
 		);
@@ -193,10 +186,7 @@ impl CanvasApp<ResizeEvent> for App {
 			tex_shader,
 			SketchProps {
 				cull_mode: None,
-				uniforms: bmap! {
-					0 => tex_quad_mvp.uniform,
-					1 => tri_tex,
-				},
+				uniforms: vec![(0, tex_quad_mvp.uniform), (1, tri_tex)],
 				..default()
 			},
 		);
@@ -206,10 +196,7 @@ impl CanvasApp<ResizeEvent> for App {
 			tex_shader,
 			SketchProps {
 				cull_mode: None,
-				uniforms: bmap! {
-					0 => tex_triangle_mvp.uniform,
-					1 => quad_tex,
-				},
+				uniforms: vec![(0, tex_triangle_mvp.uniform), (1, quad_tex)],
 				..default()
 			},
 		);

@@ -1,5 +1,4 @@
 use trivalibs::{
-	bmap,
 	painter::{
 		effect::EffectProps,
 		layer::{Layer, LayerProps},
@@ -35,10 +34,7 @@ impl CanvasApp<()> for App {
 		let effect = p.effect_create(
 			shade,
 			EffectProps {
-				uniforms: bmap! {
-					0 => u_size.uniform,
-					1 => u_time.uniform,
-				},
+				uniforms: vec![(0, u_size.uniform), (1, u_time.uniform)],
 				..default()
 			},
 		);

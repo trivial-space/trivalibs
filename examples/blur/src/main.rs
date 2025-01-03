@@ -1,5 +1,4 @@
 use trivalibs::{
-	bmap,
 	glam::{vec2, Vec2},
 	gpu_data,
 	macros::apply,
@@ -80,22 +79,14 @@ impl CanvasApp<()> for App {
 			effects.push(p.effect_create(
 				blur_shade,
 				EffectProps {
-					uniforms: bmap! {
-						1 => diameter,
-						2 => size.uniform,
-						3 => horiz
-					},
+					uniforms: vec![(1, diameter), (2, size.uniform), (3, horiz)],
 					..default()
 				},
 			));
 			effects.push(p.effect_create(
 				blur_shade,
 				EffectProps {
-					uniforms: bmap! {
-						1 => diameter,
-						2 => size.uniform,
-						3 => vertical
-					},
+					uniforms: vec![(1, diameter), (2, size.uniform), (3, vertical)],
 					..default()
 				},
 			));
@@ -110,22 +101,14 @@ impl CanvasApp<()> for App {
 		// effects.push(p.effect_create(
 		// 	blur_shade,
 		// 	EffectProps {
-		// 		uniforms: bmap! {
-		// 			1 => diameter,
-		// 			2 => size.uniform,
-		// 			3 => horiz
-		// 		},
+		// 		uniforms: vec![(1, diameter), (2, size.uniform), (3, horiz)],
 		// 		..default()
 		// 	},
 		// ));
 		// effects.push(p.effect_create(
 		// 	blur_shade,
 		// 	EffectProps {
-		// 		uniforms: bmap! {
-		// 			1 => diameter,
-		// 			2 => size.uniform,
-		// 			3 => vertical
-		// 		},
+		// 		uniforms: vec![(1, diameter), (2, size.uniform), (3, vertical)],
 		// 		..default()
 		// 	},
 		// ));

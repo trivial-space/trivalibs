@@ -1,5 +1,4 @@
 use trivalibs::{
-	bmap,
 	painter::{
 		load_fragment_shader, load_vertex_shader,
 		shade::ShadeProps,
@@ -77,10 +76,10 @@ impl CanvasApp<()> for App {
 		let instances = model_mats
 			.iter()
 			.map(|model| {
-				bmap! {
-					1 => model.uniform,
-					2 => frag_u_type.const_vec4(p, rand_vec4()),
-				}
+				vec![
+					(1, model.uniform),
+					(2, frag_u_type.const_vec4(p, rand_vec4())),
+				]
 			})
 			.collect();
 
@@ -88,9 +87,7 @@ impl CanvasApp<()> for App {
 			form,
 			shade,
 			SketchProps {
-				uniforms: bmap! {
-					0 => cam.uniform,
-				},
+				uniforms: vec![(0, cam.uniform)],
 				instances,
 				cull_mode: None,
 				blend_state: wgpu::BlendState::ALPHA_BLENDING,

@@ -1,6 +1,5 @@
 use geom::create_ball_geom;
 use trivalibs::{
-	bmap,
 	painter::{
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
@@ -73,11 +72,7 @@ impl CanvasApp<()> for App {
 			form,
 			shade,
 			SketchProps {
-				uniforms: bmap! {
-					0 => mvp.uniform,
-					1 => norm.uniform,
-					2 => tex,
-				},
+				uniforms: vec![(0, mvp.uniform), (1, norm.uniform), (2, tex)],
 				..default()
 			},
 		);
