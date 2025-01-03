@@ -43,11 +43,14 @@ fn color_vert(color: Vec3) -> Vertex {
 }
 
 pub fn create_ball_geom() -> BufferedGeometry {
-	let mut geom = create_sphere_mesh(20, 20, |u, v| {
-		let x = f32::cos(u) * f32::cos(v);
-		let y = f32::sin(u) * f32::cos(v);
-		let z = f32::sin(v);
-		pos_vert(vec3(x, y, z) * 5.0, vec2(u / (PI * 2.0), v / PI + 0.5))
+	let mut geom = create_sphere_mesh(20, 20, |horiz_angle, vert_angle| {
+		let x = vert_angle.cos() * horiz_angle.cos();
+		let y = vert_angle.cos() * horiz_angle.sin();
+		let z = vert_angle.sin();
+		pos_vert(
+			vec3(x, y, z) * 5.0,
+			vec2(horiz_angle / (PI * 2.0), vert_angle / PI + 0.5),
+		)
 	});
 
 	for i in 0..geom.face_count() {
