@@ -1,11 +1,10 @@
 use super::{Line, LineData};
 use crate::{
-	data_structures::neighbour_list::traits::{NeighbourMapTransform, WithNeighboursTransform},
-	rendering::buffered_geometry::{
-		create_buffered_geometry_layout, vert_type, BufferedGeometry, BufferedVertexData,
-		RenderingPrimitive,
+	data::neighbour_list::traits::{NeighbourMapTransform, WithNeighboursTransform},
+	rendering::webgl_buffered_geometry::{
+		create_buffered_geometry_layout, vert_type, RenderingPrimitive,
 		VertexFormat::{Float32, Float32x2},
-		VertexType,
+		VertexType, WebglBufferedGeometry, WebglVertexData,
 	},
 	utils::default,
 };
@@ -22,7 +21,7 @@ pub struct VertexData {
 	local_uv: Vec2,
 }
 
-impl BufferedVertexData for VertexData {
+impl WebglVertexData for VertexData {
 	fn vertex_layout() -> Vec<VertexType> {
 		vec![
 			vert_type("position", Float32x2),
@@ -95,7 +94,7 @@ fn cross_2d(v1: Vec2, v2: Vec2) -> f32 {
 }
 
 impl Line {
-	pub fn to_buffered_geometry_with(&self, props: LineGeometryProps) -> BufferedGeometry {
+	pub fn to_buffered_geometry_with(&self, props: LineGeometryProps) -> WebglBufferedGeometry {
 		let mut top_line = LineData::<f32>::new(self.default_width);
 		let mut bottom_line = LineData::<f32>::new(self.default_width);
 		let mut line_length = self.len_offset;
@@ -260,7 +259,7 @@ impl Line {
 
 		let geom_layout = create_buffered_geometry_layout(VertexData::vertex_layout());
 
-		BufferedGeometry {
+		WebglBufferedGeometry {
 			buffer: bytemuck::cast_slice(&buffer).to_vec(),
 			rendering_primitive: RenderingPrimitive::TriangleStrip,
 			indices: Some(bytemuck::cast_slice(&indices).to_vec()),
@@ -270,18 +269,18 @@ impl Line {
 		}
 	}
 
-	pub fn to_buffered_geometry(&self) -> BufferedGeometry {
+	pub fn to_buffered_geometry(&self) -> WebglBufferedGeometry {
 		self.to_buffered_geometry_with(default())
 	}
 }
 
 pub trait LineBufferedGeometryVec {
-	fn to_buffered_geometry_with(&self, props: LineGeometryProps) -> Vec<BufferedGeometry>;
-	fn to_buffered_geometry(&self) -> Vec<BufferedGeometry>;
+	fn to_buffered_geometry_with(&self, props: LineGeometryProps) -> Vec<WebglBufferedGeometry>;
+	fn to_buffered_geometry(&self) -> Vec<WebglBufferedGeometry>;
 }
 
 impl LineBufferedGeometryVec for Vec<Line> {
-	fn to_buffered_geometry_with(&self, props: LineGeometryProps) -> Vec<BufferedGeometry> {
+	fn to_buffered_geometry_with(&self, props: LineGeometryProps) -> Vec<WebglBufferedGeometry> {
 		let total_length = self.iter().fold(0.0, |acc, x| acc + x.len);
 
 		self.iter()
@@ -298,7 +297,7 @@ impl LineBufferedGeometryVec for Vec<Line> {
 			.collect()
 	}
 
-	fn to_buffered_geometry(&self) -> Vec<BufferedGeometry> {
+	fn to_buffered_geometry(&self) -> Vec<WebglBufferedGeometry> {
 		self.to_buffered_geometry_with(default())
 	}
 }

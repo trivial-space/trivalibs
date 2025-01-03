@@ -56,3 +56,10 @@ macro_rules! bmap {
 			::std::collections::BTreeMap::from([ $(($key, $value)),* ])
 	};
 }
+
+#[macro_export]
+macro_rules! map {
+	($($key:expr => $value:expr),+ $(,)?) => {
+			vec![ $(($key, $value)),* ]
+	};
+}

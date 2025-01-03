@@ -1,10 +1,13 @@
-use super::vertex_index::VertIdx3f;
 use crate::{
-	data_structures::grid::{CoordOpsFn, Grid},
+	data::{
+		grid::{CoordOpsFn, Grid},
+		vertex_index::VertIdx3f,
+		Overridable, Position3D,
+	},
 	rendering::{
-		buffered_geometry::{
-			create_buffered_geometry_layout, BufferedGeometry, BufferedVertexData,
-			OverrideAttributesWith, RenderingPrimitive, VertexFormat, VertexType,
+		webgl_buffered_geometry::{
+			create_buffered_geometry_layout, RenderingPrimitive, VertexFormat, VertexType,
+			WebglBufferedGeometry, WebglVertexData,
 		},
 		RenderableBuffer,
 	},
@@ -74,10 +77,6 @@ impl<V> Face<V> {
 	}
 }
 
-pub trait Position3D {
-	fn position(&self) -> Vec3;
-}
-
 #[derive(PartialEq)]
 pub enum MeshBufferType {
 	NoNormals,
@@ -100,7 +99,7 @@ impl From<usize> for SectionIndex {
 
 pub struct MeshVertex<V>
 where
-	V: OverrideAttributesWith + Position3D,
+	V: Overridable + Position3D,
 {
 	pub data: V,
 	pub faces: Vec<SectionIndex>,
@@ -109,7 +108,7 @@ where
 
 impl<V> MeshVertex<V>
 where
-	V: OverrideAttributesWith + Position3D,
+	V: Overridable + Position3D,
 {
 	fn section_faces(&self, section: usize) -> Vec<usize> {
 		self.faces
@@ -122,7 +121,7 @@ where
 
 pub struct MeshGeometry<V>
 where
-	V: OverrideAttributesWith + Position3D,
+	V: Overridable + Position3D,
 {
 	pub vertices: Vec<MeshVertex<V>>,
 	faces: Vec<Vec<Face<V>>>,
@@ -133,7 +132,7 @@ where
 #[derive(Debug, Copy, Clone)]
 pub struct FaceDataProps<V>
 where
-	V: OverrideAttributesWith + Position3D,
+	V: Overridable + Position3D,
 {
 	pub normal: Option<Vec3>,
 	pub data: Option<V>,
@@ -142,7 +141,7 @@ where
 
 impl<V> Default for FaceDataProps<V>
 where
-	V: OverrideAttributesWith + Position3D,
+	V: Overridable + Position3D,
 {
 	fn default() -> Self {
 		Self {
@@ -155,7 +154,7 @@ where
 
 impl<V> FaceDataProps<V>
 where
-	V: OverrideAttributesWith + Position3D,
+	V: Overridable + Position3D,
 {
 	pub fn with_normal(&mut self, normal: Vec3) -> &mut Self {
 		self.normal = Some(normal);
@@ -173,7 +172,7 @@ where
 
 pub fn face_normal<V>(normal: Vec3) -> FaceDataProps<V>
 where
-	V: OverrideAttributesWith + Position3D,
+	V: Overridable + Position3D,
 {
 	FaceDataProps {
 		normal: Some(normal),
@@ -184,7 +183,7 @@ where
 
 pub fn face_data<V>(data: V) -> FaceDataProps<V>
 where
-	V: OverrideAttributesWith + Position3D,
+	V: Overridable + Position3D,
 {
 	FaceDataProps {
 		normal: None,
@@ -195,7 +194,7 @@ where
 
 pub fn face_section<V>(section: usize) -> FaceDataProps<V>
 where
-	V: OverrideAttributesWith + Position3D,
+	V: Overridable + Position3D,
 {
 	FaceDataProps {
 		normal: None,
@@ -206,7 +205,7 @@ where
 
 impl<V> MeshGeometry<V>
 where
-	V: OverrideAttributesWith + Position3D + Copy,
+	V: Overridable + Position3D + Clone,
 {
 	pub fn new() -> Self {
 		Self {
@@ -287,7 +286,13 @@ where
 		data: FaceDataProps<V>,
 	) {
 		for quad in grid.to_ccw_quads() {
-			self.add_face4_data(quad[0], quad[1], quad[2], quad[3], data.clone());
+			self.add_face4_data(
+				quad[0].clone(),
+				quad[1].clone(),
+				quad[2].clone(),
+				quad[3].clone(),
+				data.clone(),
+			);
 		}
 	}
 
@@ -301,7 +306,13 @@ where
 		data: FaceDataProps<V>,
 	) {
 		for quad in grid.to_cw_quads() {
-			self.add_face4_data(quad[0], quad[1], quad[2], quad[3], data.clone());
+			self.add_face4_data(
+				quad[0].clone(),
+				quad[1].clone(),
+				quad[2].clone(),
+				quad[3].clone(),
+				data.clone(),
+			);
 		}
 	}
 
@@ -459,7 +470,7 @@ where
 
 impl<V> MeshGeometry<V>
 where
-	V: OverrideAttributesWith + Position3D + Copy + bytemuck::Pod,
+	V: Overridable + Position3D + Copy + bytemuck::Pod,
 {
 	pub fn to_renderable_buffer_by_type(&mut self, geom_type: MeshBufferType) -> RenderableBuffer {
 		let mut buffer = vec![];
@@ -634,9 +645,12 @@ fn fill_face_index_buffer(index_buffer: &mut Vec<u8>, indices: &[usize]) {
 
 impl<V> MeshGeometry<V>
 where
-	V: BufferedVertexData + OverrideAttributesWith + Position3D,
+	V: WebglVertexData + Overridable + Position3D,
 {
-	pub fn to_buffered_geometry_by_type(&mut self, geom_type: MeshBufferType) -> BufferedGeometry {
+	pub fn to_buffered_geometry_by_type(
+		&mut self,
+		geom_type: MeshBufferType,
+	) -> WebglBufferedGeometry {
 		let mut layout: Vec<VertexType> = V::vertex_layout();
 
 		if geom_type != MeshBufferType::NoNormals {
@@ -650,7 +664,7 @@ where
 
 		let geom_layout = create_buffered_geometry_layout(layout);
 
-		BufferedGeometry {
+		WebglBufferedGeometry {
 			rendering_primitive: RenderingPrimitive::Triangles,
 			vertex_count: if buffer.index_buffer.is_some() {
 				buffer.index_count
@@ -667,7 +681,7 @@ where
 
 impl<V> Position3D for MeshVertex<V>
 where
-	V: OverrideAttributesWith + Position3D,
+	V: Overridable + Position3D,
 {
 	fn position(&self) -> Vec3 {
 		self.data.position()

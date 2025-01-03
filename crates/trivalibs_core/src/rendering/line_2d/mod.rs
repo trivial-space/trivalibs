@@ -1,4 +1,4 @@
-use crate::data_structures::neighbour_list::traits::NeighbourFlatMapTransform;
+use crate::data::neighbour_list::traits::NeighbourFlatMapTransform;
 use crate::prelude::*;
 use glam::Vec2;
 use lerp::Lerp;

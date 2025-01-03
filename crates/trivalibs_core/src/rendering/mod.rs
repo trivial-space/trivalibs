@@ -1,9 +1,9 @@
-pub mod buffered_geometry;
 pub mod camera;
-pub mod objects;
+pub mod line_2d;
+pub mod mesh_geometry;
 pub mod scene;
 pub mod texture;
-pub mod transform;
+pub mod webgl_buffered_geometry;
 
 pub struct RenderableBuffer {
 	pub vertex_buffer: Vec<u8>,

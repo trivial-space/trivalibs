@@ -1,4 +1,5 @@
-use super::{camera::PerspectiveCamera, transform::Transform};
+use super::camera::PerspectiveCamera;
+use crate::math::transform::Transform;
 use glam::{Mat3, Mat4};
 
 pub fn normal_mat(mat: Mat4) -> Mat3 {

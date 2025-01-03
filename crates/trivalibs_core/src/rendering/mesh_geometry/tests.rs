@@ -1,7 +1,5 @@
-use crate::{
-	geometry::mesh_geometry_3d::{Face, MeshGeometry},
-	rendering::buffered_geometry::{BufferedVertexData, NoAttributeOverride, VertexType},
-};
+use super::{Face, MeshGeometry};
+use crate::data::NotOverridable;
 use bytemuck::{Pod, Zeroable};
 use glam::{vec3, Vec3};
 
@@ -12,17 +10,12 @@ use super::Position3D;
 struct Vert {
 	pos: Vec3,
 }
-impl BufferedVertexData for Vert {
-	fn vertex_layout() -> Vec<VertexType> {
-		vec![]
-	}
-}
 impl Position3D for Vert {
 	fn position(&self) -> Vec3 {
 		self.pos
 	}
 }
-impl NoAttributeOverride for Vert {}
+impl NotOverridable for Vert {}
 
 fn vert(x: f32, y: f32, z: f32) -> Vert {
 	Vert { pos: vec3(x, y, z) }

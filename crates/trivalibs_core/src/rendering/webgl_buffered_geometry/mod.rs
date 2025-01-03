@@ -196,7 +196,7 @@ pub struct AttributeLayout {
 }
 
 #[derive(Clone, Serialize, Debug)]
-pub struct BufferedGeometry {
+pub struct WebglBufferedGeometry {
 	#[serde(with = "serde_bytes")]
 	pub buffer: Vec<u8>,
 
@@ -211,12 +211,12 @@ pub struct BufferedGeometry {
 	pub vertex_layout: Vec<AttributeLayout>,
 }
 
-pub struct BufferedGeometryLayout {
+pub struct WebglBufferedGeometryLayout {
 	pub vertex_size: u32,
 	pub vertex_layout: Vec<AttributeLayout>,
 }
 
-pub fn create_buffered_geometry_layout(layout: Vec<VertexType>) -> BufferedGeometryLayout {
+pub fn create_buffered_geometry_layout(layout: Vec<VertexType>) -> WebglBufferedGeometryLayout {
 	let mut vertex_layout = vec![];
 	let mut vertex_size = 0;
 
@@ -232,28 +232,12 @@ pub fn create_buffered_geometry_layout(layout: Vec<VertexType>) -> BufferedGeome
 		vertex_size += format.byte_size();
 	}
 
-	BufferedGeometryLayout {
+	WebglBufferedGeometryLayout {
 		vertex_layout,
 		vertex_size,
 	}
 }
 
-pub trait BufferedVertexData: Pod + Clone + Copy {
+pub trait WebglVertexData: Pod + Clone {
 	fn vertex_layout() -> Vec<VertexType>;
-}
-
-pub trait OverrideAttributesWith {
-	fn override_with(&self, other: &Self) -> Self;
-}
-
-pub trait NoAttributeOverride: Copy + Clone {
-	fn no_override_with(&self, _other: &Self) -> Self {
-		*self
-	}
-}
-
-impl<T: NoAttributeOverride> OverrideAttributesWith for T {
-	fn override_with(&self, other: &Self) -> Self {
-		self.no_override_with(other)
-	}
 }

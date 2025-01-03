@@ -1,9 +1,9 @@
 use std::f32::consts::PI;
 use trivalibs::{
-	data_structures::grid::{make_grid_with_coord_ops, CIRCLE_COLS_COORD_OPS},
-	geometry::mesh_geometry_3d::{face_data, MeshBufferType, MeshGeometry, Position3D},
+	data::grid::{make_grid_with_coord_ops, CIRCLE_COLS_COORD_OPS},
 	prelude::*,
-	rendering::{buffered_geometry::OverrideAttributesWith, RenderableBuffer},
+	rendering::mesh_geometry::{face_data, MeshBufferType, MeshGeometry},
+	rendering::RenderableBuffer,
 };
 
 #[apply(gpu_data)]
@@ -12,7 +12,7 @@ struct Vertex {
 	uv: Vec2,
 	color: Vec3,
 }
-impl OverrideAttributesWith for Vertex {
+impl Overridable for Vertex {
 	fn override_with(&self, attribs: &Self) -> Self {
 		Vertex {
 			color: attribs.color,
