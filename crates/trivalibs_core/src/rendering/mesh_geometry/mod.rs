@@ -329,6 +329,11 @@ where
 		&self.faces.get(i.section).unwrap()[i.index]
 	}
 
+	pub fn face_mut<T: Into<SectionIndex>>(&mut self, into_idx: T) -> &mut Face<V> {
+		let i: SectionIndex = into_idx.into();
+		&mut self.faces.get_mut(i.section).unwrap()[i.index]
+	}
+
 	pub fn get_vertex_index(&mut self, pos: Vec3) -> usize {
 		if let Some(idx) = self.vertex_indices.get(&pos.into()) {
 			*idx
@@ -465,6 +470,10 @@ where
 			}
 		}
 		!only_triangles
+	}
+
+	pub fn face_count(&self) -> usize {
+		self.faces.iter().map(|f| f.len()).sum()
 	}
 }
 
