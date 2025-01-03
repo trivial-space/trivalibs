@@ -3,7 +3,7 @@ use trivalibs::{
 	data::grid::{make_grid_with_coord_ops, CIRCLE_COLS_COORD_OPS},
 	prelude::*,
 	rendering::mesh_geometry::{face_data, MeshBufferType, MeshGeometry},
-	rendering::RenderableBuffer,
+	rendering::BufferedGeometry,
 };
 
 #[apply(gpu_data)]
@@ -30,7 +30,7 @@ fn vert(pos: Vec3, uv: Vec2, color: Vec3) -> Vertex {
 	Vertex { pos, color, uv }
 }
 
-pub fn create_ball_geom() -> RenderableBuffer {
+pub fn create_ball_geom() -> BufferedGeometry {
 	let mut grid = make_grid_with_coord_ops(CIRCLE_COLS_COORD_OPS);
 	let mut col1 = vec![];
 	let mut y = -5.0;
@@ -79,7 +79,7 @@ pub fn create_ball_geom() -> RenderableBuffer {
 		}
 	}
 
-	geom.to_renderable_buffer_by_type(MeshBufferType::FaceNormals)
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceNormals)
 }
 
 #[test]

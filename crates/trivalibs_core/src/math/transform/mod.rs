@@ -4,7 +4,7 @@ use std::ops::Mul;
 
 /// Describe the position of an entity.
 /// To place or move an entity, you should set its [`Transform`].
-/// Copied from Bevy Engine Transform (version 0.10)
+/// Copied from Bevy Engine Transform (version 0.15)
 #[derive(Debug, PartialEq, Clone, Copy, Serialize)]
 pub struct Transform {
 	/// Position of the entity. In 2d, the last value of the `Vec3` is used for z-ordering.

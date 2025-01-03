@@ -1,5 +1,5 @@
 use crate::{painter::get_padded_size, Painter};
-use trivalibs_core::rendering::RenderableBuffer;
+use trivalibs_core::rendering::BufferedGeometry;
 
 pub struct FormProps {
 	pub topology: wgpu::PrimitiveTopology,
@@ -52,7 +52,7 @@ where
 	}
 }
 
-impl<'a> Into<FormBuffers<'a>> for &'a RenderableBuffer {
+impl<'a> Into<FormBuffers<'a>> for &'a BufferedGeometry {
 	fn into(self) -> FormBuffers<'a> {
 		FormBuffers {
 			vertex_buffer: self.vertex_buffer.as_slice(),

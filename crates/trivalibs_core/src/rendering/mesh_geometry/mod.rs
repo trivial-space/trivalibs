@@ -9,7 +9,7 @@ use crate::{
 			create_buffered_geometry_layout, RenderingPrimitive, VertexFormat, VertexType,
 			WebglBufferedGeometry, WebglVertexData,
 		},
-		RenderableBuffer,
+		BufferedGeometry,
 	},
 	utils::default,
 };
@@ -470,9 +470,9 @@ where
 
 impl<V> MeshGeometry<V>
 where
-	V: Overridable + Position3D + Copy + bytemuck::Pod,
+	V: Overridable + Position3D + Clone + bytemuck::Pod,
 {
-	pub fn to_renderable_buffer_by_type(&mut self, geom_type: MeshBufferType) -> RenderableBuffer {
+	pub fn to_buffered_geometry_by_type(&mut self, geom_type: MeshBufferType) -> BufferedGeometry {
 		let mut buffer = vec![];
 		let mut indices = vec![];
 		let mut vertex_count = 0;
@@ -614,7 +614,7 @@ where
 
 		let indices_len = indices.len();
 
-		RenderableBuffer {
+		BufferedGeometry {
 			vertex_buffer: buffer,
 			index_buffer: if indices_len == 0 {
 				None
@@ -647,7 +647,7 @@ impl<V> MeshGeometry<V>
 where
 	V: WebglVertexData + Overridable + Position3D,
 {
-	pub fn to_buffered_geometry_by_type(
+	pub fn to_webgl_buffered_geometry_by_type(
 		&mut self,
 		geom_type: MeshBufferType,
 	) -> WebglBufferedGeometry {
@@ -660,7 +660,7 @@ where
 			})
 		}
 
-		let buffer = self.to_renderable_buffer_by_type(geom_type);
+		let buffer = self.to_buffered_geometry_by_type(geom_type);
 
 		let geom_layout = create_buffered_geometry_layout(layout);
 
