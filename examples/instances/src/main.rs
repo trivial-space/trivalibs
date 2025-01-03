@@ -1,12 +1,11 @@
 use trivalibs::{
-	bmap,
 	painter::{
 		load_fragment_shader, load_vertex_shader,
 		shade::ShadeProps,
 		sketch::{Sketch, SketchProps},
 		uniform::UniformBuffer,
 		wgpu::{self, VertexFormat},
-		CanvasApp, Event, Painter,
+		AppConfig, CanvasApp, Event, Painter,
 	},
 	prelude::*,
 	rendering::{
@@ -77,20 +76,18 @@ impl CanvasApp<()> for App {
 		let instances = model_mats
 			.iter()
 			.map(|model| {
-				bmap! {
-					1 => model.uniform,
-					2 => frag_u_type.const_vec4(p, rand_vec4()),
-				}
+				vec![
+					(1, model.uniform),
+					(2, frag_u_type.const_vec4(p, rand_vec4())),
+				]
 			})
 			.collect();
 
 		let sketch = p.sketch_create(
 			form,
 			shade,
-			&SketchProps {
-				uniforms: bmap! {
-					0 => cam.uniform,
-				},
+			SketchProps {
+				uniforms: vec![(0, cam.uniform)],
 				instances,
 				cull_mode: None,
 				blend_state: wgpu::BlendState::ALPHA_BLENDING,
@@ -112,10 +109,8 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter) {
-		let size = p.canvas_size();
-		self.cam
-			.set_aspect_ratio(size.width as f32 / size.height as f32);
+	fn resize(&mut self, p: &mut Painter, width: u32, height: u32) {
+		self.cam.set_aspect_ratio(width as f32 / height as f32);
 
 		self.vp_mat.update(p, self.cam.view_proj_mat());
 	}
@@ -130,12 +125,12 @@ impl CanvasApp<()> for App {
 
 	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
 		p.request_next_frame();
-		p.draw(&self.sketch)
+		p.draw(self.sketch)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {
-	App::create().start();
+	App::create().config(AppConfig { show_fps: true }).start();
 }

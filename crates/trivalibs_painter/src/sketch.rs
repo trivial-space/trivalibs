@@ -1,9 +1,9 @@
 use crate::{form::Form, shade::Shade, uniform::Uniform, Painter};
-use std::collections::BTreeMap;
 
+#[derive(Clone)]
 pub(crate) struct SketchStorage {
-	pub uniforms: BTreeMap<u32, Uniform>,
-	pub instances: Vec<BTreeMap<u32, Uniform>>,
+	pub uniforms: Vec<(u32, Uniform)>,
+	pub instances: Vec<Vec<(u32, Uniform)>>,
 	pub form: Form,
 	pub shade: Shade,
 	pub pipeline_key: Vec<u8>,
@@ -11,9 +11,10 @@ pub(crate) struct SketchStorage {
 	pub blend_state: wgpu::BlendState,
 }
 
+#[derive(Clone)]
 pub struct SketchProps {
-	pub uniforms: BTreeMap<u32, Uniform>,
-	pub instances: Vec<BTreeMap<u32, Uniform>>,
+	pub uniforms: Vec<(u32, Uniform)>,
+	pub instances: Vec<Vec<(u32, Uniform)>>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
 }
@@ -21,7 +22,7 @@ pub struct SketchProps {
 impl Default for SketchProps {
 	fn default() -> Self {
 		SketchProps {
-			uniforms: BTreeMap::new(),
+			uniforms: Vec::with_capacity(0),
 			instances: Vec::with_capacity(0),
 			cull_mode: Some(wgpu::Face::Back),
 			blend_state: wgpu::BlendState::REPLACE,
@@ -33,7 +34,7 @@ impl Default for SketchProps {
 pub struct Sketch(pub(crate) usize);
 
 impl Sketch {
-	pub fn new(painter: &mut Painter, form: Form, shade: Shade, props: &SketchProps) -> Self {
+	pub fn new(painter: &mut Painter, form: Form, shade: Shade, props: SketchProps) -> Self {
 		let f = &painter.forms[form.0];
 
 		let pipeline_key = vec![

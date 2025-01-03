@@ -11,30 +11,29 @@ struct App {
 struct UserEvent(wgpu::Color);
 
 impl CanvasApp<UserEvent> for App {
-	fn init(painter: &mut Painter) -> Self {
+	fn init(p: &mut Painter) -> Self {
 		// Initialize the app
 
-		let pipeline_layout =
-			painter
-				.device
-				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-					label: None,
-					bind_group_layouts: &[],
-					push_constant_ranges: &[],
-				});
+		let pipeline_layout = p
+			.device
+			.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+				label: None,
+				bind_group_layouts: &[],
+				push_constant_ranges: &[],
+			});
 
 		// let capabilities = painter.surface.get_capabilities(&painter.adapter);
 		// let format = capabilities.formats[0];
 
 		// Load the shaders from disk
-		let vert_shader = painter
+		let vert_shader = p
 			.device
 			.create_shader_module(include_spirv!("../shader/vertex.spv"));
-		let frag_shader = painter
+		let frag_shader = p
 			.device
 			.create_shader_module(include_spirv!("../shader/fragment.spv"));
 
-		let pipeline = painter
+		let pipeline = p
 			.device
 			.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
 				label: None,
@@ -50,7 +49,7 @@ impl CanvasApp<UserEvent> for App {
 					entry_point: None,
 					compilation_options: Default::default(),
 					targets: &[Some(wgpu::ColorTargetState {
-						format: painter.config.format, // for direct rendering into te surface
+						format: p.config.format, // for direct rendering into te surface
 						blend: Some(wgpu::BlendState::REPLACE),
 						write_mask: wgpu::ColorWrites::ALL,
 					})],
@@ -113,7 +112,7 @@ impl CanvasApp<UserEvent> for App {
 		}
 	}
 
-	fn resize(&mut self, _p: &mut Painter) {}
+	fn resize(&mut self, _p: &mut Painter, _w: u32, _h: u32) {}
 	fn update(&mut self, _p: &mut Painter, _tpf: f32) {}
 }
 

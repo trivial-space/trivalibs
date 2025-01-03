@@ -1,5 +1,4 @@
 use trivalibs::{
-	bmap,
 	painter::{
 		effect::EffectProps,
 		layer::{Layer, LayerProps},
@@ -34,16 +33,13 @@ impl CanvasApp<()> for App {
 
 		let effect = p.effect_create(
 			shade,
-			&EffectProps {
-				uniforms: bmap! {
-					0 => u_size.uniform,
-					1 => u_time.uniform,
-				},
+			EffectProps {
+				uniforms: vec![(0, u_size.uniform), (1, u_time.uniform)],
 				..default()
 			},
 		);
 
-		let canvas = p.layer_create(&LayerProps {
+		let canvas = p.layer_create(LayerProps {
 			effects: vec![effect],
 			..default()
 		});
@@ -57,9 +53,8 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter) {
-		let size = p.canvas_size();
-		self.u_size.update(p, uvec2(size.width, size.height));
+	fn resize(&mut self, p: &mut Painter, width: u32, height: u32) {
+		self.u_size.update(p, uvec2(width, height));
 	}
 
 	fn update(&mut self, p: &mut Painter, tpf: f32) {
@@ -70,8 +65,8 @@ impl CanvasApp<()> for App {
 	}
 
 	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
-		p.paint(&self.canvas)?;
-		p.show(&self.canvas)
+		p.paint(self.canvas)?;
+		p.show(self.canvas)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

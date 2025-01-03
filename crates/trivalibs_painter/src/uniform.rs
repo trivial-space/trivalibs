@@ -119,11 +119,10 @@ impl UniformType {
 		u.uniform
 	}
 	pub fn const_mat4(&self, painter: &mut Painter, mat: Mat4) -> Uniform {
-		self.create_buff(painter, mat).uniform
+		self.const_buff(painter, mat)
 	}
 	pub fn const_vec2(&self, painter: &mut Painter, vec: Vec2) -> Uniform {
-		self.create_vec2(painter).update(painter, vec);
-		self.create_vec2(painter).uniform
+		self.const_buff(painter, vec)
 	}
 	pub fn const_vec3(&self, painter: &mut Painter, vec: Vec3) -> Uniform {
 		let u = self.create_vec3(painter);
@@ -131,16 +130,16 @@ impl UniformType {
 		u.uniform
 	}
 	pub fn const_vec4(&self, painter: &mut Painter, vec: Vec4) -> Uniform {
-		self.create_buff(painter, vec).uniform
+		self.const_buff(painter, vec)
 	}
 	pub fn const_uvec2(&self, painter: &mut Painter, vec: UVec2) -> Uniform {
-		self.create_buff(painter, vec).uniform
+		self.const_buff(painter, vec)
 	}
 	pub fn const_f32(&self, painter: &mut Painter, f: f32) -> Uniform {
-		self.create_buff(painter, f).uniform
+		self.const_buff(painter, f)
 	}
 	pub fn const_u32(&self, painter: &mut Painter, u: u32) -> Uniform {
-		self.create_buff(painter, u).uniform
+		self.const_buff(painter, u)
 	}
 	pub fn const_tex2d(
 		&self,
@@ -153,7 +152,32 @@ impl UniformType {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Uniform(pub(crate) usize);
+pub struct UniformBinding(pub(crate) usize);
+#[derive(Debug, Clone, Copy)]
+pub struct UniformLayer(pub(crate) usize);
+
+#[derive(Debug, Clone, Copy)]
+pub enum Uniform {
+	Binding(UniformBinding),
+	Layer(UniformLayer),
+}
+
+impl Uniform {
+	pub fn binding<'a>(&self, painter: &'a Painter) -> &'a wgpu::BindGroup {
+		match self {
+			Uniform::Binding(UniformBinding(idx)) => &painter.bindings[*idx],
+			Uniform::Layer(UniformLayer(idx)) => {
+				let layer = &painter.layers[*idx];
+				let uniform = layer.current_source().uniform;
+				if let Uniform::Binding(UniformBinding(idx)) = uniform {
+					&painter.bindings[idx]
+				} else {
+					unreachable!()
+				}
+			}
+		}
+	}
+}
 
 pub struct UniformBuffer<T> {
 	pub uniform: Uniform,
@@ -188,7 +212,7 @@ where
 
 		painter.bindings.push(bind_group);
 
-		let binding = Uniform(painter.bindings.len() - 1);
+		let binding = Uniform::Binding(UniformBinding(painter.bindings.len() - 1));
 
 		let uniform = UniformBuffer {
 			buffer,
@@ -276,7 +300,7 @@ impl UniformTex2D {
 
 		painter.bindings.push(binding);
 
-		let uniform = Uniform(painter.bindings.len() - 1);
+		let uniform = Uniform::Binding(UniformBinding(painter.bindings.len() - 1));
 
 		UniformTex2D {
 			texture,
@@ -308,7 +332,9 @@ impl UniformTex2D {
 				label: None,
 			});
 
-		painter.bindings[self.uniform.0] = binding;
+		if let Uniform::Binding(UniformBinding(idx)) = self.uniform {
+			painter.bindings[idx] = binding;
+		}
 	}
 }
 

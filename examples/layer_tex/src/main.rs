@@ -1,5 +1,4 @@
 use trivalibs::{
-	bmap,
 	painter::{
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
@@ -136,12 +135,9 @@ impl CanvasApp<ResizeEvent> for App {
 		let color_quad_sketch = p.sketch_create(
 			quad_form,
 			color_shade,
-			&SketchProps {
+			SketchProps {
 				cull_mode: None,
-				uniforms: bmap! {
-					0 => color_quad_mvp.uniform,
-					1 => quad_color
-				},
+				uniforms: vec![(0, color_quad_mvp.uniform), (1, quad_color)],
 				..default()
 			},
 		);
@@ -149,18 +145,21 @@ impl CanvasApp<ResizeEvent> for App {
 		let color_triangle_sketch = p.sketch_create(
 			triangle_form,
 			color_shade,
-			&SketchProps {
+			SketchProps {
 				cull_mode: None,
-				uniforms: bmap! {
-					0 => color_triangle_mvp.uniform,
-					1 => triangle_color,
-				},
+				uniforms: vec![(0, color_triangle_mvp.uniform), (1, triangle_color)],
 				..default()
 			},
 		);
 
-		let color_triangle_layer = p.layer_create(&LayerProps {
+		let sampler = p.sampler_create(SamplerProps {
+			mag_filter: wgpu::FilterMode::Nearest,
+			min_filter: wgpu::FilterMode::Nearest,
+			..default()
+		});
+		let color_triangle_layer = p.layer_create(LayerProps {
 			sketches: vec![color_triangle_sketch],
+			sampler,
 			width: COLOR_TEX_SIZE_BIG.0,
 			height: COLOR_TEX_SIZE_BIG.1,
 			clear_color: Some(YELLOW),
@@ -168,7 +167,7 @@ impl CanvasApp<ResizeEvent> for App {
 			..default()
 		});
 
-		let color_quad_layer = p.layer_create(&LayerProps {
+		let color_quad_layer = p.layer_create(LayerProps {
 			sketches: vec![color_quad_sketch],
 			width: COLOR_TEX_SIZE_BIG.0,
 			height: COLOR_TEX_SIZE_BIG.1,
@@ -177,25 +176,17 @@ impl CanvasApp<ResizeEvent> for App {
 			..default()
 		});
 
-		let sampler = p.sampler_create(&SamplerProps {
-			mag_filter: wgpu::FilterMode::Nearest,
-			min_filter: wgpu::FilterMode::Nearest,
-			..default()
-		});
-		let tri_tex = color_triangle_layer.get_uniform(p, sampler);
-		let quad_tex = color_quad_layer.get_uniform(p, p.sampler_default());
+		let tri_tex = color_triangle_layer.get_uniform();
+		let quad_tex = color_quad_layer.get_uniform();
 		let tex_triangle_mvp = u_vs_type.create_mat4(p);
 		let tex_quad_mvp = u_vs_type.create_mat4(p);
 
 		let tex_quad_sketch = p.sketch_create(
 			quad_form,
 			tex_shader,
-			&SketchProps {
+			SketchProps {
 				cull_mode: None,
-				uniforms: bmap! {
-					0 => tex_quad_mvp.uniform,
-					1 => tri_tex.uniform,
-				},
+				uniforms: vec![(0, tex_quad_mvp.uniform), (1, tri_tex)],
 				..default()
 			},
 		);
@@ -203,17 +194,14 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_triangle_sketch = p.sketch_create(
 			triangle_form,
 			tex_shader,
-			&SketchProps {
+			SketchProps {
 				cull_mode: None,
-				uniforms: bmap! {
-					0 => tex_triangle_mvp.uniform,
-					1 => quad_tex.uniform,
-				},
+				uniforms: vec![(0, tex_triangle_mvp.uniform), (1, quad_tex)],
 				..default()
 			},
 		);
 
-		let canvas = p.layer_create(&LayerProps {
+		let canvas = p.layer_create(LayerProps {
 			sketches: vec![tex_quad_sketch, tex_triangle_sketch],
 			clear_color: Some(wgpu::Color::BLACK),
 			depth_test: true,
@@ -248,10 +236,8 @@ impl CanvasApp<ResizeEvent> for App {
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter) {
-		let size = p.canvas_size();
-		self.tex_cam
-			.set_aspect_ratio(size.width as f32 / size.height as f32);
+	fn resize(&mut self, _p: &mut Painter, width: u32, height: u32) {
+		self.tex_cam.set_aspect_ratio(width as f32 / height as f32);
 	}
 
 	fn update(&mut self, p: &mut Painter, tpf: f32) {
@@ -276,10 +262,10 @@ impl CanvasApp<ResizeEvent> for App {
 	}
 
 	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
-		p.paint(&self.color_triangle_layer)?;
-		p.paint(&self.color_quad_layer)?;
-		p.paint(&self.canvas)?;
-		p.show(&self.canvas)
+		p.paint(self.color_triangle_layer)?;
+		p.paint(self.color_quad_layer)?;
+		p.paint(self.canvas)?;
+		p.show(self.canvas)
 	}
 
 	fn event(&mut self, e: Event<ResizeEvent>, p: &mut Painter) {

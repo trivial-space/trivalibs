@@ -1,4 +1,3 @@
-
 macro_rules! attribute_alias {(
 	$(
 			#[apply($name:ident $(!)?)] = $( #[$($attrs:tt)*] )+;

@@ -1,6 +1,5 @@
 use geom::create_ball_geom;
 use trivalibs::{
-	bmap,
 	painter::{
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
@@ -43,7 +42,7 @@ impl CanvasApp<()> for App {
 		// Grab the bytes of the image.
 		let tex_rgba = &buf[..info.buffer_size()];
 
-		let texture = p.texture_2d_create(&Texture2DProps {
+		let texture = p.texture_2d_create(Texture2DProps {
 			width: info.width,
 			height: info.height,
 			format: wgpu::TextureFormat::Rgba8UnormSrgb,
@@ -72,17 +71,13 @@ impl CanvasApp<()> for App {
 		let sketch = p.sketch_create(
 			form,
 			shade,
-			&SketchProps {
-				uniforms: bmap! {
-					0 => mvp.uniform,
-					1 => norm.uniform,
-					2 => tex,
-				},
+			SketchProps {
+				uniforms: vec![(0, mvp.uniform), (1, norm.uniform), (2, tex)],
 				..default()
 			},
 		);
 
-		let canvas = p.layer_create(&LayerProps {
+		let canvas = p.layer_create(LayerProps {
 			clear_color: Some(wgpu::Color {
 				r: 0.5,
 				g: 0.6,
@@ -106,11 +101,8 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter) {
-		let size = p.canvas_size();
-
-		self.cam
-			.set_aspect_ratio(size.width as f32 / size.height as f32);
+	fn resize(&mut self, _p: &mut Painter, width: u32, height: u32) {
+		self.cam.set_aspect_ratio(width as f32 / height as f32);
 	}
 
 	fn update(&mut self, p: &mut Painter, tpf: f32) {
@@ -126,8 +118,8 @@ impl CanvasApp<()> for App {
 	}
 
 	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
-		p.paint(&self.canvas)?;
-		p.show(&self.canvas)
+		p.paint(self.canvas)?;
+		p.show(self.canvas)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

@@ -1,22 +1,22 @@
 use crate::{shade::Shade, uniform::Uniform, Painter};
-use std::collections::BTreeMap;
 
 pub(crate) struct EffectStorage {
-	pub uniforms: BTreeMap<u32, Uniform>,
+	pub uniforms: Vec<(u32, Uniform)>,
 	pub shade: Shade,
 	pub pipeline_key: Vec<u8>,
 	pub blend_state: wgpu::BlendState,
 }
 
+#[derive(Clone)]
 pub struct EffectProps {
-	pub uniforms: BTreeMap<u32, Uniform>,
+	pub uniforms: Vec<(u32, Uniform)>,
 	pub blend_state: wgpu::BlendState,
 }
 
 impl Default for EffectProps {
 	fn default() -> Self {
 		EffectProps {
-			uniforms: BTreeMap::new(),
+			uniforms: Vec::with_capacity(0),
 			blend_state: wgpu::BlendState::REPLACE,
 		}
 	}
@@ -26,7 +26,7 @@ impl Default for EffectProps {
 pub struct Effect(pub(crate) usize);
 
 impl Effect {
-	pub fn new(painter: &mut Painter, shade: Shade, props: &EffectProps) -> Self {
+	pub fn new(painter: &mut Painter, shade: Shade, props: EffectProps) -> Self {
 		let pipeline_key = vec![
 			(shade.0 as u16).to_le_bytes().to_vec(),
 			(props.blend_state.alpha.dst_factor as u8)

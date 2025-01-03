@@ -1,6 +1,7 @@
 use crate::Painter;
 use trivalibs_core::utils::default;
 
+#[derive(Clone, Copy)]
 pub struct Texture2DProps {
 	pub width: u32,
 	pub height: u32,
@@ -8,11 +9,13 @@ pub struct Texture2DProps {
 	pub usage: wgpu::TextureUsages,
 }
 
+#[derive(Clone, Copy)]
 pub struct TextureDepthProps {
 	pub width: u32,
 	pub height: u32,
 }
 
+#[derive(Clone, Copy)]
 pub struct SamplerProps {
 	pub address_mode_u: wgpu::AddressMode,
 	pub address_mode_v: wgpu::AddressMode,
@@ -41,7 +44,7 @@ pub(crate) struct TextureStorage {
 #[derive(Clone, Copy)]
 pub struct Texture(pub(crate) usize);
 
-fn create_2d(painter: &mut Painter, props: &Texture2DProps, multi_sampled: bool) -> wgpu::Texture {
+fn create_2d(painter: &mut Painter, props: Texture2DProps, multi_sampled: bool) -> wgpu::Texture {
 	painter.device.create_texture(&wgpu::TextureDescriptor {
 		label: None,
 		size: wgpu::Extent3d {
@@ -60,7 +63,7 @@ fn create_2d(painter: &mut Painter, props: &Texture2DProps, multi_sampled: bool)
 
 fn create_depth(
 	painter: &mut Painter,
-	props: &TextureDepthProps,
+	props: TextureDepthProps,
 	multi_sampled: bool,
 ) -> wgpu::Texture {
 	painter.device.create_texture(&wgpu::TextureDescriptor {
@@ -80,7 +83,7 @@ fn create_depth(
 }
 
 impl Texture {
-	pub fn create_2d(painter: &mut Painter, props: &Texture2DProps, multi_sampled: bool) -> Self {
+	pub fn create_2d(painter: &mut Painter, props: Texture2DProps, multi_sampled: bool) -> Self {
 		let texture = create_2d(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
 		let storage = TextureStorage { texture, view };
@@ -89,7 +92,7 @@ impl Texture {
 		Self(painter.textures.len() - 1)
 	}
 
-	pub fn replace_2d(&self, painter: &mut Painter, props: &Texture2DProps, multi_sampled: bool) {
+	pub fn replace_2d(&self, painter: &mut Painter, props: Texture2DProps, multi_sampled: bool) {
 		let texture = create_2d(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
 		let storage = TextureStorage { texture, view };
@@ -102,7 +105,7 @@ impl Texture {
 
 	pub fn create_depth(
 		painter: &mut Painter,
-		props: &TextureDepthProps,
+		props: TextureDepthProps,
 		multi_sampled: bool,
 	) -> Self {
 		let texture = create_depth(painter, props, multi_sampled);
@@ -116,7 +119,7 @@ impl Texture {
 	pub fn replace_depth(
 		&self,
 		painter: &mut Painter,
-		props: &TextureDepthProps,
+		props: TextureDepthProps,
 		multi_sampled: bool,
 	) {
 		let texture = create_depth(painter, props, multi_sampled);
@@ -163,7 +166,7 @@ impl Texture {
 pub struct Sampler(pub(crate) usize);
 
 impl Sampler {
-	pub fn create(painter: &mut Painter, props: &SamplerProps) -> Self {
+	pub fn create(painter: &mut Painter, props: SamplerProps) -> Self {
 		let sampler = painter.device.create_sampler(&wgpu::SamplerDescriptor {
 			address_mode_u: props.address_mode_u,
 			address_mode_v: props.address_mode_v,
