@@ -7,7 +7,7 @@ use spirv_std::{
 	Image, Sampler,
 };
 
-/// Performs a single direction of the separable Gaussian blur kernel.
+/// Performs a separable Gaussian blur kernel.
 ///
 /// # Arguments
 ///
@@ -82,7 +82,7 @@ pub fn gaussian_blur(
 
 /// Precalculated weights for a 5-tap Gaussian blur kernel.
 ///
-/// diameter of the circle of confusion is 5.0.
+/// The diameter of the circle of confusion is 5.0.
 ///
 /// # Arguments
 ///
@@ -112,7 +112,7 @@ pub fn gaussian_blur_5(
 
 /// Precalculated weights for a 9-tap Gaussian blur kernel.
 ///
-/// diameter of the circle of confusion is 9.0.
+/// The diameter of the circle of confusion is 9.0.
 ///
 /// # Arguments
 ///
@@ -145,7 +145,7 @@ pub fn gaussian_blur_9(
 
 /// Precalculated weights for a 13-tap Gaussian blur kernel.
 ///
-/// diameter of the circle of confusion is 13.0.
+/// The diameter of the circle of confusion is 13.0.
 ///
 /// # Arguments
 ///
