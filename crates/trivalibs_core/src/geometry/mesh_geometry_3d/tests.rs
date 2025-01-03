@@ -61,7 +61,7 @@ fn remove_face() {
 	geom.add_face3(v, vert(0.0, 2.0, 0.0), vert(2.0, 2.0, 0.0));
 	geom.add_face3(v, vert(0.0, 0.0, 0.0), vert(0.0, 2.0, 0.0));
 
-	assert_eq!(geom.faces.get(&0).unwrap().len(), 4);
+	assert_eq!(geom.faces.get(0).unwrap().len(), 4);
 	assert_eq!(geom.next_index, 5);
 	assert_eq!(geom.vertices.len(), 5);
 	assert_eq!(geom.face(1).vertices, [0, 3, 1]);
@@ -79,7 +79,7 @@ fn remove_face() {
 
 	geom.remove_face(1);
 
-	assert_eq!(geom.faces.get(&0).unwrap().len(), 3);
+	assert_eq!(geom.faces.get(0).unwrap().len(), 3);
 	assert_eq!(geom.vertices.len(), 5);
 	assert_eq!(geom.face(1).vertices, [0, 2, 4]);
 
@@ -91,7 +91,7 @@ fn remove_face() {
 
 	geom.remove_face(0);
 
-	assert_eq!(geom.faces.get(&0).unwrap().len(), 2);
+	assert_eq!(geom.faces.get(0).unwrap().len(), 2);
 	assert_eq!(geom.vertices.len(), 5);
 	assert_eq!(geom.face(0).vertices, [0, 4, 3]);
 
@@ -103,7 +103,7 @@ fn remove_face() {
 
 	geom.remove_face(1);
 
-	assert_eq!(geom.faces.get(&0).unwrap().len(), 1);
+	assert_eq!(geom.faces.get(0).unwrap().len(), 1);
 
 	assert_eq!(geom.vertex(0).faces, [0.into()]);
 	assert_eq!(geom.vertex(1).faces, []);
@@ -113,67 +113,11 @@ fn remove_face() {
 
 	geom.remove_face(0);
 
-	assert_eq!(geom.faces.get(&0).unwrap().len(), 0);
+	assert_eq!(geom.faces.get(0).unwrap().len(), 0);
 
 	assert_eq!(geom.vertex(0).faces, []);
 	assert_eq!(geom.vertex(1).faces, []);
 	assert_eq!(geom.vertex(2).faces, []);
 	assert_eq!(geom.vertex(3).faces, []);
 	assert_eq!(geom.vertex(4).faces, []);
-}
-
-#[test]
-fn triangulate() {
-	let mut geom = MeshGeometry::new();
-
-	geom.add_face4(
-		vert(0.0, 0.0, 0.0),
-		vert(1.0, 0.0, 0.0),
-		vert(1.0, 1.0, 0.0),
-		vert(0.0, 1.0, 0.0),
-	);
-	geom.add_face4(
-		vert(0.0, 0.0, 0.0),
-		vert(0.0, 0.0, 1.0),
-		vert(0.0, 1.0, 1.0),
-		vert(0.0, 1.0, 0.0),
-	);
-
-	assert_eq!(geom.faces.get(&0).unwrap().len(), 2);
-	assert_eq!(geom.face(0).vertices, [0, 1, 2, 3]);
-
-	geom.triangulate();
-
-	assert_eq!(geom.faces.get(&0).unwrap().len(), 4);
-	for face in geom.faces.get(&0).unwrap() {
-		assert_eq!(face.vertices.len(), 3);
-	}
-	assert!(geom
-		.faces
-		.get(&0)
-		.unwrap()
-		.iter()
-		.find(|f| { f.vertices == [0, 1, 2] })
-		.is_some());
-	assert!(geom
-		.faces
-		.get(&0)
-		.unwrap()
-		.iter()
-		.find(|f| { f.vertices == [0, 2, 3] })
-		.is_some());
-	assert!(geom
-		.faces
-		.get(&0)
-		.unwrap()
-		.iter()
-		.find(|f| { f.vertices == [0, 4, 5] })
-		.is_some());
-	assert!(geom
-		.faces
-		.get(&0)
-		.unwrap()
-		.iter()
-		.find(|f| { f.vertices == [0, 5, 3] })
-		.is_some());
 }

@@ -79,7 +79,7 @@ pub fn create_ball_geom() -> RenderableBuffer {
 		}
 	}
 
-	geom.to_renderable_buffer_by_type(MeshBufferType::VertexNormalFaceData)
+	geom.to_renderable_buffer_by_type(MeshBufferType::FaceNormals)
 }
 
 #[test]
