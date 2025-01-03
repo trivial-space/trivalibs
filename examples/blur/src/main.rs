@@ -16,7 +16,7 @@ use trivalibs::{
 	utils::default,
 };
 
-const BLUR_RADIUS: f32 = 200.0;
+const BLUR_DIAMETER: f32 = 400.0;
 
 #[apply(gpu_data)]
 struct Vertex {
@@ -71,14 +71,17 @@ impl CanvasApp<()> for App {
 
 		let mut effects = vec![];
 
-		let mut counter = BLUR_RADIUS / 5.0;
+		// This does blur in multiple passes
+		// It cuts the number of texture reads logarithmically, but increases the number of passes
+
+		let mut counter = BLUR_DIAMETER / 9.0; // Fixed diameter in shader is 9.0
 		while counter > 1.0 {
-			let radius = u_fs_type.const_f32(p, counter);
+			let diameter = u_fs_type.const_f32(p, counter);
 			effects.push(p.effect_create(
 				blur_shade,
 				EffectProps {
 					uniforms: bmap! {
-						1 => radius,
+						1 => diameter,
 						2 => size.uniform,
 						3 => horiz
 					},
@@ -89,7 +92,7 @@ impl CanvasApp<()> for App {
 				blur_shade,
 				EffectProps {
 					uniforms: bmap! {
-						1 => radius,
+						1 => diameter,
 						2 => size.uniform,
 						3 => vertical
 					},
@@ -101,12 +104,14 @@ impl CanvasApp<()> for App {
 
 		println!("effects: {:?}", effects.len());
 
-		// let radius = u_fs_type.const_f32(p, BLUR_RADIUS);
+		// This does all blurs in one pass
+
+		// let diameter = u_fs_type.const_f32(p, BLUR_DIAMETER);
 		// effects.push(p.effect_create(
 		// 	blur_shade,
 		// 	EffectProps {
 		// 		uniforms: bmap! {
-		// 			1 => radius,
+		// 			1 => diameter,
 		// 			2 => size.uniform,
 		// 			3 => horiz
 		// 		},
@@ -117,7 +122,7 @@ impl CanvasApp<()> for App {
 		// 	blur_shade,
 		// 	EffectProps {
 		// 		uniforms: bmap! {
-		// 			1 => radius,
+		// 			1 => diameter,
 		// 			2 => size.uniform,
 		// 			3 => vertical
 		// 		},

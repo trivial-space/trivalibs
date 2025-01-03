@@ -13,7 +13,7 @@ use spirv_std::{
 ///
 /// * `image` - The image to be blurred.
 /// * `sampler` - The sampler used for sampling the image.
-/// * `radius` - The radius (not the radius) of the circle of confusion for this fragment.
+/// * `diameter` - The diameter (not radius) of the circle of confusion for this fragment.
 /// * `uv` - The texture coordinates of the fragment.
 /// * `res` - The resolution of the image.
 /// * `dir` - The vector, in screen-space units, from one sample to the next. For a horizontal blur this will be `vec2(1.0, 0.0)`; for a vertical blur this will be `vec2(0.0, 1.0)`.
@@ -25,13 +25,14 @@ use spirv_std::{
 pub fn gaussian_blur(
 	image: &Image!(2D, type=f32, sampled),
 	sampler: &Sampler,
-	radius: f32,
+	diameter: f32,
 	uv: Vec2,
 	res: Vec2,
 	dir: Vec2,
 ) -> Vec4 {
-	// Usually σ (the standard deviation) is half the radius
-	let sigma = radius * 0.5;
+	// Usually σ (the standard deviation) is half the radius, and the radius is
+	// half the diameter. So we multiply by 0.25.
+	let sigma = diameter * 0.25;
 
 	// 1.5σ is a good, somewhat aggressive default for support—the number of
 	// texels on each side of the center that we process.
@@ -79,13 +80,112 @@ pub fn gaussian_blur(
 	return sum / weight_sum;
 }
 
+/// Precalculated weights for a 5-tap Gaussian blur kernel.
+///
+/// diameter of the circle of confusion is 5.0.
+///
+/// # Arguments
+///
+/// * `image` - The image to be blurred.
+/// * `sampler` - The sampler used for sampling the image.
+/// * `uv` - The texture coordinates of the fragment.
+/// * `res` - The resolution of the image.
+/// * `dir` - The vector, in screen-space units, from one sample to the next. For a horizontal blur this will be `vec2(1.0, 0.0)`; for a vertical blur this will be `vec2(0.0, 1.0)`.
+///
+/// # Returns
+///
+/// The resulting color of the fragment.
+///
+pub fn gaussian_blur_5(
+	image: &Image!(2D, type=f32, sampled),
+	sampler: &Sampler,
+	uv: Vec2,
+	res: Vec2,
+	dir: Vec2,
+) -> Vec4 {
+	let off1 = 1.3333333333333333 * dir;
+	let mut color = image.sample(*sampler, uv) * 0.29411764705882354;
+	color += image.sample(*sampler, uv + (off1 / res)) * 0.35294117647058826;
+	color += image.sample(*sampler, uv - (off1 / res)) * 0.35294117647058826;
+	return color;
+}
+
+/// Precalculated weights for a 9-tap Gaussian blur kernel.
+///
+/// diameter of the circle of confusion is 9.0.
+///
+/// # Arguments
+///
+/// * `image` - The image to be blurred.
+/// * `sampler` - The sampler used for sampling the image.
+/// * `uv` - The texture coordinates of the fragment.
+/// * `res` - The resolution of the image.
+/// * `dir` - The vector, in screen-space units, from one sample to the next. For a horizontal blur this will be `vec2(1.0, 0.0)`; for a vertical blur this will be `vec2(0.0, 1.0)`.
+///
+/// # Returns
+///
+/// The resulting color of the fragment.
+///
+pub fn gaussian_blur_9(
+	image: &Image!(2D, type=f32, sampled),
+	sampler: &Sampler,
+	uv: Vec2,
+	res: Vec2,
+	dir: Vec2,
+) -> Vec4 {
+	let off1 = 1.3846153846 * dir;
+	let off2 = 3.2307692308 * dir;
+	let mut color = image.sample(*sampler, uv) * 0.2270270270;
+	color += image.sample(*sampler, uv + (off1 / res)) * 0.3162162162;
+	color += image.sample(*sampler, uv - (off1 / res)) * 0.3162162162;
+	color += image.sample(*sampler, uv + (off2 / res)) * 0.0702702703;
+	color += image.sample(*sampler, uv - (off2 / res)) * 0.0702702703;
+	return color;
+}
+
+/// Precalculated weights for a 13-tap Gaussian blur kernel.
+///
+/// diameter of the circle of confusion is 13.0.
+///
+/// # Arguments
+///
+/// * `image` - The image to be blurred.
+/// * `sampler` - The sampler used for sampling the image.
+/// * `uv` - The texture coordinates of the fragment.
+/// * `res` - The resolution of the image.
+/// * `dir` - The vector, in screen-space units, from one sample to the next. For a horizontal blur this will be `vec2(1.0, 0.0)`; for a vertical blur this will be `vec2(0.0, 1.0)`.
+///
+/// # Returns
+///
+/// The resulting color of the fragment.
+///
+pub fn gaussian_blur_13(
+	image: &Image!(2D, type=f32, sampled),
+	sampler: &Sampler,
+	uv: Vec2,
+	res: Vec2,
+	dir: Vec2,
+) -> Vec4 {
+	let off1 = 1.411764705882353 * dir;
+	let off2 = 3.2941176470588234 * dir;
+	let off3 = 5.176470588235294 * dir;
+	let mut color = image.sample(*sampler, uv) * 0.1964825501511404;
+	color += image.sample(*sampler, uv + (off1 / res)) * 0.2969069646728344;
+	color += image.sample(*sampler, uv - (off1 / res)) * 0.2969069646728344;
+	color += image.sample(*sampler, uv + (off2 / res)) * 0.09447039785044732;
+	color += image.sample(*sampler, uv - (off2 / res)) * 0.09447039785044732;
+	color += image.sample(*sampler, uv + (off3 / res)) * 0.010381362401148057;
+	color += image.sample(*sampler, uv - (off3 / res)) * 0.010381362401148057;
+	return color;
+}
+
 /// Performs a box blur in a single direction of the separable box blur kernel.
 ///
 /// # Arguments
 ///
 /// * `image` - The image to be blurred.
 /// * `sampler` - The sampler used for sampling the image.
-/// * `radius` - The radius (not the diameter) of the circle of confusion for this fragment.
+/// * `diameter` - The diameter (not radius) of the circle of confusion for this fragment.
 /// * `uv` - The texture coordinates of the fragment.
 /// * `res` - The resolution of the image.
 /// * `dir` - The vector, in screen-space units, from one sample to the next. This need not be horizontal or vertical.
@@ -96,12 +196,12 @@ pub fn gaussian_blur(
 pub fn box_blur(
 	image: &Image!(2D, type=f32, sampled),
 	sampler: &Sampler,
-	radius: f32,
+	diameter: f32,
 	uv: Vec2,
 	res: Vec2,
 	dir: Vec2,
 ) -> Vec4 {
-	let support = radius.ceil() as i32;
+	let support = (diameter * 0.5).floor() as i32;
 	let offset = dir / res;
 
 	// Accumulate samples in a single direction.
