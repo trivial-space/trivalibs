@@ -44,9 +44,9 @@ fn color_vert(color: Vec3) -> Vertex {
 
 pub fn create_ball_geom() -> BufferedGeometry {
 	let mut geom = create_sphere_mesh(20, 20, |horiz_angle, vert_angle| {
-		let x = vert_angle.cos() * horiz_angle.cos();
-		let y = vert_angle.cos() * horiz_angle.sin();
-		let z = vert_angle.sin();
+		let x = vert_angle.cos() * horiz_angle.sin();
+		let y = vert_angle.sin();
+		let z = vert_angle.cos() * horiz_angle.cos();
 		pos_vert(
 			vec3(x, y, z) * 5.0,
 			vec2(horiz_angle / (PI * 2.0), vert_angle / PI + 0.5),
