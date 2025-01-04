@@ -9,7 +9,7 @@ use trivalibs::{
 		texture::Texture2DProps,
 		uniform::{Mat3U, UniformBuffer},
 		wgpu::{self, VertexFormat::*},
-		CanvasApp, Event, Painter,
+		AppConfig, CanvasApp, Event, Painter,
 	},
 	prelude::*,
 	rendering::{
@@ -73,6 +73,7 @@ impl CanvasApp<()> for App {
 			shade,
 			SketchProps {
 				uniforms: vec![(0, mvp.uniform), (1, norm.uniform), (2, tex)],
+				cull_mode: Some(wgpu::Face::Back),
 				..default()
 			},
 		);
@@ -94,7 +95,9 @@ impl CanvasApp<()> for App {
 			norm,
 
 			cam: PerspectiveCamera::create(CamProps {
-				fov: Some(0.6),
+				fov: Some(0.65),
+				translation: Some(vec3(0.0, 5.0, 0.0)),
+				rot_vertical: Some(-0.26),
 				..default()
 			}),
 			ball_transform: Transform::from_translation(vec3(0.0, 0.0, -20.0)),
@@ -126,5 +129,5 @@ impl CanvasApp<()> for App {
 }
 
 pub fn main() {
-	App::create().start();
+	App::create().config(AppConfig { show_fps: true }).start();
 }

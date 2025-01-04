@@ -334,6 +334,13 @@ where
 		&mut self.faces.get_mut(i.section).unwrap()[i.index]
 	}
 
+	pub fn face_vertices(&self, face: &Face<V>) -> Vec<V> {
+		face.vertices
+			.iter()
+			.map(|i| self.vertices[*i].data.clone())
+			.collect::<Vec<_>>()
+	}
+
 	pub fn get_vertex_index(&mut self, pos: Vec3) -> usize {
 		if let Some(idx) = self.vertex_indices.get(&pos.into()) {
 			*idx

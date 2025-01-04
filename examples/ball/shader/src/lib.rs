@@ -35,4 +35,5 @@ pub fn fragment(
 ) {
 	let col = tex.sample(*sampler, in_uv);
 	*frag_color = in_color.extend(1.0) * in_norm.extend(1.0).abs() * vec4(col.x, col.y, col.z, 1.0);
+	// *frag_color = in_color.extend(1.0);
 }
