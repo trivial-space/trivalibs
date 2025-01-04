@@ -1,5 +1,5 @@
 [package]
-name = "text_ball"
+name = "test_ball"
 edition.workspace = true
 version = "0.1.0"
 

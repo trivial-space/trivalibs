@@ -1,5 +1,5 @@
 [package]
-name = "text_mouse_color"
+name = "test_mouse_color"
 edition.workspace = true
 version = "0.1.0"
 

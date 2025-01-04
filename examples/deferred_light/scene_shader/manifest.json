@@ -1,0 +1,12 @@
+[
+  {
+    "source_path": "fragment.spv",
+    "entry_point": "fragment",
+    "wgsl_entry_point": "fragment"
+  },
+  {
+    "source_path": "vertex.spv",
+    "entry_point": "vertex",
+    "wgsl_entry_point": "vertex"
+  }
+]

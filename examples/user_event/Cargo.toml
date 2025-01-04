@@ -1,5 +1,5 @@
 [package]
-name = "text_user_event"
+name = "test_user_event"
 edition.workspace = true
 version = "0.1.0"
 

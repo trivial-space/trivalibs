@@ -1,10 +1,8 @@
 [package]
-name = "test_triangle"
+name = "test_deferred_light"
 edition.workspace = true
 version = "0.1.0"
 
 [dependencies]
 trivalibs.workspace = true
-shader = { path = "./shader", package = "test_triangle_shader" }
-png.workspace = true
 bytemuck.workspace = true

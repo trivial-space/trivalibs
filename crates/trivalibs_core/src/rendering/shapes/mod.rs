@@ -1,2 +1,2 @@
-pub mod qube;
+pub mod r#box;
 pub mod sphere;
