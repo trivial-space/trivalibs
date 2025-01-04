@@ -1,9 +1,10 @@
 use std::f32::consts::PI;
 use trivalibs::{
-	data_structures::grid::{make_grid_with_coord_ops, CIRCLE_COLS_COORD_OPS},
-	geometry::mesh_geometry_3d::{face_data, MeshBufferType, MeshGeometry, Position3D},
+	math::coords::angles_to_cartesian,
 	prelude::*,
-	rendering::{buffered_geometry::OverrideAttributesWith, RenderableBuffer},
+	rendering::{
+		mesh_geometry::MeshBufferType, shapes::sphere::create_sphere_mesh, BufferedGeometry,
+	},
 };
 
 #[apply(gpu_data)]
@@ -12,7 +13,7 @@ struct Vertex {
 	uv: Vec2,
 	color: Vec3,
 }
-impl OverrideAttributesWith for Vertex {
+impl Overridable for Vertex {
 	fn override_with(&self, attribs: &Self) -> Self {
 		Vertex {
 			color: attribs.color,
@@ -26,60 +27,57 @@ impl Position3D for Vertex {
 	}
 }
 
-fn vert(pos: Vec3, uv: Vec2, color: Vec3) -> Vertex {
-	Vertex { pos, color, uv }
+// fn vert(pos: Vec3, uv: Vec2, color: Vec3) -> Vertex {
+// 	Vertex { pos, uv, color }
+// }
+
+fn pos_vert(pos: Vec3, uv: Vec2) -> Vertex {
+	Vertex {
+		pos,
+		color: Vec3::ZERO,
+		uv,
+	}
 }
 
-pub fn create_ball_geom() -> RenderableBuffer {
-	let mut grid = make_grid_with_coord_ops(CIRCLE_COLS_COORD_OPS);
-	let mut col1 = vec![];
-	let mut y = -5.0;
-	while y <= 5.0 {
-		let x = f32::sqrt(25.0 - y * y);
-		col1.push((vec3(x, y, 0.0), vec2(0.0, y / 10.0 + 0.5)));
-		y += 0.5;
+fn color_vert(color: Vec3) -> Vertex {
+	Vertex {
+		pos: Vec3::ZERO,
+		color,
+		uv: Vec2::ZERO,
 	}
-	grid.add_col(col1.clone());
+}
 
-	let stops = 20;
-	let angle = (PI * 2.0) / stops as f32;
-	for i in 1..stops {
-		let q = Quat::from_rotation_y(angle * i as f32);
-		let col = col1
-			.iter()
-			.map(|(pos, uv)| {
-				let v = q.mul_vec3(*pos);
-				(vec3(v.x, pos.y, v.z), vec2(i as f32 / stops as f32, uv.y))
-			})
-			.collect();
-		grid.add_col(col)
-	}
+const VERTICAL_SEGMENTS: u32 = 50;
+const HORIZONTAL_SEGMENTS: u32 = 50;
 
-	let mut geom = MeshGeometry::new();
-	for quad in grid.to_ccw_quads() {
-		let r: f32 = random();
-		let g: f32 = random();
-		let b: f32 = random();
+pub fn create_ball_geom() -> BufferedGeometry {
+	let mut geom = create_sphere_mesh(
+		VERTICAL_SEGMENTS,
+		HORIZONTAL_SEGMENTS,
+		|horiz_angle, vert_angle| {
+			let pos = angles_to_cartesian(horiz_angle, vert_angle);
+			let uv = vec2(horiz_angle / (PI * 2.0), vert_angle / PI + 0.5);
 
-		let color = vec3(r, g, b);
+			pos_vert(pos * 5.0, uv)
+		},
+	);
 
-		let v0 = vert(quad[0].0, quad[0].1, color);
-		let v1 = vert(quad[1].0, quad[1].1, color);
-		let v2 = vert(quad[2].0, quad[2].1, color);
-		let v3 = vert(quad[3].0, quad[3].1, color);
+	for i in 0..geom.face_count() {
+		let face = geom.face(i);
 
-		if v0.pos.y == -5.0 {
-			// v0 == v1
-			geom.add_face3_data(v0, v2, v3, face_data(v0));
-		} else if v2.pos.y == 5.0 {
-			// v2 == v3
-			geom.add_face3_data(v0, v1, v2, face_data(v0));
-		} else {
-			geom.add_face4_data(v0, v1, v2, v3, face_data(v0));
-		}
+		let vertices = geom.face_vertices(face);
+
+		let uv = vertices.iter().map(|v| v.uv).sum::<Vec2>() / vertices.len() as f32;
+
+		let use_horiz_gradient = uv.x * HORIZONTAL_SEGMENTS as f32 % 2.0 < 1.0;
+		let gradient = if use_horiz_gradient { uv.x } else { uv.y };
+		let color = vec3(random(), random(), random()) * 0.2 + gradient * 0.8;
+
+		let face = geom.face_mut(i);
+		face.data = Some(color_vert(color));
 	}
 
-	geom.to_renderable_buffer_by_type(MeshBufferType::VertexNormalFaceData)
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceNormals)
 }
 
 #[test]

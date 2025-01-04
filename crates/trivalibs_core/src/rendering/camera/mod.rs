@@ -1,10 +1,7 @@
-use std::f32::consts::{FRAC_PI_2, TAU};
-
-use crate::utils::default;
-
-use super::transform::Transform;
+use crate::{math::transform::Transform, utils::default};
 use glam::{vec3, Mat4, Quat, Vec2, Vec3, Vec3Swizzles, Vec4};
 use serde::Serialize;
+use std::f32::consts::{FRAC_PI_2, TAU};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PerspectiveCamera {

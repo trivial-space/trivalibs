@@ -1,5 +1,5 @@
 [package]
-name = "draft_shader_image_shader"
+name = "text_shader_image_shader"
 edition.workspace = true
 version = "0.1.0"
 

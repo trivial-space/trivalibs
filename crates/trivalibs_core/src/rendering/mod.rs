@@ -1,20 +1,21 @@
-pub mod buffered_geometry;
 pub mod camera;
-pub mod objects;
+pub mod line_2d;
+pub mod mesh_geometry;
 pub mod scene;
+pub mod shapes;
 pub mod texture;
-pub mod transform;
+pub mod webgl_buffered_geometry;
 
-pub struct RenderableBuffer {
+pub struct BufferedGeometry {
 	pub vertex_buffer: Vec<u8>,
 	pub index_buffer: Option<Vec<u8>>,
 	pub vertex_count: u32,
 	pub index_count: u32,
 }
 
-impl<T: bytemuck::Pod> Into<RenderableBuffer> for &[T] {
-	fn into(self) -> RenderableBuffer {
-		RenderableBuffer {
+impl<T: bytemuck::Pod> Into<BufferedGeometry> for &[T] {
+	fn into(self) -> BufferedGeometry {
+		BufferedGeometry {
 			vertex_buffer: bytemuck::cast_slice(self).to_vec(),
 			index_buffer: None,
 			vertex_count: self.len() as u32,
@@ -23,9 +24,9 @@ impl<T: bytemuck::Pod> Into<RenderableBuffer> for &[T] {
 	}
 }
 
-impl<T: bytemuck::Pod> Into<RenderableBuffer> for Vec<T> {
-	fn into(self) -> RenderableBuffer {
-		RenderableBuffer {
+impl<T: bytemuck::Pod> Into<BufferedGeometry> for Vec<T> {
+	fn into(self) -> BufferedGeometry {
+		BufferedGeometry {
 			vertex_buffer: bytemuck::cast_slice(&self).to_vec(),
 			index_buffer: None,
 			vertex_count: self.len() as u32,

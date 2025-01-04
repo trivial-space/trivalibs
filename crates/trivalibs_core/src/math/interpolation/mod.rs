@@ -22,14 +22,14 @@ pub trait Interpolate {
 #[macro_export]
 macro_rules! impl_Interpolate {
 	($v:ty) => {
-		impl $crate::geometry::interpolation::Interpolate for $v {
+		impl $crate::math::interpolation::Interpolate for $v {
 			fn lerp(t: f32, a: Self, b: Self) -> Self {
 				a * (1. - t) + b * t
 			}
 
 			fn cosine(t: f32, a: Self, b: Self) -> Self {
 				let cos_nt = (1. - (t * std::f32::consts::PI).cos()) * 0.5;
-				<Self as $crate::geometry::interpolation::Interpolate>::lerp(cos_nt, a, b)
+				<Self as $crate::math::interpolation::Interpolate>::lerp(cos_nt, a, b)
 			}
 
 			fn quadratic_bezier(t: f32, a: Self, u: Self, b: Self) -> Self {

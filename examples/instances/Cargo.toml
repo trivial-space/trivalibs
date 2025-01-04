@@ -1,5 +1,5 @@
 [package]
-name = "draft_instances"
+name = "text_instances"
 edition.workspace = true
 version = "0.1.0"
 

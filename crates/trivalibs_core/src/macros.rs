@@ -56,3 +56,37 @@ macro_rules! bmap {
 			::std::collections::BTreeMap::from([ $(($key, $value)),* ])
 	};
 }
+
+/// Create a `Vec` of key-value pair tuples.
+///
+/// # Examples
+///
+/// ```
+/// use trivalibs_core::map;
+///
+/// let map = map! {
+///     "a" => 1,
+///     "b" => 2,
+/// };
+///
+/// assert_eq!(map, vec![("a", 1), ("b", 2)]);
+/// ```
+///
+/// ```
+/// use trivalibs_core::map;
+///
+/// let map = map! {
+///     "x" => 10,
+///     "y" => 20,
+///     "z" => 30,
+/// };
+///
+/// assert_eq!(map, vec![("x", 10), ("y", 20), ("z", 30)]);
+/// ```
+///
+#[macro_export]
+macro_rules! map {
+	($($key:expr => $value:expr),+ $(,)?) => {
+			vec![ $(($key, $value)),* ]
+	};
+}

@@ -1,11 +1,13 @@
 use super::{Line, LineData};
 use crate::{
-	data_structures::neighbour_list::traits::{NeighbourMapTransform, WithNeighboursTransform},
-	rendering::buffered_geometry::{
-		create_buffered_geometry_layout, vert_type, BufferedGeometry, BufferedVertexData,
-		RenderingPrimitive,
-		VertexFormat::{Float32, Float32x2},
-		VertexType,
+	data::neighbour_list::traits::{NeighbourMapTransform, WithNeighboursTransform},
+	rendering::{
+		webgl_buffered_geometry::{
+			create_buffered_geometry_layout, vert_type, RenderingPrimitive,
+			VertexFormat::{Float32, Float32x2},
+			VertexType, WebglBufferedGeometry, WebglVertexData,
+		},
+		BufferedGeometry,
 	},
 	utils::default,
 };
@@ -22,7 +24,7 @@ pub struct VertexData {
 	local_uv: Vec2,
 }
 
-impl BufferedVertexData for VertexData {
+impl WebglVertexData for VertexData {
 	fn vertex_layout() -> Vec<VertexType> {
 		vec![
 			vert_type("position", Float32x2),
@@ -256,22 +258,38 @@ impl Line {
 			balance = top_length - bottom_length;
 		}
 
-		let indices_len = indices.len();
-
-		let geom_layout = create_buffered_geometry_layout(VertexData::vertex_layout());
-
 		BufferedGeometry {
-			buffer: bytemuck::cast_slice(&buffer).to_vec(),
-			rendering_primitive: RenderingPrimitive::TriangleStrip,
-			indices: Some(bytemuck::cast_slice(&indices).to_vec()),
-			vertex_size: geom_layout.vertex_size,
-			vertex_count: indices_len as u32,
-			vertex_layout: geom_layout.vertex_layout,
+			vertex_buffer: bytemuck::cast_slice(&buffer).to_vec(),
+			index_buffer: Some(bytemuck::cast_slice(&indices).to_vec()),
+			vertex_count: buffer.len() as u32,
+			index_count: indices.len() as u32,
 		}
 	}
 
 	pub fn to_buffered_geometry(&self) -> BufferedGeometry {
 		self.to_buffered_geometry_with(default())
+	}
+
+	pub fn to_webgl_buffered_geometry_with(
+		&self,
+		props: LineGeometryProps,
+	) -> WebglBufferedGeometry {
+		let buffer = self.to_buffered_geometry_with(props);
+
+		let geom_layout = create_buffered_geometry_layout(VertexData::vertex_layout());
+
+		WebglBufferedGeometry {
+			buffer: buffer.vertex_buffer,
+			indices: buffer.index_buffer,
+			vertex_size: geom_layout.vertex_size,
+			vertex_count: buffer.vertex_count,
+			rendering_primitive: RenderingPrimitive::TriangleStrip,
+			vertex_layout: geom_layout.vertex_layout,
+		}
+	}
+
+	pub fn to_webgl_buffered_geometry(&self) -> WebglBufferedGeometry {
+		self.to_webgl_buffered_geometry_with(default())
 	}
 }
 

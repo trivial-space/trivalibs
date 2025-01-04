@@ -1,4 +1,5 @@
 use trivalibs::{
+	math::transform::Transform,
 	painter::{
 		load_fragment_shader, load_vertex_shader,
 		shade::ShadeProps,
@@ -11,7 +12,6 @@ use trivalibs::{
 	rendering::{
 		camera::{CamProps, PerspectiveCamera},
 		scene::SceneObject,
-		transform::Transform,
 	},
 };
 

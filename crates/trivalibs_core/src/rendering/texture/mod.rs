@@ -22,25 +22,15 @@ pub fn render_rgba_double<F: Fn(u32, u32) -> [f64; 4]>(
 	pixels
 }
 
-fn clamp(x: f32, min: f32, max: f32) -> f32 {
-	if x < min {
-		min
-	} else if x > max {
-		max
-	} else {
-		x
-	}
-}
-
 pub fn rgba_f32_to_u8(pixels: Vec<[f32; 4]>) -> Vec<[u8; 4]> {
 	pixels
 		.into_iter()
 		.map(|[r, g, b, a]| {
 			[
-				(255.999 * clamp(r, 0.0, 1.0)) as u8,
-				(255.999 * clamp(g, 0.0, 1.0)) as u8,
-				(255.999 * clamp(b, 0.0, 1.0)) as u8,
-				(255.999 * clamp(a, 0.0, 1.0)) as u8,
+				(255.999 * r.clamp(0.0, 1.0)) as u8,
+				(255.999 * g.clamp(0.0, 1.0)) as u8,
+				(255.999 * b.clamp(0.0, 1.0)) as u8,
+				(255.999 * a.clamp(0.0, 1.0)) as u8,
 			]
 		})
 		.collect()
@@ -61,8 +51,5 @@ pub fn rgba_f64_to_u8(pixels: Vec<[f64; 4]>) -> Vec<[u8; 4]> {
 }
 
 pub fn rgba_u8_to_buffer(pixels: Vec<[u8; 4]>) -> Vec<u8> {
-	pixels
-		.into_iter()
-		.flat_map(|[r, g, b, a]| vec![r, g, b, a])
-		.collect()
+	pixels.into_iter().flatten().collect()
 }
