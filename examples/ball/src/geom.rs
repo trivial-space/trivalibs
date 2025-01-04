@@ -48,7 +48,7 @@ fn color_vert(color: Vec3) -> Vertex {
 }
 
 const VERTICAL_SEGMENTS: u32 = 50;
-const HORIZONTAL_SEGMENTS: u32 = 100;
+const HORIZONTAL_SEGMENTS: u32 = 50;
 
 pub fn create_ball_geom() -> BufferedGeometry {
 	let mut geom = create_sphere_mesh(

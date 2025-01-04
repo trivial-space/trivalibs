@@ -1,5 +1,6 @@
 use geom::create_ball_geom;
 use trivalibs::{
+	map,
 	math::transform::Transform,
 	painter::{
 		layer::{Layer, LayerProps},
@@ -72,7 +73,11 @@ impl CanvasApp<()> for App {
 			form,
 			shade,
 			SketchProps {
-				uniforms: vec![(0, mvp.uniform), (1, norm.uniform), (2, tex)],
+				uniforms: map! {
+					0 => mvp.uniform,
+					1 => norm.uniform,
+					2 => tex,
+				},
 				cull_mode: Some(wgpu::Face::Back),
 				..default()
 			},
