@@ -1,5 +1,5 @@
 [package]
-name = "draft_layer_tex_tex_shader"
+name = "text_layer_tex_tex_shader"
 edition.workspace = true
 version = "0.1.0"
 

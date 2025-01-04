@@ -1,5 +1,5 @@
 [package]
-name = "draft_triangle_shader"
+name = "text_triangle_shader"
 edition.workspace = true
 version = "0.1.0"
 

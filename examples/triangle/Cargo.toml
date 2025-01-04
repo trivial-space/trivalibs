@@ -1,10 +1,10 @@
 [package]
-name = "draft_triangle"
+name = "text_triangle"
 edition.workspace = true
 version = "0.1.0"
 
 [dependencies]
 trivalibs.workspace = true
-shader = { path = "./shader", package = "draft_triangle_shader" }
+shader = { path = "./shader", package = "text_triangle_shader" }
 png.workspace = true
 bytemuck.workspace = true

@@ -1,5 +1,5 @@
 [package]
-name = "draft_frag_shader"
+name = "text_frag_shader"
 edition.workspace = true
 version = "0.1.0"
 
