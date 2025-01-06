@@ -102,10 +102,11 @@ pub(crate) struct LayerStorage {
 	pub use_window_size: bool,
 	pub clear_color: Option<wgpu::Color>,
 	pub pipeline_key: Vec<u8>,
-	pub format: wgpu::TextureFormat,
-	pub multisampled_texture: Option<Texture>,
+	pub formats: Vec<wgpu::TextureFormat>,
+	pub multisampled_textures: Vec<Texture>,
 	pub current_target: usize,
 	pub texture_count: usize,
+	pub is_multi_target: bool,
 }
 
 impl LayerStorage {
@@ -135,7 +136,7 @@ pub struct LayerProps {
 	pub sampler: Sampler,
 	pub width: u32,
 	pub height: u32,
-	pub format: Option<wgpu::TextureFormat>,
+	pub formats: Vec<wgpu::TextureFormat>,
 	pub clear_color: Option<wgpu::Color>,
 	pub depth_test: bool,
 	pub binding_visibility: wgpu::ShaderStages,
@@ -151,7 +152,7 @@ impl Default for LayerProps {
 			sampler: Sampler(0),
 			width: 0,
 			height: 0,
-			format: None,
+			formats: Vec::with_capacity(1),
 			uniforms: BTreeMap::new(),
 			binding_visibility: wgpu::ShaderStages::FRAGMENT,
 			clear_color: None,
@@ -178,33 +179,6 @@ impl Layer {
 			props.height
 		};
 
-		let use_swap_targets =
-			props.effects.len() > 1 || (props.sketches.len() > 0 && props.effects.len() > 0);
-
-		let texture_count = if use_swap_targets { 2 } else { 1 };
-
-		let mut target_textures = Vec::with_capacity(texture_count);
-		let mut target_uniforms = Vec::with_capacity(texture_count);
-
-		let format = props.format.unwrap_or(painter.config.format);
-		let uniform_type = UniformType::tex_2d(painter, props.binding_visibility);
-
-		for _ in 0..texture_count {
-			let tex = Texture::create_2d(
-				painter,
-				Texture2DProps {
-					width,
-					height,
-					format,
-					usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-						| wgpu::TextureUsages::TEXTURE_BINDING,
-				},
-				false,
-			);
-			target_textures.push(tex);
-			target_uniforms.push(uniform_type.create_tex2d(painter, tex, props.sampler));
-		}
-
 		let depth_texture = props.depth_test.then(|| {
 			Texture::create_depth(
 				painter,
@@ -213,24 +187,106 @@ impl Layer {
 			)
 		});
 
-		let multisampled_texture = props.multisampled.then(|| {
-			Texture::create_2d(
-				painter,
-				Texture2DProps {
-					width,
-					height,
-					format,
-					usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-				},
-				true,
-			)
-		});
-
 		let pipeline_key = vec![
-			map_format_to_u8(format),
-			(props.depth_test as u8),
-			props.multisampled as u8,
-		];
+			vec![(props.depth_test as u8)],
+			vec![props.multisampled as u8],
+			props.formats.iter().map(|f| map_format_to_u8(*f)).collect(),
+		]
+		.into_iter()
+		.flatten()
+		.collect();
+
+		let uniform_type = UniformType::tex_2d(painter, props.binding_visibility);
+
+		let use_swap_targets =
+			props.effects.len() > 1 || (props.sketches.len() > 0 && props.effects.len() > 0);
+
+		let format_len = props.formats.len();
+		let is_multi_target = format_len > 1;
+
+		let texture_count = if is_multi_target {
+			format_len
+		} else {
+			if use_swap_targets {
+				2
+			} else {
+				1
+			}
+		};
+
+		let mut target_textures = Vec::with_capacity(texture_count);
+		let mut target_uniforms = Vec::with_capacity(texture_count);
+		let mut multisampled_textures =
+			Vec::with_capacity(if props.multisampled { texture_count } else { 0 });
+		let mut formats = Vec::with_capacity(texture_count);
+
+		if is_multi_target {
+			if use_swap_targets {
+				panic!("Postprocessing is not supported with multiple targets. Only sketches or one effect can be used.");
+			}
+
+			for format in props.formats {
+				let tex = Texture::create_2d(
+					painter,
+					Texture2DProps {
+						width,
+						height,
+						format,
+						usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+							| wgpu::TextureUsages::TEXTURE_BINDING,
+					},
+					false,
+				);
+				target_textures.push(tex);
+				target_uniforms.push(uniform_type.create_tex2d(painter, tex, props.sampler));
+				if props.multisampled {
+					multisampled_textures.push(Texture::create_2d(
+						painter,
+						Texture2DProps {
+							width,
+							height,
+							format,
+							usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+						},
+						true,
+					));
+				}
+				formats.push(format);
+			}
+		} else {
+			let format = *props.formats.get(0).unwrap_or(&painter.config.format);
+
+			for _ in 0..texture_count {
+				let tex = Texture::create_2d(
+					painter,
+					Texture2DProps {
+						width,
+						height,
+						format,
+						usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+							| wgpu::TextureUsages::TEXTURE_BINDING,
+					},
+					false,
+				);
+				target_textures.push(tex);
+				target_uniforms.push(uniform_type.create_tex2d(painter, tex, props.sampler));
+			}
+
+			if props.multisampled {
+				multisampled_textures.push(Texture::create_2d(
+					painter,
+					Texture2DProps {
+						width,
+						height,
+						format,
+						usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+					},
+					true,
+				))
+			};
+
+			formats.push(format);
+		}
 
 		let storage = LayerStorage {
 			width,
@@ -242,11 +298,12 @@ impl Layer {
 			depth_texture,
 			use_window_size,
 			clear_color: props.clear_color,
-			format,
+			formats,
 			pipeline_key,
-			multisampled_texture,
+			multisampled_textures,
 			current_target: 0,
 			texture_count,
+			is_multi_target: false,
 		};
 
 		painter.layers.push(storage);
@@ -285,7 +342,7 @@ impl Layer {
 
 		let targets = storage.target_textures.clone();
 		let depth_texture = storage.depth_texture.clone();
-		let multisampled_texture = storage.multisampled_texture.clone();
+		let multisampled_textures = storage.multisampled_textures.clone();
 
 		for texture in targets.iter() {
 			let format = painter.textures[texture.0].texture.format();
@@ -306,13 +363,13 @@ impl Layer {
 			depth_texture.replace_depth(
 				painter,
 				TextureDepthProps { width, height },
-				multisampled_texture.is_some(),
+				!multisampled_textures.is_empty(),
 			);
 		}
 
-		if let Some(multisampled_texture) = multisampled_texture {
-			let format = painter.textures[multisampled_texture.0].texture.format();
-			multisampled_texture.replace_2d(
+		for t in multisampled_textures {
+			let format = painter.textures[t.0].texture.format();
+			t.replace_2d(
 				painter,
 				Texture2DProps {
 					width,

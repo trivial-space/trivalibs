@@ -10,7 +10,7 @@ use crate::{
 };
 use std::{collections::BTreeMap, sync::Arc};
 use trivalibs_core::utils::default;
-use wgpu::util::make_spirv;
+use wgpu::{util::make_spirv, ColorTargetState, RenderPassColorAttachment};
 use winit::window::Window;
 
 pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0xff, 0xff];
@@ -302,7 +302,25 @@ impl Painter {
 		if !self.pipelines.contains_key(pipeline_key) {
 			let f = &self.forms[sketch.form.0];
 			let s = &self.shades[sketch.shade.0];
-			let format = layer.map_or(self.config.format, |l| l.format);
+
+			let targets: Vec<Option<ColorTargetState>> = if let Some(l) = layer {
+				l.formats
+					.iter()
+					.map(|f| {
+						Some(wgpu::ColorTargetState {
+							format: *f,
+							blend: Some(sketch.blend_state),
+							write_mask: wgpu::ColorWrites::ALL,
+						})
+					})
+					.collect::<Vec<_>>()
+			} else {
+				vec![Some(wgpu::ColorTargetState {
+					format: self.config.format,
+					blend: Some(sketch.blend_state),
+					write_mask: wgpu::ColorWrites::ALL,
+				})]
+			};
 
 			let vertex_shader = self
 				.device
@@ -336,11 +354,7 @@ impl Painter {
 					fragment: Some(wgpu::FragmentState {
 						module: &fragment_shader,
 						entry_point: None,
-						targets: &[Some(wgpu::ColorTargetState {
-							format,
-							blend: Some(sketch.blend_state),
-							write_mask: wgpu::ColorWrites::ALL,
-						})],
+						targets: targets.as_slice(),
 						compilation_options: default(),
 					}),
 					primitive: wgpu::PrimitiveState {
@@ -366,10 +380,10 @@ impl Painter {
 					},
 					multisample: wgpu::MultisampleState {
 						count: layer.map_or(1, |l| {
-							if l.multisampled_texture.is_some() {
-								4
-							} else {
+							if l.multisampled_textures.is_empty() {
 								1
+							} else {
+								4
 							}
 						}),
 						mask: !0,
@@ -403,6 +417,18 @@ impl Painter {
 					source: make_spirv(&s.fragment_bytes.as_ref().unwrap()),
 				});
 
+			let targets: Vec<Option<ColorTargetState>> = layer
+				.formats
+				.iter()
+				.map(|f| {
+					Some(wgpu::ColorTargetState {
+						format: *f,
+						blend: Some(effect.blend_state),
+						write_mask: wgpu::ColorWrites::ALL,
+					})
+				})
+				.collect::<Vec<_>>();
+
 			let pipeline = self
 				.device
 				.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -417,11 +443,7 @@ impl Painter {
 					fragment: Some(wgpu::FragmentState {
 						module: &fragment_shader,
 						entry_point: None,
-						targets: &[Some(wgpu::ColorTargetState {
-							format: layer.format,
-							blend: Some(effect.blend_state),
-							write_mask: wgpu::ColorWrites::ALL,
-						})],
+						targets: targets.as_slice(),
 						compilation_options: default(),
 					}),
 					primitive: wgpu::PrimitiveState {
@@ -583,11 +605,25 @@ impl Painter {
 		if has_sketches {
 			let target_view = &self.textures[l.current_target().0].view;
 
-			let view = l
-				.multisampled_texture
-				.map_or(target_view, |t| &self.textures[t.0].view);
+			let color_attachments: &[Option<RenderPassColorAttachment<'_>>] = if l.is_multi_target {
+				todo!();
+			} else {
+				let multisampled_texture = l.multisampled_textures.get(0);
 
-			let resolve_target = l.multisampled_texture.map(|_| target_view);
+				let view = multisampled_texture.map_or(target_view, |t| &self.textures[t.0].view);
+
+				let resolve_target = multisampled_texture.map(|_| target_view);
+				&[Some(wgpu::RenderPassColorAttachment {
+					view,
+					resolve_target,
+					ops: wgpu::Operations {
+						load: l
+							.clear_color
+							.map_or(wgpu::LoadOp::Load, |color| wgpu::LoadOp::Clear(color)),
+						store: wgpu::StoreOp::Store,
+					},
+				})]
+			};
 
 			let mut encoder = self
 				.device
@@ -596,16 +632,7 @@ impl Painter {
 			{
 				let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
 					label: None,
-					color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-						view,
-						resolve_target,
-						ops: wgpu::Operations {
-							load: l
-								.clear_color
-								.map_or(wgpu::LoadOp::Load, |color| wgpu::LoadOp::Clear(color)),
-							store: wgpu::StoreOp::Store,
-						},
-					})],
+					color_attachments,
 					depth_stencil_attachment: l.depth_texture.as_ref().map(|t| {
 						wgpu::RenderPassDepthStencilAttachment {
 							view: &self.textures[t.0].view,
