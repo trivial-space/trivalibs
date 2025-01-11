@@ -483,6 +483,15 @@ impl Painter {
 		let form = &self.forms[sketch.form.0];
 
 		let draw = |rpass: &mut wgpu::RenderPass| {
+			if let Some(layer) = layer {
+				let l = &self.layers[layer.0];
+				for (index, uniform) in &l.uniforms {
+					rpass.set_bind_group(*index, uniform.binding(self), &[]);
+				}
+			}
+			for (index, uniform) in &sketch.uniforms {
+				rpass.set_bind_group(*index, uniform.binding(self), &[]);
+			}
 			for (index, uniform) in &sketch.uniforms {
 				rpass.set_bind_group(*index, uniform.binding(self), &[]);
 			}
@@ -603,17 +612,16 @@ impl Painter {
 		let has_sketches = sketches_len > 0;
 
 		if has_sketches {
-			let target_view = &self.textures[l.current_target().0].view;
-
-			let color_attachments: &[Option<RenderPassColorAttachment<'_>>] = if l.is_multi_target {
-				todo!();
-			} else {
+			let color_attachments: Vec<Option<RenderPassColorAttachment<'_>>> = if !l
+				.is_multi_target
+			{
+				let target_view = &self.textures[l.current_target().0].view;
 				let multisampled_texture = l.multisampled_textures.get(0);
 
 				let view = multisampled_texture.map_or(target_view, |t| &self.textures[t.0].view);
-
 				let resolve_target = multisampled_texture.map(|_| target_view);
-				&[Some(wgpu::RenderPassColorAttachment {
+
+				vec![Some(wgpu::RenderPassColorAttachment {
 					view,
 					resolve_target,
 					ops: wgpu::Operations {
@@ -623,6 +631,30 @@ impl Painter {
 						store: wgpu::StoreOp::Store,
 					},
 				})]
+			} else {
+				l.target_textures
+					.iter()
+					.enumerate()
+					.map(|(i, t)| {
+						let target_view = &self.textures[t.0].view;
+						let multisampled_texture = l.multisampled_textures.get(i);
+
+						let view =
+							multisampled_texture.map_or(target_view, |t| &self.textures[t.0].view);
+						let resolve_target = multisampled_texture.map(|_| target_view);
+
+						Some(wgpu::RenderPassColorAttachment {
+							view,
+							resolve_target,
+							ops: wgpu::Operations {
+								load: l
+									.clear_color
+									.map_or(wgpu::LoadOp::Load, |color| wgpu::LoadOp::Clear(color)),
+								store: wgpu::StoreOp::Store,
+							},
+						})
+					})
+					.collect::<Vec<_>>()
 			};
 
 			let mut encoder = self
@@ -632,7 +664,7 @@ impl Painter {
 			{
 				let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
 					label: None,
-					color_attachments,
+					color_attachments: &color_attachments,
 					depth_stencil_attachment: l.depth_texture.as_ref().map(|t| {
 						wgpu::RenderPassDepthStencilAttachment {
 							view: &self.textures[t.0].view,

@@ -3,7 +3,7 @@ use crate::{
 	texture::{Sampler, Texture},
 	Painter,
 };
-use trivalibs_core::glam::{Mat3, Mat3A, Mat4, UVec2, Vec2, Vec3, Vec3A, Vec4};
+use trivalibs_core::glam::{Mat3, Mat3A, Mat4, Quat, UVec2, Vec2, Vec3, Vec3A, Vec4};
 
 #[derive(Clone, Copy)]
 pub struct UniformType(pub(crate) usize);
@@ -109,6 +109,9 @@ impl UniformType {
 	pub fn create_u32(&self, painter: &mut Painter) -> UniformBuffer<u32> {
 		self.create_buff(painter, 0u32)
 	}
+	pub fn create_quat(&self, painter: &mut Painter) -> UniformBuffer<Quat> {
+		self.create_buff(painter, Quat::IDENTITY)
+	}
 
 	pub fn const_buff<T: bytemuck::Pod>(&self, painter: &mut Painter, data: T) -> Uniform {
 		self.create_buff(painter, data).uniform
@@ -140,6 +143,9 @@ impl UniformType {
 	}
 	pub fn const_u32(&self, painter: &mut Painter, u: u32) -> Uniform {
 		self.const_buff(painter, u)
+	}
+	pub fn const_quat(&self, painter: &mut Painter, quat: Quat) -> Uniform {
+		self.const_buff(painter, quat)
 	}
 	pub fn const_tex2d(
 		&self,

@@ -5,7 +5,6 @@ use crate::{
 	uniform::{Uniform, UniformLayer, UniformTex2D, UniformType},
 	Painter,
 };
-use std::collections::BTreeMap;
 
 fn map_format_to_u8(format: wgpu::TextureFormat) -> u8 {
 	match format {
@@ -107,6 +106,7 @@ pub(crate) struct LayerStorage {
 	pub current_target: usize,
 	pub texture_count: usize,
 	pub is_multi_target: bool,
+	pub uniforms: Vec<(u32, Uniform)>,
 }
 
 impl LayerStorage {
@@ -140,7 +140,7 @@ pub struct LayerProps {
 	pub clear_color: Option<wgpu::Color>,
 	pub depth_test: bool,
 	pub binding_visibility: wgpu::ShaderStages,
-	pub uniforms: BTreeMap<u32, Uniform>,
+	pub uniforms: Vec<(u32, Uniform)>,
 	pub multisampled: bool,
 }
 
@@ -153,7 +153,7 @@ impl Default for LayerProps {
 			width: 0,
 			height: 0,
 			formats: Vec::with_capacity(1),
-			uniforms: BTreeMap::new(),
+			uniforms: Vec::with_capacity(0),
 			binding_visibility: wgpu::ShaderStages::FRAGMENT,
 			clear_color: None,
 			depth_test: false,
@@ -303,7 +303,8 @@ impl Layer {
 			multisampled_textures,
 			current_target: 0,
 			texture_count,
-			is_multi_target: false,
+			is_multi_target,
+			uniforms: props.uniforms,
 		};
 
 		painter.layers.push(storage);
@@ -312,6 +313,10 @@ impl Layer {
 
 	pub fn get_uniform(&self) -> Uniform {
 		Uniform::Layer(UniformLayer(self.0))
+	}
+
+	pub fn get_target_uniform(&self, painter: &Painter, index: usize) -> Uniform {
+		painter.layers[self.0].target_uniforms[index].uniform
 	}
 
 	pub fn set_clear_color(&mut self, painter: &mut Painter, color: Option<wgpu::Color>) {
