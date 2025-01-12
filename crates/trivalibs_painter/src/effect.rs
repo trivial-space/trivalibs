@@ -2,6 +2,7 @@ use crate::{shade::Shade, uniform::Uniform, Painter};
 
 pub(crate) struct EffectStorage {
 	pub uniforms: Vec<(u32, Uniform)>,
+	pub instances: Vec<Vec<(u32, Uniform)>>,
 	pub shade: Shade,
 	pub pipeline_key: Vec<u8>,
 	pub blend_state: wgpu::BlendState,
@@ -10,6 +11,9 @@ pub(crate) struct EffectStorage {
 #[derive(Clone)]
 pub struct EffectProps {
 	pub uniforms: Vec<(u32, Uniform)>,
+	/// Repeatedly render this effect multiple times with different uniforms into the same target without target swapping.
+	/// This is useful for example for deferred lighting, where each light is rendered with custom blend state on top of the last.
+	pub instances: Vec<Vec<(u32, Uniform)>>,
 	pub blend_state: wgpu::BlendState,
 }
 
@@ -17,6 +21,7 @@ impl Default for EffectProps {
 	fn default() -> Self {
 		EffectProps {
 			uniforms: Vec::with_capacity(0),
+			instances: Vec::with_capacity(0),
 			blend_state: wgpu::BlendState::REPLACE,
 		}
 	}
@@ -53,7 +58,8 @@ impl Effect {
 		.collect();
 
 		let effect = EffectStorage {
-			uniforms: props.uniforms.clone(),
+			uniforms: props.uniforms,
+			instances: props.instances,
 			shade,
 			pipeline_key,
 			blend_state: props.blend_state,

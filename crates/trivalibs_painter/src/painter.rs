@@ -557,11 +557,25 @@ impl Painter {
 				rpass.set_bind_group(0, tex.uniform.binding(self), &[]);
 			}
 
+			let l = &self.layers[layer.0];
+			for (index, uniform) in &l.uniforms {
+				rpass.set_bind_group(*index, uniform.binding(self), &[]);
+			}
+
 			for (index, uniform) in &e.uniforms {
 				rpass.set_bind_group(*index, uniform.binding(self), &[]);
 			}
 
-			rpass.draw(0..3, 0..1);
+			if !e.instances.is_empty() {
+				for uniforms in &e.instances {
+					for (index, uniform) in uniforms {
+						rpass.set_bind_group(*index, uniform.binding(self), &[]);
+					}
+					rpass.draw(0..3, 0..1);
+				}
+			} else {
+				rpass.draw(0..3, 0..1);
+			}
 		}
 
 		self.queue.submit(Some(encoder.finish()));

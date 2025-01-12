@@ -36,23 +36,26 @@ struct App {
 	canvas: Layer,
 }
 
+const LIGHTS_COUNT: usize = 10;
+
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let uniform_type = p.uniform_type_buffered_vert();
+		let u_vert_type = p.uniform_type_buffered_vert();
+		let u_frag_type = p.uniform_type_buffered_frag();
 
 		let scene_shade = p.shade_create(ShadeProps {
 			vertex_format: &[Float32x3, Float32x3, Float32x3],
-			uniform_types: &[uniform_type, uniform_type, uniform_type],
+			uniform_types: &[u_vert_type, u_vert_type, u_vert_type],
 		});
 		load_vertex_shader!(scene_shade, p, "../scene_shader/vertex.spv");
 		load_fragment_shader!(scene_shade, p, "../scene_shader/fragment.spv");
 
 		let ball_form = p.form_create(&create_ball_geom(), default());
 
-		let vp_mat = uniform_type.create_mat4(p);
+		let vp_mat = u_vert_type.create_mat4(p);
 
-		let ball_model_mat = uniform_type.create_mat4(p);
-		let ball_rot = uniform_type.create_quat(p);
+		let ball_model_mat = u_vert_type.create_mat4(p);
+		let ball_rot = u_vert_type.create_quat(p);
 
 		let ball_sketch = p.sketch_create(
 			ball_form,
@@ -68,8 +71,8 @@ impl CanvasApp<()> for App {
 
 		let box_form = p.form_create(&create_box_geom(), default());
 
-		let box_model_mat = uniform_type.create_mat4(p);
-		let box_rot = uniform_type.create_quat(p);
+		let box_model_mat = u_vert_type.create_mat4(p);
+		let box_rot = u_vert_type.create_quat(p);
 
 		let box_sketch = p.sketch_create(
 			box_form,
@@ -114,13 +117,43 @@ impl CanvasApp<()> for App {
 		let tex_type = p.uniform_type_tex_2d_frag();
 
 		let canvas_shade = p.shade_create_effect(ShadeEffectProps {
-			uniform_types: &[tex_type, tex_type, tex_type],
+			uniform_types: &[
+				tex_type,
+				tex_type,
+				tex_type,
+				u_frag_type,
+				// u_frag_type,
+				// u_frag_type,
+			],
 		});
 		load_fragment_shader!(canvas_shade, p, "../light_shader/fragment.spv");
 
 		let color_target = scene_layer.get_target_uniform(p, 0);
 		let normal_target = scene_layer.get_target_uniform(p, 1);
 		let position_target = scene_layer.get_target_uniform(p, 2);
+
+		let lights = (0..LIGHTS_COUNT)
+			.map(|_| {
+				let light_pos =
+					rand_in_unit_sphere() * rand_range(10.0, 30.0) + vec3(0.0, 0.0, -20.0);
+				let light_pos_u = u_frag_type.const_vec3(p, light_pos);
+
+				// let light_color = vec3(
+				// 	rand_range(0.5, 1.0),
+				// 	rand_range(0.5, 1.0),
+				// 	rand_range(0.5, 1.0),
+				// );
+				// let light_color_u = u_frag_type.const_vec3(p, light_color);
+
+				map! {
+					3 => light_pos_u,
+					// 5 => light_color_u,
+				}
+			})
+			.collect::<Vec<_>>();
+
+		let cam_pos = vec3(0.0, 5.0, 0.0);
+		// let cam_pos_u = u_frag_type.const_vec3(p, cam_pos);
 
 		let canvas_effect = p.effect_create(
 			canvas_shade,
@@ -129,6 +162,20 @@ impl CanvasApp<()> for App {
 					0 => color_target,
 					1 => normal_target,
 					2 => position_target,
+					// 3 => cam_pos_u,
+				},
+				instances: lights,
+				blend_state: wgpu::BlendState {
+					color: wgpu::BlendComponent {
+						src_factor: wgpu::BlendFactor::One,
+						dst_factor: wgpu::BlendFactor::One,
+						operation: wgpu::BlendOperation::Add,
+					},
+					alpha: wgpu::BlendComponent {
+						src_factor: wgpu::BlendFactor::One,
+						dst_factor: wgpu::BlendFactor::One,
+						operation: wgpu::BlendOperation::Add,
+					},
 				},
 				..default()
 			},
@@ -136,13 +183,19 @@ impl CanvasApp<()> for App {
 
 		let canvas = p.layer_create(LayerProps {
 			effects: vec![canvas_effect],
+			clear_color: Some(wgpu::Color {
+				r: 0.0,
+				g: 0.0,
+				b: 0.0,
+				a: 1.0,
+			}),
 			..default()
 		});
 
 		Self {
 			cam: PerspectiveCamera::create(CamProps {
 				fov: Some(0.65),
-				translation: Some(vec3(0.0, 5.0, 0.0)),
+				translation: Some(cam_pos),
 				rot_vertical: Some(-0.26),
 				..default()
 			}),
