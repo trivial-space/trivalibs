@@ -1,4 +1,4 @@
-use crate::{uniform::UniformType, Painter};
+use crate::{uniform::UniformLayout, Painter};
 use std::fs;
 
 pub(crate) struct ShadeStorage {
@@ -12,11 +12,11 @@ pub(crate) struct ShadeStorage {
 
 pub struct ShadeProps<'a, Format: Into<AttribsFormat>> {
 	pub vertex_format: Format,
-	pub uniform_types: &'a [UniformType],
+	pub uniform_types: &'a [UniformLayout],
 }
 
 pub struct ShadeEffectProps<'a> {
-	pub uniform_types: &'a [UniformType],
+	pub uniform_types: &'a [UniformLayout],
 }
 
 pub struct AttribsFormat {

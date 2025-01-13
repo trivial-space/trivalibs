@@ -6,7 +6,7 @@ use crate::{
 	shaders::FULL_SCREEN_QUAD,
 	sketch::{Sketch, SketchProps, SketchStorage},
 	texture::{Sampler, SamplerProps, Texture, Texture2DProps, TextureStorage},
-	uniform::{UniformType, UniformTypeStorage},
+	uniform::{UniformLayout, UniformTypeStorage},
 };
 use std::{collections::BTreeMap, sync::Arc};
 use trivalibs_core::utils::default;
@@ -26,8 +26,8 @@ pub struct Painter {
 	pub(crate) forms: Vec<FormStorage>,
 	pub(crate) shades: Vec<ShadeStorage>,
 	pub(crate) textures: Vec<TextureStorage>,
+	pub(crate) buffers: Vec<wgpu::Buffer>,
 	pub(crate) samplers: Vec<wgpu::Sampler>,
-	pub(crate) uniform_types: Vec<UniformTypeStorage>,
 	pub(crate) sketches: Vec<SketchStorage>,
 	pub(crate) effects: Vec<EffectStorage>,
 	pub(crate) layers: Vec<LayerStorage>,
@@ -94,8 +94,8 @@ impl Painter {
 			forms: Vec::with_capacity(8),
 			shades: Vec::with_capacity(8),
 			textures: Vec::with_capacity(8),
+			buffers: Vec::with_capacity(32),
 			samplers: Vec::with_capacity(8),
-			uniform_types: Vec::with_capacity(8),
 			sketches: Vec::with_capacity(8),
 			effects: Vec::with_capacity(8),
 			layers: Vec::with_capacity(8),
@@ -106,7 +106,7 @@ impl Painter {
 
 		Sampler::create(&mut painter, default());
 
-		let u_type = UniformType::tex_2d(&mut painter, wgpu::ShaderStages::FRAGMENT);
+		let u_type = UniformLayout::tex_2d(&mut painter, wgpu::ShaderStages::FRAGMENT);
 
 		let fullscreen_quad_pipeline_layout =
 			painter
@@ -224,35 +224,35 @@ impl Painter {
 
 	// uniform utils
 
-	pub fn uniform_type_buffered(&mut self, visibility: wgpu::ShaderStages) -> UniformType {
-		UniformType::uniform_buffer(self, visibility)
+	pub fn uniform_type_buffered(&mut self, visibility: wgpu::ShaderStages) -> UniformLayout {
+		UniformLayout::uniform_buffer(self, visibility)
 	}
 
-	pub fn uniform_type_buffered_frag(&mut self) -> UniformType {
+	pub fn uniform_type_buffered_frag(&mut self) -> UniformLayout {
 		self.uniform_type_buffered(wgpu::ShaderStages::FRAGMENT)
 	}
 
-	pub fn uniform_type_buffered_vert(&mut self) -> UniformType {
+	pub fn uniform_type_buffered_vert(&mut self) -> UniformLayout {
 		self.uniform_type_buffered(wgpu::ShaderStages::VERTEX)
 	}
 
-	pub fn uniform_type_buffered_both(&mut self) -> UniformType {
+	pub fn uniform_type_buffered_both(&mut self) -> UniformLayout {
 		self.uniform_type_buffered(wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT)
 	}
 
-	pub fn uniform_type_tex_2d(&mut self, visibility: wgpu::ShaderStages) -> UniformType {
-		UniformType::tex_2d(self, visibility)
+	pub fn uniform_type_tex_2d(&mut self, visibility: wgpu::ShaderStages) -> UniformLayout {
+		UniformLayout::tex_2d(self, visibility)
 	}
 
-	pub fn uniform_type_tex_2d_frag(&mut self) -> UniformType {
+	pub fn uniform_type_tex_2d_frag(&mut self) -> UniformLayout {
 		self.uniform_type_tex_2d(wgpu::ShaderStages::FRAGMENT)
 	}
 
-	pub fn uniform_type_tex_2d_vert(&mut self) -> UniformType {
+	pub fn uniform_type_tex_2d_vert(&mut self) -> UniformLayout {
 		self.uniform_type_tex_2d(wgpu::ShaderStages::VERTEX)
 	}
 
-	pub fn uniform_type_tex_2d_both(&mut self) -> UniformType {
+	pub fn uniform_type_tex_2d_both(&mut self) -> UniformLayout {
 		self.uniform_type_tex_2d(wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT)
 	}
 

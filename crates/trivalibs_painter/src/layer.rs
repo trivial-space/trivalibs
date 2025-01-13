@@ -2,7 +2,7 @@ use crate::{
 	effect::Effect,
 	sketch::Sketch,
 	texture::{Sampler, Texture, Texture2DProps, TextureDepthProps},
-	uniform::{Uniform, UniformLayer, UniformTex2D, UniformType},
+	uniform::{Uniform, UniformLayer, UniformLayout, UniformTex2D},
 	Painter,
 };
 
@@ -196,7 +196,7 @@ impl Layer {
 		.flatten()
 		.collect();
 
-		let uniform_type = UniformType::tex_2d(painter, props.binding_visibility);
+		let uniform_type = UniformLayout::tex_2d(painter, props.binding_visibility);
 
 		let use_swap_targets =
 			props.effects.len() > 1 || (props.sketches.len() > 0 && props.effects.len() > 0);
