@@ -478,11 +478,16 @@ impl Painter {
 					cache: None,
 				});
 
+			let pipeline = PipelineStorage {
+				pipeline,
+				uniforms: Binding::uniforms(self, 0, &[], &[], &[], &layer.data),
+			};
+
 			self.pipelines.insert(pipeline_key.to_vec(), pipeline);
 		}
 
 		let pipeline = &self.pipelines[pipeline_key];
-		rpass.set_pipeline(pipeline);
+		rpass.set_pipeline(&pipeline.pipeline);
 	}
 
 	fn render_shape(
@@ -783,7 +788,7 @@ impl Painter {
 				timestamp_writes: None,
 				occlusion_query_set: None,
 			});
-			rpass.set_pipeline(pipeline);
+			rpass.set_pipeline(&pipeline.pipeline);
 			rpass.set_bind_group(0, &self.bindings[layer_binding.0].binding, &[]);
 			rpass.draw(0..3, 0..1);
 		}

@@ -134,7 +134,20 @@ impl Binding {
 
 		if let Some(data) = layer_data {
 			for (i, u) in data.uniforms.iter() {
-				let resource = uniform_to_binding_resource(painter, u);
+				let resource = match u {
+					Uniform::Tex2D(tex) => {
+						let tex = &painter.textures[tex.0];
+						wgpu::BindingResource::TextureView(&tex.view)
+					}
+					Uniform::Sampler(sampler) => {
+						let sampler = &painter.samplers[sampler.0];
+						wgpu::BindingResource::Sampler(&sampler)
+					}
+					Uniform::Buffer(buffer) => {
+						let buffer = &painter.buffers[buffer.0];
+						buffer.as_entire_binding()
+					}
+				};
 				uniforms.insert(
 					*i,
 					wgpu::BindGroupEntry {
@@ -147,7 +160,20 @@ impl Binding {
 
 		if let Some(data) = shape_data {
 			for (i, u) in data.uniforms.iter() {
-				let resource = uniform_to_binding_resource(painter, u);
+				let resource = match u {
+					Uniform::Tex2D(tex) => {
+						let tex = &painter.textures[tex.0];
+						wgpu::BindingResource::TextureView(&tex.view)
+					}
+					Uniform::Sampler(sampler) => {
+						let sampler = &painter.samplers[sampler.0];
+						wgpu::BindingResource::Sampler(&sampler)
+					}
+					Uniform::Buffer(buffer) => {
+						let buffer = &painter.buffers[buffer.0];
+						buffer.as_entire_binding()
+					}
+				};
 				uniforms.insert(
 					*i,
 					wgpu::BindGroupEntry {
@@ -180,7 +206,20 @@ impl Binding {
 						*i,
 						wgpu::BindGroupEntry {
 							binding: *i,
-							resource: uniform_to_binding_resource(painter, u),
+							resource: match u {
+								Uniform::Tex2D(tex) => {
+									let tex = &painter.textures[tex.0];
+									wgpu::BindingResource::TextureView(&tex.view)
+								}
+								Uniform::Sampler(sampler) => {
+									let sampler = &painter.samplers[sampler.0];
+									wgpu::BindingResource::Sampler(&sampler)
+								}
+								Uniform::Buffer(buffer) => {
+									let buffer = &painter.buffers[buffer.0];
+									buffer.as_entire_binding()
+								}
+							},
 						},
 					);
 				}
@@ -227,25 +266,5 @@ impl Binding {
 		}
 
 		todo!()
-	}
-}
-
-fn uniform_to_binding_resource<'a>(
-	painter: &'a mut Painter,
-	u: &'a Uniform,
-) -> wgpu::BindingResource<'a> {
-	match u {
-		Uniform::Tex2D(tex) => {
-			let tex = &painter.textures[tex.0];
-			wgpu::BindingResource::TextureView(&tex.view)
-		}
-		Uniform::Sampler(sampler) => {
-			let sampler = &painter.samplers[sampler.0];
-			wgpu::BindingResource::Sampler(&sampler)
-		}
-		Uniform::Buffer(buffer) => {
-			let buffer = &painter.buffers[buffer.0];
-			buffer.as_entire_binding()
-		}
 	}
 }
