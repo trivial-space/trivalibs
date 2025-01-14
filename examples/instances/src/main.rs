@@ -1,10 +1,11 @@
 use trivalibs::{
+	map,
 	math::transform::Transform,
 	painter::{
 		load_fragment_shader, load_vertex_shader,
-		shade::ShadeProps,
+		shade::{ShadeData, ShadeProps},
 		shape::{Shape, ShapeProps},
-		uniform::UniformBuffer,
+		uniform::{UniformBuffer, UniformType},
 		wgpu::{self, VertexFormat},
 		AppConfig, CanvasApp, Event, Painter,
 	},
@@ -55,12 +56,12 @@ impl CanvasApp<()> for App {
 				.unwrap()
 		});
 
-		let vert_u_type = p.uniform_type_buffered_vert();
-		let frag_u_type = p.uniform_type_buffered_frag();
+		let u_type = p.uniform_type_buffered();
 
 		let shade = p.shade_create(ShadeProps {
 			attributes: vec![VertexFormat::Float32x3],
-			uniforms: &[vert_u_type, vert_u_type, frag_u_type],
+			uniforms: &[u_type.vert(), u_type.vert(), u_type.frag()],
+			layers: &[],
 		});
 		load_vertex_shader!(shade, p, "../shader/vertex.spv");
 		load_fragment_shader!(shade, p, "../shader/fragment.spv");
@@ -68,26 +69,30 @@ impl CanvasApp<()> for App {
 		let form = p.form_create(VERTICES, default());
 
 		let model_mats = (0..triangles.len())
-			.map(|_| vert_u_type.create_mat4(p))
+			.map(|_| u_type.create_mat4(p))
 			.collect::<Vec<_>>();
 
-		let cam = vert_u_type.create_mat4(p);
+		let cam = u_type.create_mat4(p);
 
 		let instances = model_mats
 			.iter()
-			.map(|model| {
-				vec![
-					(1, model.uniform),
-					(2, frag_u_type.const_vec4(p, rand_vec4())),
-				]
+			.map(|model| ShadeData {
+				uniforms: map! {
+					1 => model.uniform(),
+					2 => u_type.const_vec4(p, rand_vec4())
+				},
+				layers: Vec::with_capacity(0),
 			})
 			.collect();
 
-		let sketch = p.sketch_create(
+		let shape = p.shape_create(
 			form,
 			shade,
 			ShapeProps {
-				uniforms: vec![(0, cam.uniform)],
+				data: Some(ShadeData {
+					uniforms: vec![(0, cam.uniform())],
+					layers: Vec::with_capacity(0),
+				}),
 				instances,
 				cull_mode: None,
 				blend_state: wgpu::BlendState::ALPHA_BLENDING,
@@ -103,7 +108,7 @@ impl CanvasApp<()> for App {
 			}),
 			triangles,
 
-			sketch,
+			sketch: shape,
 			model_mats,
 			vp_mat: cam,
 		}

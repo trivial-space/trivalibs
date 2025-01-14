@@ -16,7 +16,7 @@ use winit::window::Window;
 
 pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0xff, 0xff];
 
-struct PipelineStorage {
+pub(crate) struct PipelineStorage {
 	pipeline: wgpu::RenderPipeline,
 	uniforms: Vec<Binding>,
 }
@@ -279,12 +279,7 @@ impl Painter {
 		self.window.inner_size()
 	}
 
-	fn set_shape_pipeline(
-		&mut self,
-		rpass: &mut wgpu::RenderPass,
-		shape: Shape,
-		layer: Option<Layer>,
-	) {
+	fn get_shape_pipeline_key(&self, shape: Shape, layer: Option<Layer>) -> Vec<u8> {
 		let l = layer.map(|l| &self.layers[l.0]);
 
 		let layer_key = match l {
@@ -293,8 +288,18 @@ impl Painter {
 		};
 
 		let sp = &self.shapes[shape.0];
+		[sp.pipeline_key.as_slice(), layer_key].concat()
+	}
+
+	fn ensure_shape_pipeline<'a>(
+		&'a mut self,
+		pipeline_key: &Vec<u8>,
+		shape: Shape,
+		layer: Option<Layer>,
+	) {
+		let sp = &self.shapes[shape.0];
 		let sd = &self.shades[sp.shade.0];
-		let pipeline_key = &[sp.pipeline_key.as_slice(), layer_key].concat();
+		let l = layer.map(|l| &self.layers[l.0]);
 
 		if !self.pipelines.contains_key(pipeline_key) {
 			let f = &self.forms[sp.form.0];
@@ -409,20 +414,19 @@ impl Painter {
 
 			self.pipelines.insert(pipeline_key.clone(), pipeline);
 		}
-
-		let pipeline = &self.pipelines[pipeline_key];
-		rpass.set_pipeline(&pipeline.pipeline);
 	}
 
-	fn set_effect_pipeline(&mut self, rpass: &mut wgpu::RenderPass, effect: Effect, layer: Layer) {
-		let layer = &self.layers[layer.0];
-		let effect = &self.effects[effect.0];
+	fn get_effect_pipeline_key(&self, effect: Effect, layer: Layer) -> Vec<u8> {
+		let layer_key = self.layers[layer.0].pipeline_key.as_slice();
+		let effect_key = self.effects[effect.0].pipeline_key.as_slice();
+		[effect_key, layer_key].concat()
+	}
 
-		let layer_key = layer.pipeline_key.as_slice();
-		let pipeline_key = &[effect.pipeline_key.as_slice(), layer_key].concat();
-
+	fn ensure_effect_pipeline<'a>(&mut self, pipeline_key: &Vec<u8>, effect: Effect, layer: Layer) {
 		if !self.pipelines.contains_key(pipeline_key) {
-			let s = &self.shades[effect.shade.0];
+			let e = &self.effects[effect.0];
+			let s = &self.shades[e.shade.0];
+			let l = &self.layers[layer.0];
 
 			let fragment_shader = self
 				.device
@@ -431,13 +435,13 @@ impl Painter {
 					source: make_spirv(&s.fragment_bytes.as_ref().unwrap()),
 				});
 
-			let targets: Vec<Option<ColorTargetState>> = layer
+			let targets: Vec<Option<ColorTargetState>> = l
 				.formats
 				.iter()
 				.map(|f| {
 					Some(wgpu::ColorTargetState {
 						format: *f,
-						blend: Some(effect.blend_state),
+						blend: Some(e.blend_state),
 						write_mask: wgpu::ColorWrites::ALL,
 					})
 				})
@@ -478,16 +482,23 @@ impl Painter {
 					cache: None,
 				});
 
+			let data = &e.data.clone();
+			let instances = &e.instances.clone();
+			let layer_data = &l.data.clone();
 			let pipeline = PipelineStorage {
 				pipeline,
-				uniforms: Binding::uniforms(self, 0, &[], &[], &[], &layer.data),
+				uniforms: Binding::uniforms(
+					self,
+					s.uniforms_length,
+					s.uniform_layout,
+					data,
+					instances,
+					layer_data,
+				),
 			};
 
 			self.pipelines.insert(pipeline_key.to_vec(), pipeline);
 		}
-
-		let pipeline = &self.pipelines[pipeline_key];
-		rpass.set_pipeline(&pipeline.pipeline);
 	}
 
 	fn render_shape(
@@ -496,55 +507,55 @@ impl Painter {
 		shape: Shape,
 		layer: Option<Layer>,
 	) {
-		self.set_shape_pipeline(rpass, shape, layer);
-
-		let shape = &self.shapes[shape.0];
-		let form = &self.forms[shape.form.0];
-
-		let binding_index = shape.uniform_binding_index;
-
-		let draw = |rpass: &mut wgpu::RenderPass, binding: Option<Binding>| {
-			if let Some(layer) = layer {
-				let l = &self.layers[layer.0];
-				if let Some(data) = l.data {
-					for (index, layer) in data.layers {
-						let l = &self.layers[layer.0];
-						let b = l.current_source();
-						rpass.set_bind_group(index, &self.bindings[b.0].binding, &[]);
-					}
-				}
-			}
-
-			if let Some(data) = shape.data {
-				for (index, layer) in data.layers {
-					let l = &self.layers[layer.0];
-					let b = l.current_source();
-					rpass.set_bind_group(index, &self.bindings[b.0].binding, &[]);
-				}
-			}
-
+		let draw = |painter: &Painter, rpass: &mut wgpu::RenderPass, binding: Option<Binding>| {
+			let s = &painter.shapes[shape.0];
+			let binding_index = s.uniform_binding_index;
 			if let Some(binding) = binding {
-				rpass.set_bind_group(binding_index, &self.bindings[binding.0].binding, &[]);
+				rpass.set_bind_group(binding_index, &painter.bindings[binding.0].binding, &[]);
 			}
 
-			rpass.set_vertex_buffer(0, form.vertex_buffer.slice(..));
-			if let Some(index_buffer) = &form.index_buffer {
+			let f = &painter.forms[s.form.0];
+			rpass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
+			if let Some(index_buffer) = &f.index_buffer {
 				rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-				rpass.draw_indexed(0..form.index_count, 0, 0..1);
+				rpass.draw_indexed(0..f.index_count, 0, 0..1);
 			} else {
-				rpass.draw(0..form.vertex_count, 0..1);
+				rpass.draw(0..f.vertex_count, 0..1);
 			}
 		};
 
-		if shape.instances.len() > 0 {
-			for uniforms in &shape.instances {
-				for (index, uniform) in uniforms {
-					rpass.set_bind_group(*index, uniform.binding(self), &[]);
+		let pipeline_key = self.get_shape_pipeline_key(shape, layer);
+		self.ensure_shape_pipeline(&pipeline_key, shape, layer);
+
+		let pipeline = &self.pipelines[&pipeline_key];
+		rpass.set_pipeline(&pipeline.pipeline);
+
+		if let Some(layer) = layer {
+			let l = &self.layers[layer.0];
+			if let Some(data) = &l.data {
+				for (index, layer) in &data.layers {
+					let l = &self.layers[layer.0];
+					let b = l.current_source();
+					rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 				}
-				draw(rpass);
 			}
+		}
+
+		let s = &self.shapes[shape.0];
+		if let Some(data) = &s.data {
+			for (index, layer) in &data.layers {
+				let l = &self.layers[layer.0];
+				let b = l.current_source();
+				rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
+			}
+		}
+
+		if pipeline.uniforms.is_empty() {
+			draw(self, rpass, None);
 		} else {
-			draw(rpass);
+			for binding in &pipeline.uniforms {
+				draw(self, rpass, Some(binding.clone()));
+			}
 		}
 	}
 
@@ -580,33 +591,43 @@ impl Painter {
 				occlusion_query_set: None,
 			});
 
-			self.set_effect_pipeline(&mut rpass, effect, layer);
+			let pipeline_key = self.get_effect_pipeline_key(effect, layer);
+			self.ensure_effect_pipeline(&pipeline_key, effect, layer);
+
+			let pipeline = &self.pipelines[&pipeline_key];
+			rpass.set_pipeline(&pipeline.pipeline);
 
 			let e = &self.effects[effect.0];
+			let l = &self.layers[layer.0];
 
 			if !skip_source {
-				let tex = self.layers[layer.0].current_source();
-				rpass.set_bind_group(0, tex.uniform.binding(self), &[]);
+				let b = self.layers[layer.0].current_source();
+				rpass.set_bind_group(0, &self.bindings[b.0].binding, &[]);
 			}
 
-			let l = &self.layers[layer.0];
-			for (index, uniform) in &l.uniforms {
-				rpass.set_bind_group(*index, uniform.binding(self), &[]);
+			if let Some(data) = &l.data {
+				for (index, layer) in &data.layers {
+					let l = &self.layers[layer.0];
+					let b = l.current_source();
+					rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
+				}
 			}
 
-			for (index, uniform) in &e.uniforms {
-				rpass.set_bind_group(*index, uniform.binding(self), &[]);
+			if let Some(data) = &e.data {
+				for (index, layer) in &data.layers {
+					let l = &self.layers[layer.0];
+					let b = l.current_source();
+					rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
+				}
 			}
 
-			if !e.instances.is_empty() {
-				for uniforms in &e.instances {
-					for (index, uniform) in uniforms {
-						rpass.set_bind_group(*index, uniform.binding(self), &[]);
-					}
+			if pipeline.uniforms.is_empty() {
+				rpass.draw(0..3, 0..1);
+			} else {
+				for b in &pipeline.uniforms {
+					rpass.set_bind_group(e.uniform_binding_index, &self.bindings[b.0].binding, &[]);
 					rpass.draw(0..3, 0..1);
 				}
-			} else {
-				rpass.draw(0..3, 0..1);
 			}
 		}
 

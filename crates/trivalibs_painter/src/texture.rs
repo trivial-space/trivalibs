@@ -1,4 +1,4 @@
-use crate::{binding::Binding, Painter};
+use crate::{binding::Binding, uniform::Uniform, Painter};
 use trivalibs_core::utils::default;
 
 #[derive(Clone, Copy)]
@@ -182,6 +182,10 @@ impl Texture {
 		let t = &mut painter.textures[self.0];
 		t.texture.destroy();
 	}
+
+	pub fn uniform(&self) -> Uniform {
+		Uniform::Tex2D(*self)
+	}
 }
 
 #[derive(Clone, Copy)]
@@ -203,5 +207,9 @@ impl Sampler {
 		painter.samplers.push(sampler);
 
 		Self(painter.samplers.len() - 1)
+	}
+
+	pub fn uniform(&self) -> Uniform {
+		Uniform::Sampler(*self)
 	}
 }

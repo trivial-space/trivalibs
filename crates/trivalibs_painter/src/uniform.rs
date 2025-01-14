@@ -168,6 +168,12 @@ impl UniformBufferType {
 #[derive(Clone, Copy)]
 pub struct Buffer(pub(crate) usize);
 
+impl Buffer {
+	pub fn uniform(&self) -> Uniform {
+		Uniform::Buffer(*self)
+	}
+}
+
 pub struct UniformBuffer<T> {
 	buffer: Buffer,
 	t: std::marker::PhantomData<T>,
