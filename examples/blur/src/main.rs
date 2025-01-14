@@ -7,7 +7,7 @@ use trivalibs::{
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
 		shade::{ShadeEffectProps, ShadeProps},
-		sketch::SketchProps,
+		shape::ShapeProps,
 		uniform::UniformBuffer,
 		wgpu::{self, VertexFormat::*},
 		AppConfig, CanvasApp, Event, Painter,
@@ -49,20 +49,20 @@ impl CanvasApp<()> for App {
 		let tex_type = p.uniform_type_tex_2d_frag();
 
 		let triangle_shade = p.shade_create(ShadeProps {
-			uniform_types: &[],
-			vertex_format: &[Float32x2, Float32x2],
+			uniforms: &[],
+			attributes: &[Float32x2, Float32x2],
 		});
 		load_vertex_shader!(triangle_shade, p, "../triangle_shader/vert.spv");
 		load_fragment_shader!(triangle_shade, p, "../triangle_shader/frag.spv");
 
 		let blur_shade = p.shade_create_effect(ShadeEffectProps {
-			uniform_types: &[tex_type, u_fs_type, u_fs_type, u_fs_type],
+			uniforms: &[tex_type, u_fs_type, u_fs_type, u_fs_type],
 		});
 		load_fragment_shader!(blur_shade, p, "../blur_shader/frag.spv");
 
 		let tri_form = p.form_create(TRIANGLE, default());
 
-		let tri_sketch = p.sketch_create(tri_form, triangle_shade, SketchProps { ..default() });
+		let tri_sketch = p.sketch_create(tri_form, triangle_shade, ShapeProps { ..default() });
 
 		let size = u_fs_type.create_vec2(p);
 		let horiz = u_fs_type.const_vec2(p, vec2(1.0, 0.0));
@@ -114,7 +114,7 @@ impl CanvasApp<()> for App {
 		// ));
 
 		let canvas = p.layer_create(LayerProps {
-			sketches: vec![tri_sketch],
+			shapes: vec![tri_sketch],
 			effects,
 			clear_color: Some(wgpu::Color::BLUE),
 			..default()

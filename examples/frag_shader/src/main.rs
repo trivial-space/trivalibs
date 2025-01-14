@@ -24,7 +24,7 @@ impl CanvasApp<()> for App {
 		let u_type = p.uniform_type_buffered_frag();
 
 		let shade = p.shade_create_effect(ShadeEffectProps {
-			uniform_types: &[u_type, u_type],
+			uniforms: &[u_type, u_type],
 		});
 		load_fragment_shader!(shade, p, "../shader/main.spv");
 

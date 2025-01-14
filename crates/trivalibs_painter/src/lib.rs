@@ -15,12 +15,13 @@ pub use winit;
 
 pub mod painter;
 pub use painter::Painter;
+pub mod binding;
 pub mod effect;
 pub mod form;
 pub mod layer;
 pub mod shade;
 pub mod shaders;
-pub mod sketch;
+pub mod shape;
 pub mod texture;
 pub mod uniform;
 

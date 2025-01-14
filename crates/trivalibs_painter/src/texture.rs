@@ -1,4 +1,4 @@
-use crate::Painter;
+use crate::{binding::Binding, Painter};
 use trivalibs_core::utils::default;
 
 #[derive(Clone, Copy)]
@@ -39,6 +39,7 @@ impl Default for SamplerProps {
 pub(crate) struct TextureStorage {
 	pub texture: wgpu::Texture,
 	pub view: wgpu::TextureView,
+	pub bindings: Vec<Binding>,
 }
 
 #[derive(Clone, Copy)]
@@ -86,7 +87,11 @@ impl Texture {
 	pub fn create_2d(painter: &mut Painter, props: Texture2DProps, multi_sampled: bool) -> Self {
 		let texture = create_2d(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
-		let storage = TextureStorage { texture, view };
+		let storage = TextureStorage {
+			texture,
+			view,
+			bindings: Vec::with_capacity(32),
+		};
 		painter.textures.push(storage);
 
 		Self(painter.textures.len() - 1)
@@ -95,9 +100,15 @@ impl Texture {
 	pub fn replace_2d(&self, painter: &mut Painter, props: Texture2DProps, multi_sampled: bool) {
 		let texture = create_2d(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
-		let storage = TextureStorage { texture, view };
 
 		let old = &mut painter.textures[self.0];
+
+		let storage = TextureStorage {
+			texture,
+			view,
+			bindings: old.bindings.clone(),
+		};
+
 		old.texture.destroy();
 
 		painter.textures[self.0] = storage;
@@ -110,7 +121,13 @@ impl Texture {
 	) -> Self {
 		let texture = create_depth(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
-		let storage = TextureStorage { texture, view };
+
+		let storage = TextureStorage {
+			texture,
+			view,
+			bindings: Vec::with_capacity(2),
+		};
+
 		painter.textures.push(storage);
 
 		Self(painter.textures.len() - 1)
@@ -124,9 +141,14 @@ impl Texture {
 	) {
 		let texture = create_depth(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
-		let storage = TextureStorage { texture, view };
-
 		let old = &mut painter.textures[self.0];
+
+		let storage = TextureStorage {
+			texture,
+			view,
+			bindings: old.bindings.clone(),
+		};
+
 		old.texture.destroy();
 
 		painter.textures[self.0] = storage;

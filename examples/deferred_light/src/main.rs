@@ -7,7 +7,7 @@ use trivalibs::{
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
 		shade::{ShadeEffectProps, ShadeProps},
-		sketch::SketchProps,
+		shape::ShapeProps,
 		texture::SamplerProps,
 		uniform::UniformBuffer,
 		wgpu::{self, TextureFormat, VertexFormat::*},
@@ -44,8 +44,8 @@ impl CanvasApp<()> for App {
 		let u_frag_type = p.uniform_type_buffered_frag();
 
 		let scene_shade = p.shade_create(ShadeProps {
-			vertex_format: &[Float32x3, Float32x3, Float32x3],
-			uniform_types: &[u_vert_type, u_vert_type, u_vert_type],
+			attributes: &[Float32x3, Float32x3, Float32x3],
+			uniforms: &[u_vert_type, u_vert_type, u_vert_type],
 		});
 		load_vertex_shader!(scene_shade, p, "../scene_shader/vertex.spv");
 		load_fragment_shader!(scene_shade, p, "../scene_shader/fragment.spv");
@@ -60,7 +60,7 @@ impl CanvasApp<()> for App {
 		let ball_sketch = p.sketch_create(
 			ball_form,
 			scene_shade,
-			SketchProps {
+			ShapeProps {
 				uniforms: map! {
 					0 => ball_model_mat.uniform,
 					2 => ball_rot.uniform,
@@ -77,7 +77,7 @@ impl CanvasApp<()> for App {
 		let box_sketch = p.sketch_create(
 			box_form,
 			scene_shade,
-			SketchProps {
+			ShapeProps {
 				uniforms: map! {
 					0 => box_model_mat.uniform,
 					2 => box_rot.uniform,
@@ -99,7 +99,7 @@ impl CanvasApp<()> for App {
 				b: 0.7,
 				a: 1.0,
 			}),
-			sketches: vec![ball_sketch, box_sketch],
+			shapes: vec![ball_sketch, box_sketch],
 			uniforms: map! {
 				1 => vp_mat.uniform,
 			},
@@ -117,7 +117,7 @@ impl CanvasApp<()> for App {
 		let tex_type = p.uniform_type_tex_2d_frag();
 
 		let canvas_shade = p.shade_create_effect(ShadeEffectProps {
-			uniform_types: &[
+			uniforms: &[
 				tex_type,
 				tex_type,
 				tex_type,

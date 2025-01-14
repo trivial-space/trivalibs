@@ -3,7 +3,7 @@ use trivalibs::{
 	painter::{
 		load_fragment_shader, load_vertex_shader,
 		shade::ShadeProps,
-		sketch::{Sketch, SketchProps},
+		shape::{Shape, ShapeProps},
 		uniform::UniformBuffer,
 		wgpu::{self, VertexFormat},
 		AppConfig, CanvasApp, Event, Painter,
@@ -26,7 +26,7 @@ struct App {
 	cam: PerspectiveCamera,
 	triangles: Vec<Triangle>,
 
-	sketch: Sketch,
+	sketch: Shape,
 	model_mats: Vec<UniformBuffer<Mat4>>,
 	vp_mat: UniformBuffer<Mat4>,
 }
@@ -59,8 +59,8 @@ impl CanvasApp<()> for App {
 		let frag_u_type = p.uniform_type_buffered_frag();
 
 		let shade = p.shade_create(ShadeProps {
-			vertex_format: vec![VertexFormat::Float32x3],
-			uniform_types: &[vert_u_type, vert_u_type, frag_u_type],
+			attributes: vec![VertexFormat::Float32x3],
+			uniforms: &[vert_u_type, vert_u_type, frag_u_type],
 		});
 		load_vertex_shader!(shade, p, "../shader/vertex.spv");
 		load_fragment_shader!(shade, p, "../shader/fragment.spv");
@@ -86,7 +86,7 @@ impl CanvasApp<()> for App {
 		let sketch = p.sketch_create(
 			form,
 			shade,
-			SketchProps {
+			ShapeProps {
 				uniforms: vec![(0, cam.uniform)],
 				instances,
 				cull_mode: None,

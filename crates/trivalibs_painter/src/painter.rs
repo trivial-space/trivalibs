@@ -1,12 +1,13 @@
 use crate::{
+	binding::{Binding, BindingLayout, BindingStorage},
 	effect::{Effect, EffectProps, EffectStorage},
 	form::{Form, FormBuffers, FormProps, FormStorage},
 	layer::{Layer, LayerProps, LayerStorage},
 	shade::{AttribsFormat, Shade, ShadeEffectProps, ShadeProps, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
-	sketch::{Sketch, SketchProps, SketchStorage},
+	shape::{Shape, ShapeProps, ShapeStorage},
 	texture::{Sampler, SamplerProps, Texture, Texture2DProps, TextureStorage},
-	uniform::{UniformLayout, UniformTypeStorage},
+	uniform::{LayerType, UniformBufferType, UniformSamplerType, UniformTex2DType},
 };
 use std::{collections::BTreeMap, sync::Arc};
 use trivalibs_core::utils::default;
@@ -14,6 +15,11 @@ use wgpu::{util::make_spirv, ColorTargetState, RenderPassColorAttachment};
 use winit::window::Window;
 
 pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0xff, 0xff];
+
+struct PipelineStorage {
+	pipeline: wgpu::RenderPipeline,
+	uniforms: Vec<Binding>,
+}
 
 pub struct Painter {
 	pub surface: wgpu::Surface<'static>,
@@ -28,11 +34,12 @@ pub struct Painter {
 	pub(crate) textures: Vec<TextureStorage>,
 	pub(crate) buffers: Vec<wgpu::Buffer>,
 	pub(crate) samplers: Vec<wgpu::Sampler>,
-	pub(crate) sketches: Vec<SketchStorage>,
+	pub(crate) shapes: Vec<ShapeStorage>,
 	pub(crate) effects: Vec<EffectStorage>,
 	pub(crate) layers: Vec<LayerStorage>,
-	pub(crate) bindings: Vec<wgpu::BindGroup>,
-	pub(crate) pipelines: BTreeMap<Vec<u8>, wgpu::RenderPipeline>,
+	pub(crate) bindings: Vec<BindingStorage>,
+	pub(crate) binding_layouts: Vec<wgpu::BindGroupLayout>,
+	pub(crate) pipelines: BTreeMap<Vec<u8>, PipelineStorage>,
 	fullscreen_quad_shader: wgpu::ShaderModule,
 }
 
@@ -96,9 +103,10 @@ impl Painter {
 			textures: Vec::with_capacity(8),
 			buffers: Vec::with_capacity(32),
 			samplers: Vec::with_capacity(8),
-			sketches: Vec::with_capacity(8),
+			shapes: Vec::with_capacity(8),
 			effects: Vec::with_capacity(8),
 			layers: Vec::with_capacity(8),
+			binding_layouts: Vec::with_capacity(8),
 			bindings: Vec::with_capacity(8),
 			pipelines: BTreeMap::new(),
 			fullscreen_quad_shader,
@@ -106,14 +114,15 @@ impl Painter {
 
 		Sampler::create(&mut painter, default());
 
-		let u_type = UniformLayout::tex_2d(&mut painter, wgpu::ShaderStages::FRAGMENT);
+		let layer_type = LayerType {};
+		let layer_layout = BindingLayout::layer(&mut painter, layer_type.frag());
 
 		let fullscreen_quad_pipeline_layout =
 			painter
 				.device
 				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 					label: None,
-					bind_group_layouts: &[&painter.uniform_types[u_type.0].layout],
+					bind_group_layouts: &[&painter.binding_layouts[layer_layout.0]],
 					push_constant_ranges: &[],
 				});
 
@@ -159,7 +168,10 @@ impl Painter {
 
 		painter.pipelines.insert(
 			FULL_SCREEN_TEXTURE_PIPELINE.to_vec(),
-			fullscreen_quad_pipeline,
+			PipelineStorage {
+				pipeline: fullscreen_quad_pipeline,
+				uniforms: Vec::with_capacity(0),
+			},
 		);
 
 		painter
@@ -206,10 +218,10 @@ impl Painter {
 		Sampler(0)
 	}
 
-	// sketch utils
+	// shape utils
 
-	pub fn sketch_create(&mut self, form: Form, shade: Shade, props: SketchProps) -> Sketch {
-		Sketch::new(self, form, shade, props)
+	pub fn shape_create(&mut self, form: Form, shade: Shade, props: ShapeProps) -> Shape {
+		Shape::new(self, form, shade, props)
 	}
 
 	pub fn effect_create(&mut self, shade: Shade, props: EffectProps) -> Effect {
@@ -224,36 +236,20 @@ impl Painter {
 
 	// uniform utils
 
-	pub fn uniform_type_buffered(&mut self, visibility: wgpu::ShaderStages) -> UniformLayout {
-		UniformLayout::uniform_buffer(self, visibility)
+	pub fn uniform_type_buffered(&self) -> UniformBufferType {
+		UniformBufferType {}
 	}
 
-	pub fn uniform_type_buffered_frag(&mut self) -> UniformLayout {
-		self.uniform_type_buffered(wgpu::ShaderStages::FRAGMENT)
+	pub fn uniform_type_tex_2d(&self) -> UniformTex2DType {
+		UniformTex2DType {}
 	}
 
-	pub fn uniform_type_buffered_vert(&mut self) -> UniformLayout {
-		self.uniform_type_buffered(wgpu::ShaderStages::VERTEX)
+	pub fn uniform_type_sampler(&self) -> UniformSamplerType {
+		UniformSamplerType {}
 	}
 
-	pub fn uniform_type_buffered_both(&mut self) -> UniformLayout {
-		self.uniform_type_buffered(wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT)
-	}
-
-	pub fn uniform_type_tex_2d(&mut self, visibility: wgpu::ShaderStages) -> UniformLayout {
-		UniformLayout::tex_2d(self, visibility)
-	}
-
-	pub fn uniform_type_tex_2d_frag(&mut self) -> UniformLayout {
-		self.uniform_type_tex_2d(wgpu::ShaderStages::FRAGMENT)
-	}
-
-	pub fn uniform_type_tex_2d_vert(&mut self) -> UniformLayout {
-		self.uniform_type_tex_2d(wgpu::ShaderStages::VERTEX)
-	}
-
-	pub fn uniform_type_tex_2d_both(&mut self) -> UniformLayout {
-		self.uniform_type_tex_2d(wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT)
+	pub fn uniform_type_layer(&self) -> LayerType {
+		LayerType {}
 	}
 
 	// general utils
@@ -283,33 +279,33 @@ impl Painter {
 		self.window.inner_size()
 	}
 
-	fn set_sketch_pipeline(
+	fn set_shape_pipeline(
 		&mut self,
 		rpass: &mut wgpu::RenderPass,
-		sketch: Sketch,
+		shape: Shape,
 		layer: Option<Layer>,
 	) {
-		let layer = layer.map(|l| &self.layers[l.0]);
+		let l = layer.map(|l| &self.layers[l.0]);
 
-		let layer_key = match layer {
+		let layer_key = match l {
 			Some(layer) => layer.pipeline_key.as_slice(),
 			None => &[],
 		};
 
-		let sketch = &self.sketches[sketch.0];
-		let pipeline_key = &[sketch.pipeline_key.as_slice(), layer_key].concat();
+		let sp = &self.shapes[shape.0];
+		let sd = &self.shades[sp.shade.0];
+		let pipeline_key = &[sp.pipeline_key.as_slice(), layer_key].concat();
 
 		if !self.pipelines.contains_key(pipeline_key) {
-			let f = &self.forms[sketch.form.0];
-			let s = &self.shades[sketch.shade.0];
+			let f = &self.forms[sp.form.0];
 
-			let targets: Vec<Option<ColorTargetState>> = if let Some(l) = layer {
+			let targets: Vec<Option<ColorTargetState>> = if let Some(l) = l {
 				l.formats
 					.iter()
 					.map(|f| {
 						Some(wgpu::ColorTargetState {
 							format: *f,
-							blend: Some(sketch.blend_state),
+							blend: Some(sp.blend_state),
 							write_mask: wgpu::ColorWrites::ALL,
 						})
 					})
@@ -317,7 +313,7 @@ impl Painter {
 			} else {
 				vec![Some(wgpu::ColorTargetState {
 					format: self.config.format,
-					blend: Some(sketch.blend_state),
+					blend: Some(sp.blend_state),
 					write_mask: wgpu::ColorWrites::ALL,
 				})]
 			};
@@ -326,28 +322,28 @@ impl Painter {
 				.device
 				.create_shader_module(wgpu::ShaderModuleDescriptor {
 					label: None,
-					source: make_spirv(&s.vertex_bytes.as_ref().unwrap()),
+					source: make_spirv(&sd.vertex_bytes.as_ref().unwrap()),
 				});
 
 			let fragment_shader = self
 				.device
 				.create_shader_module(wgpu::ShaderModuleDescriptor {
 					label: None,
-					source: make_spirv(&s.fragment_bytes.as_ref().unwrap()),
+					source: make_spirv(&sd.fragment_bytes.as_ref().unwrap()),
 				});
 
 			let pipeline = self
 				.device
 				.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
 					label: None,
-					layout: Some(&s.pipeline_layout),
+					layout: Some(&sd.pipeline_layout),
 					vertex: wgpu::VertexState {
 						module: &vertex_shader,
 						entry_point: None,
 						buffers: &[wgpu::VertexBufferLayout {
-							array_stride: s.attribs.stride,
+							array_stride: sd.attribs.stride,
 							step_mode: wgpu::VertexStepMode::Vertex,
-							attributes: &s.attribs.attributes,
+							attributes: &sd.attribs.attributes,
 						}],
 						compilation_options: default(),
 					},
@@ -361,13 +357,13 @@ impl Painter {
 						topology: f.props.topology,
 						strip_index_format: None,
 						front_face: f.props.front_face,
-						cull_mode: sketch.cull_mode,
+						cull_mode: sp.cull_mode,
 						// Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
 						polygon_mode: wgpu::PolygonMode::Fill,
 						unclipped_depth: false,
 						conservative: false,
 					},
-					depth_stencil: if layer.map_or(false, |l| l.depth_texture.is_some()) {
+					depth_stencil: if l.map_or(false, |l| l.depth_texture.is_some()) {
 						Some(wgpu::DepthStencilState {
 							format: wgpu::TextureFormat::Depth24Plus,
 							depth_write_enabled: true,
@@ -379,7 +375,7 @@ impl Painter {
 						None
 					},
 					multisample: wgpu::MultisampleState {
-						count: layer.map_or(1, |l| {
+						count: l.map_or(1, |l| {
 							if l.multisampled_textures.is_empty() {
 								1
 							} else {
@@ -393,11 +389,29 @@ impl Painter {
 					cache: None,
 				});
 
+			let l = layer.map(|l| &self.layers[l.0]);
+			let sp = &self.shapes[shape.0];
+			let data = &sp.data.clone();
+			let instances = &sp.instances.clone();
+			let layer_data = l.and_then(|l| l.data.clone());
+
+			let pipeline = PipelineStorage {
+				pipeline,
+				uniforms: Binding::uniforms(
+					self,
+					sd.uniforms_length,
+					sd.uniform_layout,
+					data,
+					instances,
+					&layer_data,
+				),
+			};
+
 			self.pipelines.insert(pipeline_key.clone(), pipeline);
 		}
 
 		let pipeline = &self.pipelines[pipeline_key];
-		rpass.set_pipeline(pipeline);
+		rpass.set_pipeline(&pipeline.pipeline);
 	}
 
 	fn set_effect_pipeline(&mut self, rpass: &mut wgpu::RenderPass, effect: Effect, layer: Layer) {
@@ -471,30 +485,43 @@ impl Painter {
 		rpass.set_pipeline(pipeline);
 	}
 
-	fn render_sketch(
+	fn render_shape(
 		&mut self,
 		rpass: &mut wgpu::RenderPass<'_>,
-		sketch: Sketch,
+		shape: Shape,
 		layer: Option<Layer>,
 	) {
-		self.set_sketch_pipeline(rpass, sketch, layer);
+		self.set_shape_pipeline(rpass, shape, layer);
 
-		let sketch = &self.sketches[sketch.0];
-		let form = &self.forms[sketch.form.0];
+		let shape = &self.shapes[shape.0];
+		let form = &self.forms[shape.form.0];
 
-		let draw = |rpass: &mut wgpu::RenderPass| {
+		let binding_index = shape.uniform_binding_index;
+
+		let draw = |rpass: &mut wgpu::RenderPass, binding: Option<Binding>| {
 			if let Some(layer) = layer {
 				let l = &self.layers[layer.0];
-				for (index, uniform) in &l.uniforms {
-					rpass.set_bind_group(*index, uniform.binding(self), &[]);
+				if let Some(data) = l.data {
+					for (index, layer) in data.layers {
+						let l = &self.layers[layer.0];
+						let b = l.current_source();
+						rpass.set_bind_group(index, &self.bindings[b.0].binding, &[]);
+					}
 				}
 			}
-			for (index, uniform) in &sketch.uniforms {
-				rpass.set_bind_group(*index, uniform.binding(self), &[]);
+
+			if let Some(data) = shape.data {
+				for (index, layer) in data.layers {
+					let l = &self.layers[layer.0];
+					let b = l.current_source();
+					rpass.set_bind_group(index, &self.bindings[b.0].binding, &[]);
+				}
 			}
-			for (index, uniform) in &sketch.uniforms {
-				rpass.set_bind_group(*index, uniform.binding(self), &[]);
+
+			if let Some(binding) = binding {
+				rpass.set_bind_group(binding_index, &self.bindings[binding.0].binding, &[]);
 			}
+
 			rpass.set_vertex_buffer(0, form.vertex_buffer.slice(..));
 			if let Some(index_buffer) = &form.index_buffer {
 				rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -504,8 +531,8 @@ impl Painter {
 			}
 		};
 
-		if sketch.instances.len() > 0 {
-			for uniforms in &sketch.instances {
+		if shape.instances.len() > 0 {
+			for uniforms in &shape.instances {
 				for (index, uniform) in uniforms {
 					rpass.set_bind_group(*index, uniform.binding(self), &[]);
 				}
@@ -583,7 +610,7 @@ impl Painter {
 		Ok(())
 	}
 
-	pub fn draw<'a>(&mut self, sketch: Sketch) -> Result<(), wgpu::SurfaceError> {
+	pub fn draw<'a>(&mut self, shape: Shape) -> Result<(), wgpu::SurfaceError> {
 		let frame = self.surface.get_current_texture()?;
 
 		let view = frame
@@ -610,7 +637,7 @@ impl Painter {
 				occlusion_query_set: None,
 			});
 
-			self.render_sketch(&mut rpass, sketch, None);
+			self.render_shape(&mut rpass, shape, None);
 		}
 
 		self.queue.submit(Some(encoder.finish()));
@@ -621,11 +648,11 @@ impl Painter {
 
 	pub fn paint(&mut self, layer: Layer) -> Result<(), wgpu::SurfaceError> {
 		let l = &self.layers[layer.0];
-		let sketches_len = l.sketches.len();
+		let shapes_len = l.shapes.len();
 		let effects_len = l.effects.len();
-		let has_sketches = sketches_len > 0;
+		let has_shapes = shapes_len > 0;
 
-		if has_sketches {
+		if has_shapes {
 			let color_attachments: Vec<Option<RenderPassColorAttachment<'_>>> = if !l
 				.is_multi_target
 			{
@@ -693,9 +720,9 @@ impl Painter {
 					occlusion_query_set: None,
 				});
 
-				for i in 0..sketches_len {
-					let sketch = self.layers[layer.0].sketches[i];
-					self.render_sketch(&mut rpass, sketch, Some(layer));
+				for i in 0..shapes_len {
+					let shape = self.layers[layer.0].shapes[i];
+					self.render_shape(&mut rpass, shape, Some(layer));
 				}
 			}
 
@@ -706,12 +733,12 @@ impl Painter {
 			return Ok(());
 		}
 
-		if has_sketches {
+		if has_shapes {
 			self.layers[layer.0].swap_targets();
 		}
 
 		for i in 0..effects_len {
-			let skip_source_tex = i == 0 && !has_sketches;
+			let skip_source_tex = i == 0 && !has_shapes;
 			let effect = self.layers[layer.0].effects[i];
 			self.render_effect(effect, layer, skip_source_tex)?;
 			self.layers[layer.0].swap_targets();
@@ -738,7 +765,7 @@ impl Painter {
 			.device
 			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-		let uniform = layer.get_uniform();
+		let layer_binding = self.layers[layer.0].current_source();
 		let pipeline = &self.pipelines[FULL_SCREEN_TEXTURE_PIPELINE];
 
 		{
@@ -757,7 +784,7 @@ impl Painter {
 				occlusion_query_set: None,
 			});
 			rpass.set_pipeline(pipeline);
-			rpass.set_bind_group(0, uniform.binding(self), &[]);
+			rpass.set_bind_group(0, &self.bindings[layer_binding.0].binding, &[]);
 			rpass.draw(0..3, 0..1);
 		}
 

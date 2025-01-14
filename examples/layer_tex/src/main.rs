@@ -4,7 +4,7 @@ use trivalibs::{
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
 		shade::ShadeProps,
-		sketch::SketchProps,
+		shape::ShapeProps,
 		texture::SamplerProps,
 		uniform::UniformBuffer,
 		wgpu::{self, SurfaceError, VertexFormat::*},
@@ -110,15 +110,15 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_type = p.uniform_type_tex_2d_frag();
 
 		let color_shade = p.shade_create(ShadeProps {
-			uniform_types: &[u_vs_type, u_fs_type],
-			vertex_format: &[Float32x3, Float32x2],
+			uniforms: &[u_vs_type, u_fs_type],
+			attributes: &[Float32x3, Float32x2],
 		});
 		load_vertex_shader!(color_shade, p, "../color_shader/vs_main.spv");
 		load_fragment_shader!(color_shade, p, "../color_shader/fs_main.spv");
 
 		let tex_shader = p.shade_create(ShadeProps {
-			uniform_types: &[u_vs_type, tex_type],
-			vertex_format: &[Float32x3, Float32x2],
+			uniforms: &[u_vs_type, tex_type],
+			attributes: &[Float32x3, Float32x2],
 		});
 		load_vertex_shader!(tex_shader, p, "../tex_shader/vs_main.spv");
 		load_fragment_shader!(tex_shader, p, "../tex_shader/fs_main.spv");
@@ -135,7 +135,7 @@ impl CanvasApp<ResizeEvent> for App {
 		let color_quad_sketch = p.sketch_create(
 			quad_form,
 			color_shade,
-			SketchProps {
+			ShapeProps {
 				cull_mode: None,
 				uniforms: vec![(0, color_quad_mvp.uniform), (1, quad_color)],
 				..default()
@@ -145,7 +145,7 @@ impl CanvasApp<ResizeEvent> for App {
 		let color_triangle_sketch = p.sketch_create(
 			triangle_form,
 			color_shade,
-			SketchProps {
+			ShapeProps {
 				cull_mode: None,
 				uniforms: vec![(0, color_triangle_mvp.uniform), (1, triangle_color)],
 				..default()
@@ -158,7 +158,7 @@ impl CanvasApp<ResizeEvent> for App {
 			..default()
 		});
 		let color_triangle_layer = p.layer_create(LayerProps {
-			sketches: vec![color_triangle_sketch],
+			shapes: vec![color_triangle_sketch],
 			sampler,
 			width: COLOR_TEX_SIZE_BIG.0,
 			height: COLOR_TEX_SIZE_BIG.1,
@@ -168,7 +168,7 @@ impl CanvasApp<ResizeEvent> for App {
 		});
 
 		let color_quad_layer = p.layer_create(LayerProps {
-			sketches: vec![color_quad_sketch],
+			shapes: vec![color_quad_sketch],
 			width: COLOR_TEX_SIZE_BIG.0,
 			height: COLOR_TEX_SIZE_BIG.1,
 			clear_color: Some(GREEN),
@@ -184,7 +184,7 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_quad_sketch = p.sketch_create(
 			quad_form,
 			tex_shader,
-			SketchProps {
+			ShapeProps {
 				cull_mode: None,
 				uniforms: vec![(0, tex_quad_mvp.uniform), (1, tri_tex)],
 				..default()
@@ -194,7 +194,7 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_triangle_sketch = p.sketch_create(
 			triangle_form,
 			tex_shader,
-			SketchProps {
+			ShapeProps {
 				cull_mode: None,
 				uniforms: vec![(0, tex_triangle_mvp.uniform), (1, quad_tex)],
 				..default()
@@ -202,7 +202,7 @@ impl CanvasApp<ResizeEvent> for App {
 		);
 
 		let canvas = p.layer_create(LayerProps {
-			sketches: vec![tex_quad_sketch, tex_triangle_sketch],
+			shapes: vec![tex_quad_sketch, tex_triangle_sketch],
 			clear_color: Some(wgpu::Color::BLACK),
 			depth_test: true,
 			multisampled: true,

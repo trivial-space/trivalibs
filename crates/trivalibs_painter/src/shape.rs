@@ -1,44 +1,53 @@
 use crate::{
+	form::Form,
 	shade::{Shade, ShadeData},
 	Painter,
 };
 
-pub(crate) struct EffectStorage {
+#[derive(Clone)]
+pub(crate) struct ShapeStorage {
+	pub form: Form,
 	pub shade: Shade,
 	pub data: Option<ShadeData>,
 	pub instances: Vec<ShadeData>,
 	pub pipeline_key: Vec<u8>,
+	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
 	pub uniform_binding_index: u32,
 }
 
 #[derive(Clone)]
-pub struct EffectProps {
+pub struct ShapeProps {
 	pub data: Option<ShadeData>,
-	/// Repeatedly render this effect multiple times with different uniforms into the same target without target swapping.
-	/// This is useful for example for deferred lighting, where each light is rendered with custom blend state on top of the last.
 	pub instances: Vec<ShadeData>,
+	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
 }
 
-impl Default for EffectProps {
+impl Default for ShapeProps {
 	fn default() -> Self {
-		EffectProps {
+		ShapeProps {
 			data: None,
 			instances: Vec::with_capacity(0),
+			cull_mode: Some(wgpu::Face::Back),
 			blend_state: wgpu::BlendState::REPLACE,
 		}
 	}
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Effect(pub(crate) usize);
+pub struct Shape(pub(crate) usize);
 
-impl Effect {
-	pub fn new(painter: &mut Painter, shade: Shade, props: EffectProps) -> Self {
+impl Shape {
+	pub fn new(painter: &mut Painter, form: Form, shade: Shade, props: ShapeProps) -> Self {
+		let f = &painter.forms[form.0];
+		let s = &painter.shades[shade.0];
+
 		let pipeline_key = vec![
 			(shade.0 as u16).to_le_bytes().to_vec(),
 			vec![
+				f.props.topology as u8,
+				f.props.front_face as u8,
 				props.blend_state.alpha.dst_factor as u8,
 				props.blend_state.alpha.src_factor as u8,
 				props.blend_state.alpha.operation as u8,
@@ -51,19 +60,19 @@ impl Effect {
 		.flatten()
 		.collect();
 
-		let s = &painter.shades[shade.0];
-
-		let effect = EffectStorage {
-			data: props.data,
-			instances: props.instances,
+		let sketch = ShapeStorage {
+			form,
 			shade,
 			pipeline_key,
+			data: props.data,
+			instances: props.instances,
+			cull_mode: props.cull_mode,
 			blend_state: props.blend_state,
 			uniform_binding_index: s.layer_layouts.len() as u32,
 		};
 
-		painter.effects.push(effect);
+		painter.shapes.push(sketch);
 
-		Self(painter.effects.len() - 1)
+		Shape(painter.shapes.len() - 1)
 	}
 }

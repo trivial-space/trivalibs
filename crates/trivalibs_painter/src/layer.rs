@@ -1,8 +1,10 @@
 use crate::{
+	binding::{Binding, BindingLayout},
 	effect::Effect,
-	sketch::Sketch,
+	shade::ShadeData,
+	shape::Shape,
 	texture::{Sampler, Texture, Texture2DProps, TextureDepthProps},
-	uniform::{Uniform, UniformLayer, UniformLayout, UniformTex2D},
+	uniform::{LayerLayout, LayerType, Uniform},
 	Painter,
 };
 
@@ -90,12 +92,11 @@ fn map_format_to_u8(format: wgpu::TextureFormat) -> u8 {
 }
 
 pub(crate) struct LayerStorage {
-	pub target_textures: Vec<Texture>,
-	pub target_uniforms: Vec<UniformTex2D>,
-	pub sketches: Vec<Sketch>,
-	pub depth_texture: Option<Texture>,
-	// pub depth_uniform: Option<UniformTex2D>, // TODO
+	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
+	pub target_textures: Vec<Texture>,
+	pub target_bindings: Vec<Binding>,
+	pub depth_texture: Option<Texture>,
 	pub width: u32,
 	pub height: u32,
 	pub use_window_size: bool,
@@ -106,7 +107,7 @@ pub(crate) struct LayerStorage {
 	pub current_target: usize,
 	pub texture_count: usize,
 	pub is_multi_target: bool,
-	pub uniforms: Vec<(u32, Uniform)>,
+	pub data: Option<ShadeData>,
 }
 
 impl LayerStorage {
@@ -119,19 +120,19 @@ impl LayerStorage {
 		&self.target_textures[self.current_target]
 	}
 
-	pub(crate) fn current_source<'a>(&'a self) -> &'a UniformTex2D {
+	pub(crate) fn current_source<'a>(&'a self) -> &'a Binding {
 		let mut idx = self.current_target;
 		if idx == 0 {
 			idx = self.texture_count;
 		}
 
-		&self.target_uniforms[idx - 1]
+		&self.target_bindings[idx - 1]
 	}
 }
 
 #[derive(Clone)]
 pub struct LayerProps {
-	pub sketches: Vec<Sketch>,
+	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
 	pub sampler: Sampler,
 	pub width: u32,
@@ -139,22 +140,23 @@ pub struct LayerProps {
 	pub formats: Vec<wgpu::TextureFormat>,
 	pub clear_color: Option<wgpu::Color>,
 	pub depth_test: bool,
-	pub binding_visibility: wgpu::ShaderStages,
-	pub uniforms: Vec<(u32, Uniform)>,
+	pub layer_layout: LayerLayout,
+	pub data: Option<ShadeData>,
 	pub multisampled: bool,
 }
 
 impl Default for LayerProps {
 	fn default() -> Self {
+		let l_type = LayerType {};
 		LayerProps {
-			sketches: Vec::with_capacity(0),
+			shapes: Vec::with_capacity(0),
 			effects: Vec::with_capacity(0),
 			sampler: Sampler(0),
 			width: 0,
 			height: 0,
 			formats: Vec::with_capacity(1),
-			uniforms: Vec::with_capacity(0),
-			binding_visibility: wgpu::ShaderStages::FRAGMENT,
+			data: None,
+			layer_layout: l_type.frag(),
 			clear_color: None,
 			depth_test: false,
 			multisampled: false,
@@ -196,10 +198,10 @@ impl Layer {
 		.flatten()
 		.collect();
 
-		let uniform_type = UniformLayout::tex_2d(painter, props.binding_visibility);
+		let layer = Layer(painter.layers.len());
 
 		let use_swap_targets =
-			props.effects.len() > 1 || (props.sketches.len() > 0 && props.effects.len() > 0);
+			props.effects.len() > 1 || (props.shapes.len() > 0 && props.effects.len() > 0);
 
 		let format_len = props.formats.len();
 		let is_multi_target = format_len > 1;
@@ -215,10 +217,11 @@ impl Layer {
 		};
 
 		let mut target_textures = Vec::with_capacity(texture_count);
-		let mut target_uniforms = Vec::with_capacity(texture_count);
+		let mut target_bindings = Vec::with_capacity(texture_count);
 		let mut multisampled_textures =
 			Vec::with_capacity(if props.multisampled { texture_count } else { 0 });
 		let mut formats = Vec::with_capacity(texture_count);
+		let layout = BindingLayout::layer(painter, props.layer_layout);
 
 		if is_multi_target {
 			if use_swap_targets {
@@ -238,7 +241,8 @@ impl Layer {
 					false,
 				);
 				target_textures.push(tex);
-				target_uniforms.push(uniform_type.create_tex2d(painter, tex, props.sampler));
+
+				target_bindings.push(Binding::layer(painter, layer, layout, tex, props.sampler));
 				if props.multisampled {
 					multisampled_textures.push(Texture::create_2d(
 						painter,
@@ -269,7 +273,8 @@ impl Layer {
 					false,
 				);
 				target_textures.push(tex);
-				target_uniforms.push(uniform_type.create_tex2d(painter, tex, props.sampler));
+
+				target_bindings.push(Binding::layer(painter, layer, layout, tex, props.sampler));
 			}
 
 			if props.multisampled {
@@ -282,8 +287,8 @@ impl Layer {
 						usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
 					},
 					true,
-				))
-			};
+				));
+			}
 
 			formats.push(format);
 		}
@@ -292,8 +297,8 @@ impl Layer {
 			width,
 			height,
 			target_textures,
-			target_uniforms,
-			sketches: props.sketches.clone(),
+			target_bindings,
+			shapes: props.shapes.clone(),
 			effects: props.effects.clone(),
 			depth_texture,
 			use_window_size,
@@ -304,19 +309,16 @@ impl Layer {
 			current_target: 0,
 			texture_count,
 			is_multi_target,
-			uniforms: props.uniforms,
+			data: props.data,
 		};
 
 		painter.layers.push(storage);
-		Layer(painter.layers.len() - 1)
-	}
 
-	pub fn get_uniform(&self) -> Uniform {
-		Uniform::Layer(UniformLayer(self.0))
+		layer
 	}
 
 	pub fn get_target_uniform(&self, painter: &Painter, index: usize) -> Uniform {
-		painter.layers[self.0].target_uniforms[index].uniform
+		Uniform::Tex2D(painter.layers[self.0].target_textures[index])
 	}
 
 	pub fn set_clear_color(&mut self, painter: &mut Painter, color: Option<wgpu::Color>) {
@@ -386,9 +388,11 @@ impl Layer {
 			);
 		}
 
-		for i in 0..painter.layers[self.0].target_uniforms.len() {
-			let u = painter.layers[self.0].target_uniforms[i];
-			u.recreate(painter);
+		for i in 0..painter.layers[self.0].target_bindings.len() {
+			let _u = painter.layers[self.0].target_bindings[i];
+
+			// TODO: Restore resized layer uniforms
+			// u.recreate(painter);
 		}
 	}
 }

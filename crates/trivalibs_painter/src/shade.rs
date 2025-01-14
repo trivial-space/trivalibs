@@ -1,5 +1,16 @@
-use crate::{uniform::UniformLayout, Painter};
+use crate::{
+	binding::BindingLayout,
+	layer::Layer,
+	uniform::{LayerLayout, Uniform, UniformLayout},
+	Painter,
+};
 use std::fs;
+
+#[derive(Clone)]
+pub struct ShadeData {
+	pub uniforms: Vec<(u32, Uniform)>,
+	pub layers: Vec<(u32, Layer)>,
+}
 
 pub(crate) struct ShadeStorage {
 	pub vertex_path: Option<String>,
@@ -8,15 +19,79 @@ pub(crate) struct ShadeStorage {
 	pub fragment_bytes: Option<Vec<u8>>,
 	pub attribs: AttribsFormat,
 	pub pipeline_layout: wgpu::PipelineLayout,
+	pub uniform_layout: Option<BindingLayout>,
+	pub layer_layouts: Vec<BindingLayout>,
+	pub uniforms_length: usize,
 }
 
 pub struct ShadeProps<'a, Format: Into<AttribsFormat>> {
-	pub vertex_format: Format,
-	pub uniform_types: &'a [UniformLayout],
+	pub attributes: Format,
+	pub uniforms: &'a [UniformLayout],
+	pub layers: &'a [LayerLayout],
+}
+
+fn layouts_from_props(
+	painter: &mut Painter,
+	uniforms: &[UniformLayout],
+	layers: &[LayerLayout],
+) -> (
+	wgpu::PipelineLayout,
+	Vec<BindingLayout>,
+	Option<BindingLayout>,
+) {
+	let layer_layouts = layers
+		.iter()
+		.map(|l| BindingLayout::layer(painter, *l))
+		.collect::<Vec<_>>();
+
+	let uniform_layout = BindingLayout::uniforms(painter, uniforms);
+
+	let mut layouts = vec![];
+
+	for l in layer_layouts.iter() {
+		layouts.push(&painter.binding_layouts[l.0]);
+	}
+
+	if let Some(u) = &uniform_layout {
+		layouts.push(&painter.binding_layouts[u.0]);
+	}
+
+	let pipeline_layout = painter
+		.device
+		.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+			label: None,
+			bind_group_layouts: layouts.as_slice(),
+			push_constant_ranges: &[],
+		});
+
+	(pipeline_layout, layer_layouts, uniform_layout)
+}
+
+impl Default for ShadeProps<'_, AttribsFormat> {
+	fn default() -> Self {
+		Self {
+			attributes: AttribsFormat {
+				attributes: vec![],
+				stride: 0,
+			},
+			uniforms: &[],
+			layers: &[],
+		}
+	}
 }
 
 pub struct ShadeEffectProps<'a> {
-	pub uniform_types: &'a [UniformLayout],
+	pub uniforms: &'a [UniformLayout],
+	pub layers: &'a [LayerLayout],
+}
+
+impl Default for ShadeEffectProps<'_> {
+	fn default() -> Self {
+		Self {
+			uniforms: &[],
+			layers: &[],
+		}
+	}
 }
 
 pub struct AttribsFormat {
@@ -100,21 +175,10 @@ impl Shade {
 		painter: &mut Painter,
 		props: ShadeProps<Format>,
 	) -> Self {
-		let pipeline_layout =
-			painter
-				.device
-				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-					label: None,
-					bind_group_layouts: props
-						.uniform_types
-						.iter()
-						.map(|t| &painter.uniform_types[t.0].layout)
-						.collect::<Vec<_>>()
-						.as_slice(),
-					push_constant_ranges: &[],
-				});
+		let format = props.attributes.into();
 
-		let format = props.vertex_format.into();
+		let (pipeline_layout, layer_layouts, uniform_layout) =
+			layouts_from_props(painter, props.uniforms, props.layers);
 
 		let s = ShadeStorage {
 			vertex_path: None,
@@ -123,6 +187,9 @@ impl Shade {
 			fragment_bytes: None,
 			attribs: format,
 			pipeline_layout,
+			uniform_layout,
+			layer_layouts,
+			uniforms_length: props.uniforms.len(),
 		};
 
 		let i = painter.shades.len();
@@ -132,19 +199,8 @@ impl Shade {
 	}
 
 	pub fn new_effect(painter: &mut Painter, props: ShadeEffectProps) -> Self {
-		let pipeline_layout =
-			painter
-				.device
-				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-					label: None,
-					bind_group_layouts: props
-						.uniform_types
-						.iter()
-						.map(|t| &painter.uniform_types[t.0].layout)
-						.collect::<Vec<_>>()
-						.as_slice(),
-					push_constant_ranges: &[],
-				});
+		let (pipeline_layout, layer_layouts, uniform_layout) =
+			layouts_from_props(painter, props.uniforms, props.layers);
 
 		let format = vec![].into();
 
@@ -155,6 +211,9 @@ impl Shade {
 			fragment_bytes: None,
 			attribs: format,
 			pipeline_layout,
+			uniform_layout,
+			layer_layouts,
+			uniforms_length: props.uniforms.len(),
 		};
 
 		let i = painter.shades.len();

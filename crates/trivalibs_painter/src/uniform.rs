@@ -12,25 +12,13 @@ pub struct UniformLayout {
 	pub(crate) visibility: ShaderStages,
 }
 
+#[derive(Clone, Copy)]
+pub struct LayerLayout {
+	pub(crate) visibility: ShaderStages,
+}
+
 impl UniformLayout {
 	pub(crate) fn uniform_buffer(visibility: wgpu::ShaderStages) -> Self {
-		// TODO: move binding group creation to shade
-		// painter
-		// 	.device
-		// 	.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-		// 		entries: &[wgpu::BindGroupLayoutEntry {
-		// 			binding: 0,
-		// 			visibility,
-		// 			ty: wgpu::BindingType::Buffer {
-		// 				ty: wgpu::BufferBindingType::Uniform,
-		// 				has_dynamic_offset: false,
-		// 				min_binding_size: None,
-		// 			},
-		// 			count: None,
-		// 		}],
-		// 		label: None,
-		// 	});
-
 		Self {
 			visibility,
 			binding_type: BindingType::Buffer {
@@ -60,31 +48,51 @@ impl UniformLayout {
 	}
 }
 
+pub struct LayerType {}
+
+impl LayerType {
+	pub fn layout(&self, visibility: wgpu::ShaderStages) -> LayerLayout {
+		LayerLayout { visibility }
+	}
+	pub fn frag(&self) -> LayerLayout {
+		self.layout(wgpu::ShaderStages::FRAGMENT)
+	}
+	pub fn vert(&self) -> LayerLayout {
+		self.layout(wgpu::ShaderStages::VERTEX)
+	}
+	pub fn both(&self) -> LayerLayout {
+		self.layout(wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT)
+	}
+}
+
+#[derive(Clone, Copy)]
 pub enum Uniform {
 	Buffer(Buffer),
 	Tex2D(Texture),
 	Sampler(Sampler),
 }
 
-pub struct UniformBufferType {}
-
-impl UniformBufferType {
-	pub fn layout(&self, visibility: wgpu::ShaderStages) -> UniformLayout {
-		UniformLayout::uniform_buffer(visibility)
-	}
-
-	pub fn vert(&self) -> UniformLayout {
+pub trait UniformType {
+	fn layout(&self, visibility: wgpu::ShaderStages) -> UniformLayout;
+	fn vert(&self) -> UniformLayout {
 		self.layout(wgpu::ShaderStages::VERTEX)
 	}
-
-	pub fn frag(&self) -> UniformLayout {
+	fn frag(&self) -> UniformLayout {
 		self.layout(wgpu::ShaderStages::FRAGMENT)
 	}
-
-	pub fn both(&self) -> UniformLayout {
+	fn both(&self) -> UniformLayout {
 		self.layout(wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT)
 	}
+}
 
+pub struct UniformBufferType {}
+impl UniformType for UniformBufferType {
+	fn layout(&self, visibility: wgpu::ShaderStages) -> UniformLayout {
+		UniformLayout::uniform_buffer(visibility)
+	}
+}
+
+impl UniformBufferType {
 	pub fn create_buff<T: bytemuck::Pod>(
 		&self,
 		painter: &mut Painter,
@@ -235,23 +243,13 @@ impl UniformBuffer<Vec3U> {
 
 pub struct UniformTex2DType {}
 
-impl UniformTex2DType {
-	pub fn layout(&self, visibility: wgpu::ShaderStages) -> UniformLayout {
+impl UniformType for UniformTex2DType {
+	fn layout(&self, visibility: wgpu::ShaderStages) -> UniformLayout {
 		UniformLayout::tex_2d(visibility)
 	}
+}
 
-	pub fn vert(&self) -> UniformLayout {
-		self.layout(wgpu::ShaderStages::VERTEX)
-	}
-
-	pub fn frag(&self) -> UniformLayout {
-		self.layout(wgpu::ShaderStages::FRAGMENT)
-	}
-
-	pub fn both(&self) -> UniformLayout {
-		self.layout(wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT)
-	}
-
+impl UniformTex2DType {
 	pub fn uniform(&self, tex: Texture) -> Uniform {
 		Uniform::Tex2D(tex)
 	}
@@ -287,23 +285,13 @@ impl UniformTex2DType {
 
 pub struct UniformSamplerType {}
 
-impl UniformSamplerType {
-	pub fn layout(&self, visibility: wgpu::ShaderStages) -> UniformLayout {
+impl UniformType for UniformSamplerType {
+	fn layout(&self, visibility: wgpu::ShaderStages) -> UniformLayout {
 		UniformLayout::sampler(visibility)
 	}
+}
 
-	pub fn vert(&self) -> UniformLayout {
-		self.layout(wgpu::ShaderStages::VERTEX)
-	}
-
-	pub fn frag(&self) -> UniformLayout {
-		self.layout(wgpu::ShaderStages::FRAGMENT)
-	}
-
-	pub fn both(&self) -> UniformLayout {
-		self.layout(wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT)
-	}
-
+impl UniformSamplerType {
 	pub fn uniform(&self, sampler: Sampler) -> Uniform {
 		Uniform::Sampler(sampler)
 	}
