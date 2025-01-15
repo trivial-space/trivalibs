@@ -49,11 +49,13 @@ impl CanvasApp<()> for App {
 				.unwrap()
 		});
 
-		let u_type = p.uniform_type_buffered();
-
 		let shade = p.shade_create(ShadeProps {
 			attributes: vec![Float32x3],
-			uniforms: &[u_type.vert(), u_type.vert(), u_type.frag()],
+			uniforms: &[
+				UNIFORM_BUFFER_VERT,
+				UNIFORM_BUFFER_VERT,
+				UNIFORM_BUFFER_FRAG,
+			],
 			layers: &[],
 		});
 		load_vertex_shader!(shade, p, "../shader/vertex.spv");
@@ -62,17 +64,17 @@ impl CanvasApp<()> for App {
 		let form = p.form_create(VERTICES, default());
 
 		let model_mats = (0..triangles.len())
-			.map(|_| u_type.create_mat4(p))
+			.map(|_| p.uniform_mat4())
 			.collect::<Vec<_>>();
 
-		let cam = u_type.create_mat4(p);
+		let cam = p.uniform_mat4();
 
 		let instances = model_mats
 			.iter()
 			.map(|model| InstanceData {
 				uniforms: map! {
 					1 => model.uniform(),
-					2 => u_type.const_vec4(p, rand_vec4())
+					2 => p.uniform_const_vec4(rand_vec4())
 				},
 				layers: Vec::with_capacity(0),
 			})
@@ -135,5 +137,10 @@ impl CanvasApp<()> for App {
 }
 
 pub fn main() {
-	App::create().config(AppConfig { show_fps: true }).start();
+	App::create()
+		.config(AppConfig {
+			show_fps: true,
+			use_vsync: false,
+		})
+		.start();
 }

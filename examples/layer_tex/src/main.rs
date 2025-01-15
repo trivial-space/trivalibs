@@ -280,7 +280,10 @@ impl CanvasApp<ResizeEvent> for App {
 }
 
 pub fn main() {
-	let app = App::create().config(AppConfig { show_fps: true });
+	let app = App::create().config(AppConfig {
+		show_fps: true,
+		use_vsync: false,
+	});
 
 	let handle = app.get_handle();
 

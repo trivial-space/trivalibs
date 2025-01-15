@@ -1,4 +1,4 @@
-use crate::Painter;
+use crate::{painter::PainterConfig, Painter};
 #[cfg(debug_assertions)]
 use notify::Watcher;
 use std::{sync::Arc, time::Instant};
@@ -51,6 +51,7 @@ pub trait CanvasApp<UserEvent> {
 			is_running: true,
 			is_resizing: false,
 			show_fps: false,
+			use_vsync: true,
 			frame_count: 0,
 			frame_time: 0.0,
 			now: Instant::now(),
@@ -83,6 +84,7 @@ where
 	is_running: bool,
 	is_resizing: bool,
 	show_fps: bool,
+	use_vsync: bool,
 	frame_count: u32,
 	frame_time: f32,
 	now: Instant,
@@ -105,9 +107,19 @@ impl<UserEvent> CanvasHandle<UserEvent> {
 	}
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct AppConfig {
 	pub show_fps: bool,
+	pub use_vsync: bool,
+}
+
+impl Default for AppConfig {
+	fn default() -> Self {
+		Self {
+			show_fps: false,
+			use_vsync: true,
+		}
+	}
 }
 
 pub struct CanvasAppStarter<UserEvent, App>
@@ -126,6 +138,7 @@ where
 {
 	pub fn config(mut self, config: AppConfig) -> Self {
 		self.runner.show_fps = config.show_fps;
+		self.runner.use_vsync = config.use_vsync;
 		self
 	}
 
@@ -225,7 +238,12 @@ where
 					// 	.expect("Couldn't append canvas to document body.");
 				}
 
-				let renderer_future = Painter::new(window);
+				let renderer_future = Painter::new(
+					window,
+					PainterConfig {
+						use_vsync: self.use_vsync,
+					},
+				);
 
 				#[cfg(target_arch = "wasm32")]
 				{

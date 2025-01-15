@@ -119,12 +119,7 @@ impl CanvasApp<()> for App {
 					rand_in_unit_sphere() * rand_range(10.0, 30.0) + vec3(0.0, 0.0, -20.0);
 				let light_pos_u = p.uniform_const_vec3(light_pos);
 
-				let light_color = vec3(
-					rand_range(0.5, 1.0),
-					rand_range(0.5, 1.0),
-					rand_range(0.5, 1.0),
-				);
-				let light_color_u = p.uniform_const_vec3(light_color);
+				let light_color_u = p.uniform_const_vec3(rand_vec3());
 
 				InstanceData {
 					uniforms: map! {
@@ -229,5 +224,10 @@ impl CanvasApp<()> for App {
 }
 
 pub fn main() {
-	App::create().config(AppConfig { show_fps: true }).start();
+	App::create()
+		.config(AppConfig {
+			show_fps: true,
+			use_vsync: false,
+		})
+		.start();
 }

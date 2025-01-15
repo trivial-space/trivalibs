@@ -43,8 +43,12 @@ pub struct Painter {
 	pub(crate) fullscreen_quad_shader: wgpu::ShaderModule,
 }
 
+pub(crate) struct PainterConfig {
+	pub use_vsync: bool,
+}
+
 impl Painter {
-	pub async fn new(window: Arc<Window>) -> Self {
+	pub(crate) async fn new(window: Arc<Window>, painter_config: PainterConfig) -> Self {
 		let mut size = window.inner_size();
 		size.width = size.width.max(1);
 		size.height = size.height.max(1);
@@ -78,11 +82,21 @@ impl Painter {
 			.await
 			.expect("Failed to create device");
 
-		// We could also manually create a SurfaceConfiguration.
-		// See https://sotrh.github.io/learn-wgpu/beginner/tutorial2-surface/#state-new for example.
-		let config = surface
-			.get_default_config(&adapter, size.width, size.height)
-			.unwrap();
+		let surface_caps = surface.get_capabilities(&adapter);
+		let config = wgpu::SurfaceConfiguration {
+			usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+			format: surface_caps.formats[0],
+			width: size.width,
+			height: size.height,
+			present_mode: if painter_config.use_vsync {
+				wgpu::PresentMode::AutoVsync
+			} else {
+				wgpu::PresentMode::AutoNoVsync
+			},
+			alpha_mode: surface_caps.alpha_modes[0],
+			view_formats: vec![],
+			desired_maximum_frame_latency: 2,
+		};
 
 		surface.configure(&device, &config);
 
