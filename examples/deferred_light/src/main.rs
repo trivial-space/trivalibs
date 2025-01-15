@@ -78,12 +78,6 @@ impl CanvasApp<()> for App {
 			},
 		);
 
-		let scene_sampler = p.sampler_create(SamplerProps {
-			mag_filter: wgpu::FilterMode::Nearest,
-			min_filter: wgpu::FilterMode::Nearest,
-			..default()
-		});
-
 		let scene_layer = p.layer_create(LayerProps {
 			clear_color: Some(wgpu::Color {
 				r: 0.5,
@@ -98,7 +92,6 @@ impl CanvasApp<()> for App {
 			formats: vec![Rgba8UnormSrgb, Rgba16Float, Rgba16Float],
 			depth_test: true,
 			multisampled: true,
-			sampler: scene_sampler,
 			..default()
 		});
 
