@@ -3,6 +3,7 @@ use crate::{
 	effect::{Effect, EffectProps, EffectStorage},
 	form::{Form, FormBuffers, FormProps, FormStorage},
 	layer::{Layer, LayerProps, LayerStorage},
+	pipeline::PipelineStorage,
 	shade::{AttribsFormat, Shade, ShadeEffectProps, ShadeProps, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
 	shape::{Shape, ShapeProps, ShapeStorage},
@@ -11,14 +12,10 @@ use crate::{
 };
 use std::{collections::BTreeMap, sync::Arc};
 use trivalibs_core::utils::default;
-use wgpu::{util::make_spirv, ColorTargetState, RenderPassColorAttachment};
+use wgpu::RenderPassColorAttachment;
 use winit::window::Window;
 
 pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0xff, 0xff];
-
-pub(crate) struct PipelineStorage {
-	pipeline: wgpu::RenderPipeline,
-}
 
 pub struct Painter {
 	pub surface: wgpu::Surface<'static>,
@@ -39,7 +36,7 @@ pub struct Painter {
 	pub(crate) bindings: Vec<BindingStorage>,
 	pub(crate) binding_layouts: Vec<wgpu::BindGroupLayout>,
 	pub(crate) pipelines: BTreeMap<Vec<u8>, PipelineStorage>,
-	fullscreen_quad_shader: wgpu::ShaderModule,
+	pub(crate) fullscreen_quad_shader: wgpu::ShaderModule,
 }
 
 impl Painter {
@@ -170,6 +167,9 @@ impl Painter {
 			FULL_SCREEN_TEXTURE_PIPELINE.to_vec(),
 			PipelineStorage {
 				pipeline: fullscreen_quad_pipeline,
+				layer: None,
+				shape: None,
+				effect: None,
 			},
 		);
 
@@ -282,175 +282,38 @@ impl Painter {
 		self.window.inner_size()
 	}
 
-	fn get_shape_pipeline_key(&self, shape: Shape, layer: Layer) -> Vec<u8> {
+	pub(crate) fn get_shape_pipeline_key(&self, shape: Shape, layer: Layer) -> Vec<u8> {
 		let l = &self.layers[layer.0];
 		let sp = &self.shapes[shape.0];
 		[sp.pipeline_key.as_slice(), l.pipeline_key.as_slice()].concat()
 	}
 
-	fn ensure_shape_pipeline<'a>(&'a mut self, pipeline_key: &Vec<u8>, shape: Shape, layer: Layer) {
-		let sp = &self.shapes[shape.0];
-		let sd = &self.shades[sp.shade.0];
-		let l = &self.layers[layer.0];
-
+	pub(crate) fn ensure_shape_pipeline<'a>(
+		&'a mut self,
+		pipeline_key: &Vec<u8>,
+		shape: Shape,
+		layer: Layer,
+	) {
 		if !self.pipelines.contains_key(pipeline_key) {
-			let f = &self.forms[sp.form.0];
-
-			let targets: Vec<Option<ColorTargetState>> = l
-				.formats
-				.iter()
-				.map(|f| {
-					Some(wgpu::ColorTargetState {
-						format: *f,
-						blend: Some(sp.blend_state),
-						write_mask: wgpu::ColorWrites::ALL,
-					})
-				})
-				.collect::<Vec<_>>();
-
-			let vertex_shader = self
-				.device
-				.create_shader_module(wgpu::ShaderModuleDescriptor {
-					label: None,
-					source: make_spirv(&sd.vertex_bytes.as_ref().unwrap()),
-				});
-
-			let fragment_shader = self
-				.device
-				.create_shader_module(wgpu::ShaderModuleDescriptor {
-					label: None,
-					source: make_spirv(&sd.fragment_bytes.as_ref().unwrap()),
-				});
-
-			let pipeline = self
-				.device
-				.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-					label: None,
-					layout: Some(&sd.pipeline_layout),
-					vertex: wgpu::VertexState {
-						module: &vertex_shader,
-						entry_point: None,
-						buffers: &[wgpu::VertexBufferLayout {
-							array_stride: sd.attribs.stride,
-							step_mode: wgpu::VertexStepMode::Vertex,
-							attributes: &sd.attribs.attributes,
-						}],
-						compilation_options: default(),
-					},
-					fragment: Some(wgpu::FragmentState {
-						module: &fragment_shader,
-						entry_point: None,
-						targets: targets.as_slice(),
-						compilation_options: default(),
-					}),
-					primitive: wgpu::PrimitiveState {
-						topology: f.props.topology,
-						strip_index_format: None,
-						front_face: f.props.front_face,
-						cull_mode: sp.cull_mode,
-						// Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-						polygon_mode: wgpu::PolygonMode::Fill,
-						unclipped_depth: false,
-						conservative: false,
-					},
-					depth_stencil: if l.depth_texture.is_some() {
-						Some(wgpu::DepthStencilState {
-							format: wgpu::TextureFormat::Depth24Plus,
-							depth_write_enabled: true,
-							depth_compare: wgpu::CompareFunction::Less,
-							stencil: default(),
-							bias: default(),
-						})
-					} else {
-						None
-					},
-					multisample: wgpu::MultisampleState {
-						count: if l.multisampled_textures.is_empty() {
-							1
-						} else {
-							4
-						},
-						mask: !0,
-						alpha_to_coverage_enabled: false,
-					},
-					multiview: None,
-					cache: None,
-				});
-
-			let pipeline = PipelineStorage { pipeline };
-
+			let pipeline = PipelineStorage::create_shape_pipeline(self, shape, layer);
 			self.pipelines.insert(pipeline_key.clone(), pipeline);
 		}
 	}
 
-	fn get_effect_pipeline_key(&self, effect: Effect, layer: Layer) -> Vec<u8> {
+	pub(crate) fn get_effect_pipeline_key(&self, effect: Effect, layer: Layer) -> Vec<u8> {
 		let layer_key = self.layers[layer.0].pipeline_key.as_slice();
 		let effect_key = self.effects[effect.0].pipeline_key.as_slice();
 		[effect_key, layer_key].concat()
 	}
 
-	fn ensure_effect_pipeline<'a>(&mut self, pipeline_key: &Vec<u8>, effect: Effect, layer: Layer) {
+	pub(crate) fn ensure_effect_pipeline<'a>(
+		&mut self,
+		pipeline_key: &Vec<u8>,
+		effect: Effect,
+		layer: Layer,
+	) {
 		if !self.pipelines.contains_key(pipeline_key) {
-			let e = &self.effects[effect.0];
-			let s = &self.shades[e.shade.0];
-			let l = &self.layers[layer.0];
-
-			let fragment_shader = self
-				.device
-				.create_shader_module(wgpu::ShaderModuleDescriptor {
-					label: None,
-					source: make_spirv(&s.fragment_bytes.as_ref().unwrap()),
-				});
-
-			let targets: Vec<Option<ColorTargetState>> = l
-				.formats
-				.iter()
-				.map(|f| {
-					Some(wgpu::ColorTargetState {
-						format: *f,
-						blend: Some(e.blend_state),
-						write_mask: wgpu::ColorWrites::ALL,
-					})
-				})
-				.collect::<Vec<_>>();
-
-			let pipeline = self
-				.device
-				.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-					label: None,
-					layout: Some(&s.pipeline_layout),
-					vertex: wgpu::VertexState {
-						module: &self.fullscreen_quad_shader,
-						entry_point: Some("vs_main"),
-						buffers: &[],
-						compilation_options: default(),
-					},
-					fragment: Some(wgpu::FragmentState {
-						module: &fragment_shader,
-						entry_point: None,
-						targets: targets.as_slice(),
-						compilation_options: default(),
-					}),
-					primitive: wgpu::PrimitiveState {
-						topology: wgpu::PrimitiveTopology::TriangleStrip,
-						strip_index_format: None,
-						front_face: wgpu::FrontFace::Cw,
-						cull_mode: None,
-						polygon_mode: wgpu::PolygonMode::Fill,
-						..default()
-					},
-					depth_stencil: None,
-					multisample: wgpu::MultisampleState {
-						count: 1,
-						mask: !0,
-						alpha_to_coverage_enabled: false,
-					},
-					multiview: None,
-					cache: None,
-				});
-
-			let pipeline = PipelineStorage { pipeline };
-
+			let pipeline = PipelineStorage::create_effect_pipeline(self, effect, layer);
 			self.pipelines.insert(pipeline_key.to_vec(), pipeline);
 		}
 	}
@@ -474,8 +337,6 @@ impl Painter {
 		};
 
 		let pipeline_key = self.get_shape_pipeline_key(shape, layer);
-		self.ensure_shape_pipeline(&pipeline_key, shape, layer);
-
 		let pipeline = &self.pipelines[&pipeline_key];
 		rpass.set_pipeline(&pipeline.pipeline);
 
@@ -535,8 +396,6 @@ impl Painter {
 			});
 
 			let pipeline_key = self.get_effect_pipeline_key(effect, layer);
-			self.ensure_effect_pipeline(&pipeline_key, effect, layer);
-
 			let pipeline = &self.pipelines[&pipeline_key];
 			rpass.set_pipeline(&pipeline.pipeline);
 
@@ -761,7 +620,11 @@ impl Painter {
 
 			for (shade_idx, pipeline_key) in &pipeline_keys {
 				if *shade_idx == idx as u16 {
-					self.pipelines.remove(pipeline_key);
+					let pipeline = self.pipelines.remove(pipeline_key);
+					if let Some(pipeline) = pipeline {
+						let pipeline = pipeline.recreate(self);
+						self.pipelines.insert(pipeline_key.clone(), pipeline);
+					}
 				}
 			}
 		}

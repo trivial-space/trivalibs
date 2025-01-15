@@ -324,9 +324,13 @@ impl Layer {
 
 		for s in props.shapes {
 			s.prepare_uniforms(painter, layer);
+			let key = painter.get_shape_pipeline_key(s, layer);
+			painter.ensure_shape_pipeline(&key, s, layer);
 		}
 		for e in props.effects {
 			e.prepare_uniforms(painter, layer);
+			let key = painter.get_effect_pipeline_key(e, layer);
+			painter.ensure_effect_pipeline(&key, e, layer);
 		}
 
 		layer

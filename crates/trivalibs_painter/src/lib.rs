@@ -8,6 +8,7 @@ pub mod binding;
 pub mod effect;
 pub mod form;
 pub mod layer;
+pub(crate) mod pipeline;
 pub mod shade;
 pub mod shaders;
 pub mod shape;
