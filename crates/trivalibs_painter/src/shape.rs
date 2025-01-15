@@ -1,3 +1,5 @@
+use trivalibs_core::utils::default;
+
 use crate::{
 	form::Form,
 	shade::{Shade, ShadeData},
@@ -8,7 +10,7 @@ use crate::{
 pub(crate) struct ShapeStorage {
 	pub form: Form,
 	pub shade: Shade,
-	pub data: Option<ShadeData>,
+	pub data: ShadeData,
 	pub instances: Vec<ShadeData>,
 	pub pipeline_key: Vec<u8>,
 	pub cull_mode: Option<wgpu::Face>,
@@ -18,7 +20,7 @@ pub(crate) struct ShapeStorage {
 
 #[derive(Clone)]
 pub struct ShapeProps {
-	pub data: Option<ShadeData>,
+	pub data: ShadeData,
 	pub instances: Vec<ShadeData>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
@@ -27,7 +29,7 @@ pub struct ShapeProps {
 impl Default for ShapeProps {
 	fn default() -> Self {
 		ShapeProps {
-			data: None,
+			data: default(),
 			instances: Vec::with_capacity(0),
 			cull_mode: Some(wgpu::Face::Back),
 			blend_state: wgpu::BlendState::REPLACE,

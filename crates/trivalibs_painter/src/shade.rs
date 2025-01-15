@@ -12,6 +12,15 @@ pub struct ShadeData {
 	pub layers: Vec<(u32, Layer)>,
 }
 
+impl Default for ShadeData {
+	fn default() -> Self {
+		Self {
+			uniforms: Vec::with_capacity(0),
+			layers: Vec::with_capacity(0),
+		}
+	}
+}
+
 pub(crate) struct ShadeStorage {
 	pub vertex_path: Option<String>,
 	pub vertex_bytes: Option<Vec<u8>>,

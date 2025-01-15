@@ -112,7 +112,8 @@ impl Painter {
 			fullscreen_quad_shader,
 		};
 
-		Sampler::create(&mut painter, default());
+		Sampler::create(&mut painter, SamplerProps::NEAREST);
+		Sampler::create(&mut painter, SamplerProps::LINEAR);
 
 		let layer_type = LayerType {};
 		let layer_layout = BindingLayout::layer(&mut painter, layer_type.frag());
@@ -214,8 +215,12 @@ impl Painter {
 		Sampler::create(self, props)
 	}
 
-	pub fn sampler_default(&self) -> Sampler {
+	pub fn sampler_nearest(&self) -> Sampler {
 		Sampler(0)
+	}
+
+	pub fn sampler_linear(&self) -> Sampler {
+		Sampler(1)
 	}
 
 	// shape utils
@@ -542,12 +547,10 @@ impl Painter {
 		}
 
 		let s = &self.shapes[shape.0];
-		if let Some(data) = &s.data {
-			for (index, layer) in &data.layers {
-				let l = &self.layers[layer.0];
-				let b = l.current_source();
-				rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
-			}
+		for (index, layer) in &s.data.layers {
+			let l = &self.layers[layer.0];
+			let b = l.current_source();
+			rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 		}
 
 		if pipeline.uniforms.is_empty() {
@@ -613,12 +616,10 @@ impl Painter {
 				}
 			}
 
-			if let Some(data) = &e.data {
-				for (index, layer) in &data.layers {
-					let l = &self.layers[layer.0];
-					let b = l.current_source();
-					rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
-				}
+			for (index, layer) in &e.data.layers {
+				let l = &self.layers[layer.0];
+				let b = l.current_source();
+				rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 			}
 
 			if pipeline.uniforms.is_empty() {

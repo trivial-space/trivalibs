@@ -1,14 +1,7 @@
 use trivalibs::{
 	map,
 	math::transform::Transform,
-	painter::{
-		load_fragment_shader, load_vertex_shader,
-		shade::{ShadeData, ShadeProps},
-		shape::{Shape, ShapeProps},
-		uniform::{UniformBuffer, UniformType},
-		wgpu::{self, VertexFormat},
-		AppConfig, CanvasApp, Event, Painter,
-	},
+	painter::prelude::*,
 	prelude::*,
 	rendering::{
 		camera::{CamProps, PerspectiveCamera},
@@ -59,7 +52,7 @@ impl CanvasApp<()> for App {
 		let u_type = p.uniform_type_buffered();
 
 		let shade = p.shade_create(ShadeProps {
-			attributes: vec![VertexFormat::Float32x3],
+			attributes: vec![Float32x3],
 			uniforms: &[u_type.vert(), u_type.vert(), u_type.frag()],
 			layers: &[],
 		});
@@ -89,12 +82,12 @@ impl CanvasApp<()> for App {
 			form,
 			shade,
 			ShapeProps {
-				data: Some(ShadeData {
+				data: ShadeData {
 					uniforms: map! {
 						0 => cam.uniform()
 					},
-					layers: Vec::with_capacity(0),
-				}),
+					..default()
+				},
 				instances,
 				cull_mode: None,
 				blend_state: wgpu::BlendState::ALPHA_BLENDING,

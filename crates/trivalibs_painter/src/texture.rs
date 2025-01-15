@@ -26,14 +26,26 @@ pub struct SamplerProps {
 
 impl Default for SamplerProps {
 	fn default() -> Self {
-		Self {
-			address_mode_u: wgpu::AddressMode::ClampToEdge,
-			address_mode_v: wgpu::AddressMode::ClampToEdge,
-			mag_filter: wgpu::FilterMode::Linear,
-			min_filter: wgpu::FilterMode::Linear,
-			sample_depth: false,
-		}
+		Self::NEAREST
 	}
+}
+
+impl SamplerProps {
+	pub const NEAREST: SamplerProps = SamplerProps {
+		address_mode_u: wgpu::AddressMode::ClampToEdge,
+		address_mode_v: wgpu::AddressMode::ClampToEdge,
+		mag_filter: wgpu::FilterMode::Nearest,
+		min_filter: wgpu::FilterMode::Nearest,
+		sample_depth: false,
+	};
+
+	pub const LINEAR: SamplerProps = SamplerProps {
+		address_mode_u: wgpu::AddressMode::ClampToEdge,
+		address_mode_v: wgpu::AddressMode::ClampToEdge,
+		mag_filter: wgpu::FilterMode::Linear,
+		min_filter: wgpu::FilterMode::Linear,
+		sample_depth: false,
+	};
 }
 
 pub(crate) struct TextureStorage {
@@ -112,6 +124,8 @@ impl Texture {
 		old.texture.destroy();
 
 		painter.textures[self.0] = storage;
+
+		self.rebuild_bindings(painter);
 	}
 
 	pub fn create_depth(
@@ -152,6 +166,8 @@ impl Texture {
 		old.texture.destroy();
 
 		painter.textures[self.0] = storage;
+
+		self.rebuild_bindings(painter);
 	}
 
 	pub fn fill_2d(&self, painter: &Painter, data: &[u8]) {
@@ -185,6 +201,13 @@ impl Texture {
 
 	pub fn uniform(&self) -> Uniform {
 		Uniform::Tex2D(*self)
+	}
+
+	pub(crate) fn rebuild_bindings(&self, painter: &mut Painter) {
+		let t = &painter.textures[self.0];
+		for b in t.bindings.clone() {
+			b.rebuild(painter);
+		}
 	}
 }
 

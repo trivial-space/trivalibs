@@ -1,3 +1,5 @@
+use trivalibs_core::utils::default;
+
 use crate::{
 	shade::{Shade, ShadeData},
 	Painter,
@@ -5,7 +7,7 @@ use crate::{
 
 pub(crate) struct EffectStorage {
 	pub shade: Shade,
-	pub data: Option<ShadeData>,
+	pub data: ShadeData,
 	pub instances: Vec<ShadeData>,
 	pub pipeline_key: Vec<u8>,
 	pub blend_state: wgpu::BlendState,
@@ -14,7 +16,7 @@ pub(crate) struct EffectStorage {
 
 #[derive(Clone)]
 pub struct EffectProps {
-	pub data: Option<ShadeData>,
+	pub data: ShadeData,
 	/// Repeatedly render this effect multiple times with different uniforms into the same target without target swapping.
 	/// This is useful for example for deferred lighting, where each light is rendered with custom blend state on top of the last.
 	pub instances: Vec<ShadeData>,
@@ -24,7 +26,7 @@ pub struct EffectProps {
 impl Default for EffectProps {
 	fn default() -> Self {
 		EffectProps {
-			data: None,
+			data: default(),
 			instances: Vec::with_capacity(0),
 			blend_state: wgpu::BlendState::REPLACE,
 		}

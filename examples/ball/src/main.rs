@@ -2,16 +2,7 @@ use geom::create_ball_geom;
 use trivalibs::{
 	map,
 	math::transform::Transform,
-	painter::{
-		layer::{Layer, LayerProps},
-		load_fragment_shader, load_vertex_shader,
-		shade::ShadeProps,
-		shape::ShapeProps,
-		texture::Texture2DProps,
-		uniform::{Mat3U, UniformBuffer},
-		wgpu::{self, VertexFormat::*},
-		AppConfig, CanvasApp, Event, Painter,
-	},
+	painter::prelude::*,
 	prelude::*,
 	rendering::{
 		camera::{CamProps, PerspectiveCamera},
@@ -43,40 +34,44 @@ impl CanvasApp<()> for App {
 		// Grab the bytes of the image.
 		let tex_rgba = &buf[..info.buffer_size()];
 
-		let texture = p.texture_2d_create(Texture2DProps {
+		let tex = p.texture_2d_create(Texture2DProps {
 			width: info.width,
 			height: info.height,
 			format: wgpu::TextureFormat::Rgba8UnormSrgb,
 			usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
 		});
 
-		texture.fill_2d(p, tex_rgba);
+		tex.fill_2d(p, tex_rgba);
 
-		let uniform_type = p.uniform_type_buffered_vert();
-		let tex_type = p.uniform_type_tex_2d_frag();
+		let u_type = p.uniform_type_buffered();
+		let tex_type = p.uniform_type_tex_2d();
+		let s_type = p.uniform_type_sampler();
 
 		let shade = p.shade_create(ShadeProps {
 			attributes: &[Float32x3, Float32x2, Float32x3, Float32x3],
-			uniforms: &[uniform_type, uniform_type, tex_type],
+			uniforms: &[u_type.vert(), u_type.vert(), tex_type.frag(), s_type.frag()],
+			layers: &[],
 		});
 		load_vertex_shader!(shade, p, "../shader/vertex.spv");
 		load_fragment_shader!(shade, p, "../shader/fragment.spv");
 
 		let form = p.form_create(&create_ball_geom(), default());
 
-		let tex = tex_type.const_tex2d(p, texture, p.sampler_default());
-		let mvp = uniform_type.create_mat4(p);
+		let mvp = u_type.create_mat4(p);
+		let norm = u_type.create_mat3(p);
 
-		let norm = uniform_type.create_mat3(p);
-
-		let sketch = p.sketch_create(
+		let sketch = p.shape_create(
 			form,
 			shade,
 			ShapeProps {
-				uniforms: map! {
-					0 => mvp.uniform,
-					1 => norm.uniform,
-					2 => tex,
+				data: ShadeData {
+					uniforms: map! {
+						0 => mvp.uniform(),
+						1 => norm.uniform(),
+						2 => tex.uniform(),
+						3 => p.sampler_linear().uniform(),
+					},
+					..default()
 				},
 				cull_mode: Some(wgpu::Face::Back),
 				..default()

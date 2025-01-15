@@ -11,7 +11,7 @@ pub fn vertex(
 	color: Vec3,
 	normal: Vec3,
 	#[spirv(uniform, descriptor_set = 0, binding = 0)] mvp_mat: &Mat4,
-	#[spirv(uniform, descriptor_set = 1, binding = 0)] normal_mat: &Mat3,
+	#[spirv(uniform, descriptor_set = 0, binding = 1)] normal_mat: &Mat3,
 	// #[spirv(descriptor_set = 0, binding = 2)] light_dir: &Vec3,
 	#[spirv(position)] clip_pos: &mut Vec4,
 	out_uv: &mut Vec2,
@@ -29,8 +29,8 @@ pub fn fragment(
 	in_uv: Vec2,
 	in_color: Vec3,
 	in_norm: Vec3,
-	#[spirv(descriptor_set = 2, binding = 0)] tex: &Image!(2D, type=f32, sampled),
-	#[spirv(descriptor_set = 2, binding = 1)] sampler: &Sampler,
+	#[spirv(descriptor_set = 0, binding = 2)] tex: &Image!(2D, type=f32, sampled),
+	#[spirv(descriptor_set = 0, binding = 3)] sampler: &Sampler,
 	frag_color: &mut Vec4,
 ) {
 	let col = tex.sample(*sampler, in_uv);

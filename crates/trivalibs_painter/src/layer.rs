@@ -94,6 +94,7 @@ fn map_format_to_u8(format: wgpu::TextureFormat) -> u8 {
 pub(crate) struct LayerStorage {
 	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
+	pub binding_layout: BindingLayout,
 	pub target_textures: Vec<Texture>,
 	pub target_bindings: Vec<Binding>,
 	pub depth_texture: Option<Texture>,
@@ -310,6 +311,7 @@ impl Layer {
 			texture_count,
 			is_multi_target,
 			data: props.data,
+			binding_layout: layout,
 		};
 
 		painter.layers.push(storage);
@@ -386,13 +388,6 @@ impl Layer {
 				},
 				true,
 			);
-		}
-
-		for i in 0..painter.layers[self.0].target_bindings.len() {
-			let _u = painter.layers[self.0].target_bindings[i];
-
-			// TODO: Restore resized layer uniforms
-			// u.recreate(painter);
 		}
 	}
 }
