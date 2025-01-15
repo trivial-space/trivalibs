@@ -64,14 +64,11 @@ impl CanvasApp<()> for App {
 			form,
 			shade,
 			ShapeProps {
-				data: ShadeData {
-					uniforms: map! {
-						0 => mvp.uniform(),
-						1 => norm.uniform(),
-						2 => tex.uniform(),
-						3 => p.sampler_linear().uniform(),
-					},
-					..default()
+				uniforms: map! {
+					0 => mvp.uniform(),
+					1 => norm.uniform(),
+					2 => tex.uniform(),
+					3 => p.sampler_linear().uniform(),
 				},
 				cull_mode: Some(wgpu::Face::Back),
 				..default()
@@ -120,9 +117,8 @@ impl CanvasApp<()> for App {
 		p.request_next_frame();
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
-		p.paint(self.canvas)?;
-		p.show(self.canvas)
+	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
+		p.paint_and_show(self.canvas)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

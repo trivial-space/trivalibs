@@ -1,15 +1,4 @@
-use trivalibs::{
-	painter::{
-		effect::EffectProps,
-		layer::{Layer, LayerProps},
-		load_fragment_shader,
-		shade::ShadeEffectProps,
-		uniform::UniformBuffer,
-		wgpu::SurfaceError,
-		CanvasApp, Event, Painter,
-	},
-	prelude::*,
-};
+use trivalibs::{painter::prelude::*, prelude::*};
 
 struct App {
 	time: f32,
@@ -21,10 +10,11 @@ struct App {
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let u_type = p.uniform_type_buffered_frag();
+		let u_type = p.uniform_type_buffered();
 
 		let shade = p.shade_create_effect(ShadeEffectProps {
-			uniforms: &[u_type, u_type],
+			uniforms: &[u_type.frag(), u_type.frag()],
+			layers: &[],
 		});
 		load_fragment_shader!(shade, p, "../shader/main.spv");
 
@@ -34,7 +24,7 @@ impl CanvasApp<()> for App {
 		let effect = p.effect_create(
 			shade,
 			EffectProps {
-				uniforms: vec![(0, u_size.uniform), (1, u_time.uniform)],
+				uniforms: vec![(0, u_size.uniform()), (1, u_time.uniform())],
 				..default()
 			},
 		);
@@ -65,8 +55,7 @@ impl CanvasApp<()> for App {
 	}
 
 	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
-		p.paint(self.canvas)?;
-		p.show(self.canvas)
+		p.paint_and_show(self.canvas)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

@@ -20,7 +20,7 @@ struct App {
 	cam: PerspectiveCamera,
 	triangles: Vec<Triangle>,
 
-	sketch: Shape,
+	canvas: Layer,
 	model_mats: Vec<UniformBuffer<Mat4>>,
 	vp_mat: UniformBuffer<Mat4>,
 }
@@ -69,7 +69,7 @@ impl CanvasApp<()> for App {
 
 		let instances = model_mats
 			.iter()
-			.map(|model| ShadeData {
+			.map(|model| InstanceData {
 				uniforms: map! {
 					1 => model.uniform(),
 					2 => u_type.const_vec4(p, rand_vec4())
@@ -82,11 +82,8 @@ impl CanvasApp<()> for App {
 			form,
 			shade,
 			ShapeProps {
-				data: ShadeData {
-					uniforms: map! {
-						0 => cam.uniform()
-					},
-					..default()
+				uniforms: map! {
+					0 => cam.uniform()
 				},
 				instances,
 				cull_mode: None,
@@ -94,6 +91,12 @@ impl CanvasApp<()> for App {
 				..default()
 			},
 		);
+
+		let canvas = p.layer_create(LayerProps {
+			shapes: vec![shape],
+			clear_color: Some(wgpu::Color::BLACK),
+			..default()
+		});
 
 		Self {
 			cam: PerspectiveCamera::create(CamProps {
@@ -103,7 +106,7 @@ impl CanvasApp<()> for App {
 			}),
 			triangles,
 
-			sketch: shape,
+			canvas,
 			model_mats,
 			vp_mat: cam,
 		}
@@ -123,9 +126,9 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
+	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
 		p.request_next_frame();
-		p.draw(self.sketch)
+		p.paint_and_show(self.canvas)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

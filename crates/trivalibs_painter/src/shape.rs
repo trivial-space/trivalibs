@@ -1,8 +1,9 @@
-use trivalibs_core::utils::default;
-
 use crate::{
+	binding::Binding,
 	form::Form,
-	shade::{Shade, ShadeData},
+	layer::Layer,
+	shade::{InstanceData, Shade},
+	uniform::Uniform,
 	Painter,
 };
 
@@ -10,18 +11,21 @@ use crate::{
 pub(crate) struct ShapeStorage {
 	pub form: Form,
 	pub shade: Shade,
-	pub data: ShadeData,
-	pub instances: Vec<ShadeData>,
+	pub uniforms: Vec<(u32, Uniform)>,
+	pub layer_uniforms: Vec<(u32, Layer)>,
+	pub instances: Vec<InstanceData>,
 	pub pipeline_key: Vec<u8>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
 	pub uniform_binding_index: u32,
+	pub uniform_bindings: Vec<Binding>,
 }
 
 #[derive(Clone)]
 pub struct ShapeProps {
-	pub data: ShadeData,
-	pub instances: Vec<ShadeData>,
+	pub uniforms: Vec<(u32, Uniform)>,
+	pub layer_uniforms: Vec<(u32, Layer)>,
+	pub instances: Vec<InstanceData>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
 }
@@ -29,7 +33,8 @@ pub struct ShapeProps {
 impl Default for ShapeProps {
 	fn default() -> Self {
 		ShapeProps {
-			data: default(),
+			uniforms: Vec::with_capacity(0),
+			layer_uniforms: Vec::with_capacity(0),
 			instances: Vec::with_capacity(0),
 			cull_mode: Some(wgpu::Face::Back),
 			blend_state: wgpu::BlendState::REPLACE,
@@ -66,15 +71,36 @@ impl Shape {
 			form,
 			shade,
 			pipeline_key,
-			data: props.data,
+			uniforms: props.uniforms,
+			layer_uniforms: props.layer_uniforms,
 			instances: props.instances,
 			cull_mode: props.cull_mode,
 			blend_state: props.blend_state,
 			uniform_binding_index: s.layer_layouts.len() as u32,
+			uniform_bindings: Vec::with_capacity(0),
 		};
 
 		painter.shapes.push(sketch);
 
 		Shape(painter.shapes.len() - 1)
+	}
+
+	pub(crate) fn prepare_uniforms(&self, painter: &mut Painter, layer: Layer) {
+		let sp = &painter.shapes[self.0];
+		let sd = &painter.shades[sp.shade.0];
+		let data = &sp.uniforms.clone();
+		let instances = &sp.instances.clone();
+		let layer_data = &painter.layers[layer.0].uniforms.clone();
+
+		let uniforms = Binding::uniforms(
+			painter,
+			sd.uniforms_length,
+			sd.uniform_layout,
+			data,
+			instances,
+			layer_data,
+		);
+
+		painter.shapes[self.0].uniform_bindings = uniforms;
 	}
 }

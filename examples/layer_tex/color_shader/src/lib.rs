@@ -14,6 +14,6 @@ pub fn vs_main(
 }
 
 #[spirv(fragment)]
-pub fn fs_main(#[spirv(uniform, descriptor_set = 1, binding = 0)] color: &Vec3, out: &mut Vec4) {
+pub fn fs_main(#[spirv(uniform, descriptor_set = 0, binding = 1)] color: &Vec3, out: &mut Vec4) {
 	*out = vec4(color.x, color.y, color.z, 1.0);
 }

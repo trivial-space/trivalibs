@@ -2,17 +2,7 @@ use geom::{create_ball_geom, create_box_geom};
 use trivalibs::{
 	map,
 	math::transform::Transform,
-	painter::{
-		effect::EffectProps,
-		layer::{Layer, LayerProps},
-		load_fragment_shader, load_vertex_shader,
-		shade::{ShadeEffectProps, ShadeProps},
-		shape::ShapeProps,
-		texture::SamplerProps,
-		uniform::UniformBuffer,
-		wgpu::{self, TextureFormat, VertexFormat::*},
-		AppConfig, CanvasApp, Event, Painter,
-	},
+	painter::prelude::*,
 	prelude::*,
 	rendering::{
 		camera::{CamProps, PerspectiveCamera},
@@ -40,30 +30,32 @@ const LIGHTS_COUNT: usize = 10;
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let u_vert_type = p.uniform_type_buffered_vert();
-		let u_frag_type = p.uniform_type_buffered_frag();
+		let u_type = p.uniform_type_buffered();
+		let tex_type = p.uniform_type_tex_2d();
+		let sampler_type = p.uniform_type_sampler();
 
 		let scene_shade = p.shade_create(ShadeProps {
 			attributes: &[Float32x3, Float32x3, Float32x3],
-			uniforms: &[u_vert_type, u_vert_type, u_vert_type],
+			uniforms: &[u_type.vert(), u_type.vert(), u_type.vert()],
+			layers: &[],
 		});
 		load_vertex_shader!(scene_shade, p, "../scene_shader/vertex.spv");
 		load_fragment_shader!(scene_shade, p, "../scene_shader/fragment.spv");
 
 		let ball_form = p.form_create(&create_ball_geom(), default());
 
-		let vp_mat = u_vert_type.create_mat4(p);
+		let vp_mat = u_type.create_mat4(p);
 
-		let ball_model_mat = u_vert_type.create_mat4(p);
-		let ball_rot = u_vert_type.create_quat(p);
+		let ball_model_mat = u_type.create_mat4(p);
+		let ball_rot = u_type.create_quat(p);
 
-		let ball_sketch = p.sketch_create(
+		let ball_shape = p.shape_create(
 			ball_form,
 			scene_shade,
 			ShapeProps {
 				uniforms: map! {
-					0 => ball_model_mat.uniform,
-					2 => ball_rot.uniform,
+					0 => ball_model_mat.uniform(),
+					2 => ball_rot.uniform(),
 				},
 				..default()
 			},
@@ -71,16 +63,16 @@ impl CanvasApp<()> for App {
 
 		let box_form = p.form_create(&create_box_geom(), default());
 
-		let box_model_mat = u_vert_type.create_mat4(p);
-		let box_rot = u_vert_type.create_quat(p);
+		let box_model_mat = u_type.create_mat4(p);
+		let box_rot = u_type.create_quat(p);
 
-		let box_sketch = p.sketch_create(
+		let box_shape = p.shape_create(
 			box_form,
 			scene_shade,
 			ShapeProps {
 				uniforms: map! {
-					0 => box_model_mat.uniform,
-					2 => box_rot.uniform,
+					0 => box_model_mat.uniform(),
+					2 => box_rot.uniform(),
 				},
 				..default()
 			},
@@ -99,32 +91,28 @@ impl CanvasApp<()> for App {
 				b: 0.7,
 				a: 1.0,
 			}),
-			shapes: vec![ball_sketch, box_sketch],
+			shapes: vec![ball_shape, box_shape],
 			uniforms: map! {
-				1 => vp_mat.uniform,
+				1 => vp_mat.uniform(),
 			},
-			formats: vec![
-				TextureFormat::Rgba8UnormSrgb,
-				TextureFormat::Rgba16Float,
-				TextureFormat::Rgba16Float,
-			],
+			formats: vec![Rgba8UnormSrgb, Rgba16Float, Rgba16Float],
 			depth_test: true,
 			multisampled: true,
 			sampler: scene_sampler,
 			..default()
 		});
 
-		let tex_type = p.uniform_type_tex_2d_frag();
-
 		let canvas_shade = p.shade_create_effect(ShadeEffectProps {
 			uniforms: &[
-				tex_type,
-				tex_type,
-				tex_type,
-				u_frag_type,
-				// u_frag_type,
-				// u_frag_type,
+				tex_type.frag(),
+				tex_type.frag(),
+				tex_type.frag(),
+				sampler_type.frag(),
+				u_type.frag(),
+				u_type.frag(),
+				u_type.frag(),
 			],
+			layers: &[],
 		});
 		load_fragment_shader!(canvas_shade, p, "../light_shader/fragment.spv");
 
@@ -136,24 +124,27 @@ impl CanvasApp<()> for App {
 			.map(|_| {
 				let light_pos =
 					rand_in_unit_sphere() * rand_range(10.0, 30.0) + vec3(0.0, 0.0, -20.0);
-				let light_pos_u = u_frag_type.const_vec3(p, light_pos);
+				let light_pos_u = u_type.const_vec3(p, light_pos);
 
-				// let light_color = vec3(
-				// 	rand_range(0.5, 1.0),
-				// 	rand_range(0.5, 1.0),
-				// 	rand_range(0.5, 1.0),
-				// );
-				// let light_color_u = u_frag_type.const_vec3(p, light_color);
+				let light_color = vec3(
+					rand_range(0.5, 1.0),
+					rand_range(0.5, 1.0),
+					rand_range(0.5, 1.0),
+				);
+				let light_color_u = u_type.const_vec3(p, light_color);
 
-				map! {
-					3 => light_pos_u,
-					// 5 => light_color_u,
+				InstanceData {
+					uniforms: map! {
+						5 => light_pos_u,
+						6 => light_color_u,
+					},
+					..default()
 				}
 			})
 			.collect::<Vec<_>>();
 
 		let cam_pos = vec3(0.0, 5.0, 0.0);
-		// let cam_pos_u = u_frag_type.const_vec3(p, cam_pos);
+		let cam_pos_u = u_type.const_vec3(p, cam_pos);
 
 		let canvas_effect = p.effect_create(
 			canvas_shade,
@@ -162,7 +153,8 @@ impl CanvasApp<()> for App {
 					0 => color_target,
 					1 => normal_target,
 					2 => position_target,
-					// 3 => cam_pos_u,
+					3 => p.sampler_nearest().uniform(),
+					4 => cam_pos_u,
 				},
 				instances: lights,
 				blend_state: wgpu::BlendState {
@@ -233,7 +225,7 @@ impl CanvasApp<()> for App {
 		p.request_next_frame();
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
+	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
 		p.paint(self.scene_layer)?;
 		p.paint(self.canvas)?;
 		p.show(self.canvas)

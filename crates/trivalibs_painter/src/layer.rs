@@ -1,7 +1,6 @@
 use crate::{
 	binding::{Binding, BindingLayout},
 	effect::Effect,
-	shade::ShadeData,
 	shape::Shape,
 	texture::{Sampler, Texture, Texture2DProps, TextureDepthProps},
 	uniform::{LayerLayout, LayerType, Uniform},
@@ -108,7 +107,8 @@ pub(crate) struct LayerStorage {
 	pub current_target: usize,
 	pub texture_count: usize,
 	pub is_multi_target: bool,
-	pub data: Option<ShadeData>,
+	pub uniforms: Vec<(u32, Uniform)>,
+	pub layer_uniforms: Vec<(u32, Layer)>,
 }
 
 impl LayerStorage {
@@ -135,14 +135,15 @@ impl LayerStorage {
 pub struct LayerProps {
 	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
-	pub sampler: Sampler,
+	pub uniforms: Vec<(u32, Uniform)>,
+	pub layer_uniforms: Vec<(u32, Layer)>,
 	pub width: u32,
 	pub height: u32,
+	pub sampler: Sampler,
 	pub formats: Vec<wgpu::TextureFormat>,
 	pub clear_color: Option<wgpu::Color>,
 	pub depth_test: bool,
 	pub layer_layout: LayerLayout,
-	pub data: Option<ShadeData>,
 	pub multisampled: bool,
 }
 
@@ -152,11 +153,12 @@ impl Default for LayerProps {
 		LayerProps {
 			shapes: Vec::with_capacity(0),
 			effects: Vec::with_capacity(0),
+			uniforms: Vec::with_capacity(0),
+			layer_uniforms: Vec::with_capacity(0),
 			sampler: Sampler(0),
 			width: 0,
 			height: 0,
 			formats: Vec::with_capacity(1),
-			data: None,
 			layer_layout: l_type.frag(),
 			clear_color: None,
 			depth_test: false,
@@ -244,6 +246,7 @@ impl Layer {
 				target_textures.push(tex);
 
 				target_bindings.push(Binding::layer(painter, layer, layout, tex, props.sampler));
+
 				if props.multisampled {
 					multisampled_textures.push(Texture::create_2d(
 						painter,
@@ -256,6 +259,7 @@ impl Layer {
 						true,
 					));
 				}
+
 				formats.push(format);
 			}
 		} else {
@@ -273,6 +277,7 @@ impl Layer {
 					},
 					false,
 				);
+
 				target_textures.push(tex);
 
 				target_bindings.push(Binding::layer(painter, layer, layout, tex, props.sampler));
@@ -295,26 +300,34 @@ impl Layer {
 		}
 
 		let storage = LayerStorage {
+			shapes: props.shapes.clone(),
+			effects: props.effects.clone(),
 			width,
 			height,
 			target_textures,
 			target_bindings,
-			shapes: props.shapes.clone(),
-			effects: props.effects.clone(),
 			depth_texture,
+			multisampled_textures,
 			use_window_size,
 			clear_color: props.clear_color,
 			formats,
 			pipeline_key,
-			multisampled_textures,
 			current_target: 0,
 			texture_count,
 			is_multi_target,
-			data: props.data,
+			uniforms: props.uniforms,
+			layer_uniforms: props.layer_uniforms,
 			binding_layout: layout,
 		};
 
 		painter.layers.push(storage);
+
+		for s in props.shapes {
+			s.prepare_uniforms(painter, layer);
+		}
+		for e in props.effects {
+			e.prepare_uniforms(painter, layer);
+		}
 
 		layer
 	}

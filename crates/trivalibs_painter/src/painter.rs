@@ -18,7 +18,6 @@ pub(crate) const FULL_SCREEN_TEXTURE_PIPELINE: &'static [u8] = &[0xff, 0xff];
 
 pub(crate) struct PipelineStorage {
 	pipeline: wgpu::RenderPipeline,
-	uniforms: Vec<Binding>,
 }
 
 pub struct Painter {
@@ -171,7 +170,6 @@ impl Painter {
 			FULL_SCREEN_TEXTURE_PIPELINE.to_vec(),
 			PipelineStorage {
 				pipeline: fullscreen_quad_pipeline,
-				uniforms: Vec::with_capacity(0),
 			},
 		);
 
@@ -284,49 +282,31 @@ impl Painter {
 		self.window.inner_size()
 	}
 
-	fn get_shape_pipeline_key(&self, shape: Shape, layer: Option<Layer>) -> Vec<u8> {
-		let l = layer.map(|l| &self.layers[l.0]);
-
-		let layer_key = match l {
-			Some(layer) => layer.pipeline_key.as_slice(),
-			None => &[],
-		};
-
+	fn get_shape_pipeline_key(&self, shape: Shape, layer: Layer) -> Vec<u8> {
+		let l = &self.layers[layer.0];
 		let sp = &self.shapes[shape.0];
-		[sp.pipeline_key.as_slice(), layer_key].concat()
+		[sp.pipeline_key.as_slice(), l.pipeline_key.as_slice()].concat()
 	}
 
-	fn ensure_shape_pipeline<'a>(
-		&'a mut self,
-		pipeline_key: &Vec<u8>,
-		shape: Shape,
-		layer: Option<Layer>,
-	) {
+	fn ensure_shape_pipeline<'a>(&'a mut self, pipeline_key: &Vec<u8>, shape: Shape, layer: Layer) {
 		let sp = &self.shapes[shape.0];
 		let sd = &self.shades[sp.shade.0];
-		let l = layer.map(|l| &self.layers[l.0]);
+		let l = &self.layers[layer.0];
 
 		if !self.pipelines.contains_key(pipeline_key) {
 			let f = &self.forms[sp.form.0];
 
-			let targets: Vec<Option<ColorTargetState>> = if let Some(l) = l {
-				l.formats
-					.iter()
-					.map(|f| {
-						Some(wgpu::ColorTargetState {
-							format: *f,
-							blend: Some(sp.blend_state),
-							write_mask: wgpu::ColorWrites::ALL,
-						})
+			let targets: Vec<Option<ColorTargetState>> = l
+				.formats
+				.iter()
+				.map(|f| {
+					Some(wgpu::ColorTargetState {
+						format: *f,
+						blend: Some(sp.blend_state),
+						write_mask: wgpu::ColorWrites::ALL,
 					})
-					.collect::<Vec<_>>()
-			} else {
-				vec![Some(wgpu::ColorTargetState {
-					format: self.config.format,
-					blend: Some(sp.blend_state),
-					write_mask: wgpu::ColorWrites::ALL,
-				})]
-			};
+				})
+				.collect::<Vec<_>>();
 
 			let vertex_shader = self
 				.device
@@ -373,7 +353,7 @@ impl Painter {
 						unclipped_depth: false,
 						conservative: false,
 					},
-					depth_stencil: if l.map_or(false, |l| l.depth_texture.is_some()) {
+					depth_stencil: if l.depth_texture.is_some() {
 						Some(wgpu::DepthStencilState {
 							format: wgpu::TextureFormat::Depth24Plus,
 							depth_write_enabled: true,
@@ -385,13 +365,11 @@ impl Painter {
 						None
 					},
 					multisample: wgpu::MultisampleState {
-						count: l.map_or(1, |l| {
-							if l.multisampled_textures.is_empty() {
-								1
-							} else {
-								4
-							}
-						}),
+						count: if l.multisampled_textures.is_empty() {
+							1
+						} else {
+							4
+						},
 						mask: !0,
 						alpha_to_coverage_enabled: false,
 					},
@@ -399,23 +377,7 @@ impl Painter {
 					cache: None,
 				});
 
-			let l = layer.map(|l| &self.layers[l.0]);
-			let sp = &self.shapes[shape.0];
-			let data = &sp.data.clone();
-			let instances = &sp.instances.clone();
-			let layer_data = l.and_then(|l| l.data.clone());
-
-			let pipeline = PipelineStorage {
-				pipeline,
-				uniforms: Binding::uniforms(
-					self,
-					sd.uniforms_length,
-					sd.uniform_layout,
-					data,
-					instances,
-					&layer_data,
-				),
-			};
+			let pipeline = PipelineStorage { pipeline };
 
 			self.pipelines.insert(pipeline_key.clone(), pipeline);
 		}
@@ -487,31 +449,13 @@ impl Painter {
 					cache: None,
 				});
 
-			let data = &e.data.clone();
-			let instances = &e.instances.clone();
-			let layer_data = &l.data.clone();
-			let pipeline = PipelineStorage {
-				pipeline,
-				uniforms: Binding::uniforms(
-					self,
-					s.uniforms_length,
-					s.uniform_layout,
-					data,
-					instances,
-					layer_data,
-				),
-			};
+			let pipeline = PipelineStorage { pipeline };
 
 			self.pipelines.insert(pipeline_key.to_vec(), pipeline);
 		}
 	}
 
-	fn render_shape(
-		&mut self,
-		rpass: &mut wgpu::RenderPass<'_>,
-		shape: Shape,
-		layer: Option<Layer>,
-	) {
+	fn render_shape(&mut self, rpass: &mut wgpu::RenderPass<'_>, shape: Shape, layer: Layer) {
 		let draw = |painter: &Painter, rpass: &mut wgpu::RenderPass, binding: Option<Binding>| {
 			let s = &painter.shapes[shape.0];
 			let binding_index = s.uniform_binding_index;
@@ -535,28 +479,24 @@ impl Painter {
 		let pipeline = &self.pipelines[&pipeline_key];
 		rpass.set_pipeline(&pipeline.pipeline);
 
-		if let Some(layer) = layer {
-			let l = &self.layers[layer.0];
-			if let Some(data) = &l.data {
-				for (index, layer) in &data.layers {
-					let l = &self.layers[layer.0];
-					let b = l.current_source();
-					rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
-				}
-			}
-		}
-
-		let s = &self.shapes[shape.0];
-		for (index, layer) in &s.data.layers {
+		let l = &self.layers[layer.0];
+		for (index, layer) in &l.layer_uniforms {
 			let l = &self.layers[layer.0];
 			let b = l.current_source();
 			rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 		}
 
-		if pipeline.uniforms.is_empty() {
+		let s = &self.shapes[shape.0];
+		for (index, layer) in &s.layer_uniforms {
+			let l = &self.layers[layer.0];
+			let b = l.current_source();
+			rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
+		}
+
+		if s.uniform_bindings.is_empty() {
 			draw(self, rpass, None);
 		} else {
-			for binding in &pipeline.uniforms {
+			for binding in &s.uniform_bindings {
 				draw(self, rpass, Some(binding.clone()));
 			}
 		}
@@ -608,24 +548,22 @@ impl Painter {
 				rpass.set_bind_group(0, &self.bindings[b.0].binding, &[]);
 			}
 
-			if let Some(data) = &l.data {
-				for (index, layer) in &data.layers {
-					let l = &self.layers[layer.0];
-					let b = l.current_source();
-					rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
-				}
-			}
-
-			for (index, layer) in &e.data.layers {
+			for (index, layer) in &l.layer_uniforms {
 				let l = &self.layers[layer.0];
 				let b = l.current_source();
 				rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 			}
 
-			if pipeline.uniforms.is_empty() {
+			for (index, layer) in &e.layer_uniforms {
+				let l = &self.layers[layer.0];
+				let b = l.current_source();
+				rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
+			}
+
+			if e.uniform_bindings.is_empty() {
 				rpass.draw(0..3, 0..1);
 			} else {
-				for b in &pipeline.uniforms {
+				for b in &e.uniform_bindings {
 					rpass.set_bind_group(e.uniform_binding_index, &self.bindings[b.0].binding, &[]);
 					rpass.draw(0..3, 0..1);
 				}
@@ -633,42 +571,6 @@ impl Painter {
 		}
 
 		self.queue.submit(Some(encoder.finish()));
-
-		Ok(())
-	}
-
-	pub fn draw<'a>(&mut self, shape: Shape) -> Result<(), wgpu::SurfaceError> {
-		let frame = self.surface.get_current_texture()?;
-
-		let view = frame
-			.texture
-			.create_view(&wgpu::TextureViewDescriptor::default());
-
-		let mut encoder = self
-			.device
-			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-
-		{
-			let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-				label: None,
-				color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-					view: &view,
-					resolve_target: None,
-					ops: wgpu::Operations {
-						load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-						store: wgpu::StoreOp::Store,
-					},
-				})],
-				depth_stencil_attachment: None,
-				timestamp_writes: None,
-				occlusion_query_set: None,
-			});
-
-			self.render_shape(&mut rpass, shape, None);
-		}
-
-		self.queue.submit(Some(encoder.finish()));
-		frame.present();
 
 		Ok(())
 	}
@@ -749,7 +651,7 @@ impl Painter {
 
 				for i in 0..shapes_len {
 					let shape = self.layers[layer.0].shapes[i];
-					self.render_shape(&mut rpass, shape, Some(layer));
+					self.render_shape(&mut rpass, shape, layer);
 				}
 			}
 
@@ -819,6 +721,11 @@ impl Painter {
 		frame.present();
 
 		Ok(())
+	}
+
+	pub fn paint_and_show(&mut self, layer: Layer) -> Result<(), wgpu::SurfaceError> {
+		self.paint(layer)?;
+		self.show(layer)
 	}
 
 	pub(crate) fn reload_shader(&mut self, path: String) {

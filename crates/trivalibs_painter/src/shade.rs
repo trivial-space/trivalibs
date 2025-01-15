@@ -7,12 +7,12 @@ use crate::{
 use std::fs;
 
 #[derive(Clone)]
-pub struct ShadeData {
+pub struct InstanceData {
 	pub uniforms: Vec<(u32, Uniform)>,
 	pub layers: Vec<(u32, Layer)>,
 }
 
-impl Default for ShadeData {
+impl Default for InstanceData {
 	fn default() -> Self {
 		Self {
 			uniforms: Vec::with_capacity(0),

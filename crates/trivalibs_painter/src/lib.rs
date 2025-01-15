@@ -22,10 +22,10 @@ pub mod prelude {
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
 		painter::Painter,
-		shade::{Shade, ShadeData, ShadeProps},
+		shade::{InstanceData, Shade, ShadeEffectProps, ShadeProps},
 		shape::{Shape, ShapeProps},
-		texture::{Texture2DProps, TextureDepthProps},
+		texture::{SamplerProps, Texture2DProps, TextureDepthProps},
 		uniform::{Mat3U, UniformBuffer, UniformType, Vec3U},
-		wgpu::{self, VertexFormat::*},
+		wgpu::{self, SurfaceError, TextureFormat::*, VertexFormat::*},
 	};
 }

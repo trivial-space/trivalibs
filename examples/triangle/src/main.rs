@@ -1,7 +1,8 @@
 use shader::Vertex;
 use trivalibs::painter::{
+	app::{CanvasApp, Event},
 	wgpu::{self, include_spirv, util::DeviceExt},
-	CanvasApp, Event, Painter,
+	Painter,
 };
 use trivalibs::prelude::*;
 
