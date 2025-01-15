@@ -90,7 +90,9 @@ impl CanvasApp<()> for App {
 			shade,
 			ShapeProps {
 				data: Some(ShadeData {
-					uniforms: vec![(0, cam.uniform())],
+					uniforms: map! {
+						0 => cam.uniform()
+					},
 					layers: Vec::with_capacity(0),
 				}),
 				instances,
