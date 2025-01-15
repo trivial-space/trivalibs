@@ -10,16 +10,14 @@ struct App {
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let u_type = p.uniform_type_buffered();
-
 		let shade = p.shade_create_effect(ShadeEffectProps {
-			uniforms: &[u_type.frag(), u_type.frag()],
+			uniforms: &[UNIFORM_BUFFER_FRAG, UNIFORM_BUFFER_FRAG],
 			layers: &[],
 		});
 		load_fragment_shader!(shade, p, "../shader/main.spv");
 
-		let u_time = u_type.create_f32(p);
-		let u_size = u_type.create_uvec2(p);
+		let u_time = p.uniform_f32();
+		let u_size = p.uniform_uvec2();
 
 		let effect = p.effect_create(
 			shade,

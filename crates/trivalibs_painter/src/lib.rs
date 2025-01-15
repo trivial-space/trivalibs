@@ -14,6 +14,7 @@ pub mod shaders;
 pub mod shape;
 pub mod texture;
 pub mod uniform;
+pub mod uniform_constants;
 
 pub mod prelude {
 	pub use crate::{
@@ -26,7 +27,8 @@ pub mod prelude {
 		shade::{InstanceData, Shade, ShadeEffectProps, ShadeProps},
 		shape::{Shape, ShapeProps},
 		texture::{SamplerProps, Texture2DProps, TextureDepthProps},
-		uniform::{Mat3U, UniformBuffer, UniformType, Vec3U},
+		uniform::{Mat3U, UniformBuffer, Vec3U},
+		uniform_constants::*,
 		wgpu::{self, SurfaceError, TextureFormat::*, VertexFormat::*},
 	};
 }

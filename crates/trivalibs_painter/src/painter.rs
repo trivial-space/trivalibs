@@ -4,14 +4,18 @@ use crate::{
 	form::{Form, FormBuffers, FormProps, FormStorage},
 	layer::{Layer, LayerProps, LayerStorage},
 	pipeline::PipelineStorage,
+	prelude::UNIFORM_LAYER_FRAG,
 	shade::{AttribsFormat, Shade, ShadeEffectProps, ShadeProps, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
 	shape::{Shape, ShapeProps, ShapeStorage},
 	texture::{Sampler, SamplerProps, Texture, Texture2DProps, TextureStorage},
-	uniform::{LayerType, UniformBufferType, UniformSamplerType, UniformTex2DType},
+	uniform::{Mat3U, Uniform, UniformBuffer, Vec3U},
 };
 use std::{collections::BTreeMap, sync::Arc};
-use trivalibs_core::utils::default;
+use trivalibs_core::{
+	glam::{Mat3, Mat3A, Mat4, Quat, UVec2, Vec2, Vec3, Vec3A, Vec4},
+	utils::default,
+};
 use wgpu::RenderPassColorAttachment;
 use winit::window::Window;
 
@@ -111,8 +115,7 @@ impl Painter {
 		Sampler::create(&mut painter, SamplerProps::NEAREST);
 		Sampler::create(&mut painter, SamplerProps::LINEAR);
 
-		let layer_type = LayerType {};
-		let layer_layout = BindingLayout::layer(&mut painter, layer_type.frag());
+		let layer_layout = BindingLayout::layer(&mut painter, UNIFORM_LAYER_FRAG);
 
 		let fullscreen_quad_pipeline_layout =
 			painter
@@ -239,22 +242,71 @@ impl Painter {
 
 	// uniform utils
 
-	pub fn uniform_type_buffered(&self) -> UniformBufferType {
-		UniformBufferType {}
+	pub fn uniform_buff<T: bytemuck::Pod>(&mut self, data: T) -> UniformBuffer<T> {
+		UniformBuffer::new(self, data)
+	}
+	pub fn uniform_mat3(&mut self) -> UniformBuffer<Mat3U> {
+		self.uniform_buff(Mat3U(Mat3A::IDENTITY))
+	}
+	pub fn uniform_mat4(&mut self) -> UniformBuffer<Mat4> {
+		self.uniform_buff(Mat4::IDENTITY)
+	}
+	pub fn uniform_vec2(&mut self) -> UniformBuffer<Vec2> {
+		self.uniform_buff(Vec2::ZERO)
+	}
+	pub fn uniform_vec3(&mut self) -> UniformBuffer<Vec3U> {
+		self.uniform_buff(Vec3U(Vec3A::ZERO))
+	}
+	pub fn uniform_vec4(&mut self) -> UniformBuffer<Vec4> {
+		self.uniform_buff(Vec4::ZERO)
+	}
+	pub fn uniform_uvec2(&mut self) -> UniformBuffer<UVec2> {
+		self.uniform_buff(UVec2::ZERO)
+	}
+	pub fn uniform_f32(&mut self) -> UniformBuffer<f32> {
+		self.uniform_buff(0.0f32)
+	}
+	pub fn uniform_u32(&mut self) -> UniformBuffer<u32> {
+		self.uniform_buff(0u32)
+	}
+	pub fn uniform_quat(&mut self) -> UniformBuffer<Quat> {
+		self.uniform_buff(Quat::IDENTITY)
 	}
 
-	pub fn uniform_type_tex_2d(&self) -> UniformTex2DType {
-		UniformTex2DType {}
+	pub fn uniform_const_buff<T: bytemuck::Pod>(&mut self, data: T) -> Uniform {
+		self.uniform_buff(data).uniform()
 	}
-
-	pub fn uniform_type_sampler(&self) -> UniformSamplerType {
-		UniformSamplerType {}
+	pub fn uniform_const_mat3(&mut self, mat: Mat3) -> Uniform {
+		let u = self.uniform_mat3();
+		u.update_mat3(self, mat);
+		u.uniform()
 	}
-
-	pub fn uniform_type_layer(&self) -> LayerType {
-		LayerType {}
+	pub fn uniform_const_mat4(&mut self, mat: Mat4) -> Uniform {
+		self.uniform_const_buff(mat)
 	}
-
+	pub fn uniform_const_vec2(&mut self, vec: Vec2) -> Uniform {
+		self.uniform_const_buff(vec)
+	}
+	pub fn uniform_const_vec3(&mut self, vec: Vec3) -> Uniform {
+		let u = self.uniform_vec3();
+		u.update_vec3(self, vec);
+		u.uniform()
+	}
+	pub fn uniform_const_vec4(&mut self, vec: Vec4) -> Uniform {
+		self.uniform_const_buff(vec)
+	}
+	pub fn uniform_const_uvec2(&mut self, vec: UVec2) -> Uniform {
+		self.uniform_const_buff(vec)
+	}
+	pub fn uniform_const_f32(&mut self, f: f32) -> Uniform {
+		self.uniform_const_buff(f)
+	}
+	pub fn uniform_const_u32(&mut self, u: u32) -> Uniform {
+		self.uniform_const_buff(u)
+	}
+	pub fn uniform_const_quat(&mut self, quat: Quat) -> Uniform {
+		self.uniform_const_buff(quat)
+	}
 	// general utils
 
 	pub fn request_next_frame(&self) {

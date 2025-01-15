@@ -1,9 +1,10 @@
 use crate::{
 	binding::{Binding, BindingLayout},
 	effect::Effect,
+	prelude::UNIFORM_LAYER_FRAG,
 	shape::Shape,
 	texture::{Sampler, Texture, Texture2DProps, TextureDepthProps},
-	uniform::{LayerLayout, LayerType, Uniform},
+	uniform::{LayerLayout, Uniform},
 	Painter,
 };
 
@@ -149,7 +150,6 @@ pub struct LayerProps {
 
 impl Default for LayerProps {
 	fn default() -> Self {
-		let l_type = LayerType {};
 		LayerProps {
 			shapes: Vec::with_capacity(0),
 			effects: Vec::with_capacity(0),
@@ -159,7 +159,7 @@ impl Default for LayerProps {
 			width: 0,
 			height: 0,
 			formats: Vec::with_capacity(1),
-			layer_layout: l_type.frag(),
+			layer_layout: UNIFORM_LAYER_FRAG,
 			clear_color: None,
 			depth_test: false,
 			multisampled: false,

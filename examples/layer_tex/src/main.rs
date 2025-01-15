@@ -96,21 +96,18 @@ struct ResizeEvent;
 
 impl CanvasApp<ResizeEvent> for App {
 	fn init(p: &mut Painter) -> Self {
-		let u_type = p.uniform_type_buffered();
-		let layer_type = p.uniform_type_layer();
-
 		let color_shade = p.shade_create(ShadeProps {
-			uniforms: &[u_type.vert(), u_type.frag()],
 			attributes: &[Float32x3, Float32x2],
+			uniforms: &[UNIFORM_BUFFER_VERT, UNIFORM_BUFFER_FRAG],
 			layers: &[],
 		});
 		load_vertex_shader!(color_shade, p, "../color_shader/vs_main.spv");
 		load_fragment_shader!(color_shade, p, "../color_shader/fs_main.spv");
 
 		let tex_shader = p.shade_create(ShadeProps {
-			uniforms: &[u_type.vert()],
 			attributes: &[Float32x3, Float32x2],
-			layers: &[layer_type.frag()],
+			uniforms: &[UNIFORM_BUFFER_VERT],
+			layers: &[UNIFORM_LAYER_FRAG],
 		});
 		load_vertex_shader!(tex_shader, p, "../tex_shader/vs_main.spv");
 		load_fragment_shader!(tex_shader, p, "../tex_shader/fs_main.spv");
@@ -118,11 +115,11 @@ impl CanvasApp<ResizeEvent> for App {
 		let quad_form = p.form_create(QUAD, default());
 		let triangle_form = p.form_create(TRIANGLE, default());
 
-		let color_quad_mvp = u_type.create_mat4(p);
-		let color_triangle_mvp = u_type.create_mat4(p);
+		let color_quad_mvp = p.uniform_mat4();
+		let color_triangle_mvp = p.uniform_mat4();
 
-		let quad_color = u_type.const_vec3(p, vec3(0.0, 0.0, 1.0));
-		let triangle_color = u_type.const_vec3(p, vec3(1.0, 0.0, 0.0));
+		let quad_color = p.uniform_const_vec3(vec3(0.0, 0.0, 1.0));
+		let triangle_color = p.uniform_const_vec3(vec3(1.0, 0.0, 0.0));
 
 		let color_quad_shape = p.shape_create(
 			quad_form,
@@ -163,8 +160,8 @@ impl CanvasApp<ResizeEvent> for App {
 			..default()
 		});
 
-		let tex_triangle_mvp = u_type.create_mat4(p);
-		let tex_quad_mvp = u_type.create_mat4(p);
+		let tex_triangle_mvp = p.uniform_mat4();
+		let tex_quad_mvp = p.uniform_mat4();
 
 		let tex_quad_shape = p.shape_create(
 			quad_form,

@@ -36,9 +36,6 @@ struct App {
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let u_type = p.uniform_type_buffered();
-		let layer_type = p.uniform_type_layer();
-
 		let triangle_shade = p.shade_create(ShadeProps {
 			attributes: &[Float32x2, Float32x2],
 			uniforms: &[],
@@ -48,8 +45,12 @@ impl CanvasApp<()> for App {
 		load_fragment_shader!(triangle_shade, p, "../triangle_shader/frag.spv");
 
 		let blur_shade = p.shade_create_effect(ShadeEffectProps {
-			uniforms: &[u_type.frag(), u_type.frag(), u_type.frag()],
-			layers: &[layer_type.frag()],
+			uniforms: &[
+				UNIFORM_BUFFER_FRAG,
+				UNIFORM_BUFFER_FRAG,
+				UNIFORM_BUFFER_FRAG,
+			],
+			layers: &[UNIFORM_LAYER_FRAG],
 		});
 		load_fragment_shader!(blur_shade, p, "../blur_shader/frag.spv");
 
@@ -57,9 +58,9 @@ impl CanvasApp<()> for App {
 
 		let tri_shape = p.shape_create(tri_form, triangle_shade, ShapeProps { ..default() });
 
-		let size = u_type.create_vec2(p);
-		let horiz = u_type.const_vec2(p, vec2(1.0, 0.0));
-		let vertical = u_type.const_vec2(p, vec2(0.0, 1.0));
+		let size = p.uniform_vec2();
+		let horiz = p.uniform_const_vec2(vec2(1.0, 0.0));
+		let vertical = p.uniform_const_vec2(vec2(0.0, 1.0));
 
 		let mut effects = vec![];
 
@@ -68,7 +69,7 @@ impl CanvasApp<()> for App {
 
 		let mut counter = BLUR_DIAMETER / 9.0; // Fixed diameter in shader is 9.0
 		while counter > 1.0 {
-			let diameter = u_type.const_f32(p, counter);
+			let diameter = p.uniform_const_f32(counter);
 			effects.push(p.effect_create(
 				blur_shade,
 				EffectProps {

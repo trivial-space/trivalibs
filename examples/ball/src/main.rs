@@ -43,13 +43,14 @@ impl CanvasApp<()> for App {
 
 		tex.fill_2d(p, tex_rgba);
 
-		let u_type = p.uniform_type_buffered();
-		let tex_type = p.uniform_type_tex_2d();
-		let s_type = p.uniform_type_sampler();
-
 		let shade = p.shade_create(ShadeProps {
 			attributes: &[Float32x3, Float32x2, Float32x3, Float32x3],
-			uniforms: &[u_type.vert(), u_type.vert(), tex_type.frag(), s_type.frag()],
+			uniforms: &[
+				UNIFORM_BUFFER_VERT,
+				UNIFORM_BUFFER_VERT,
+				UNIFORM_TEX2D_FRAG,
+				UNIFORM_SAMPLER_FRAG,
+			],
 			layers: &[],
 		});
 		load_vertex_shader!(shade, p, "../shader/vertex.spv");
@@ -57,8 +58,8 @@ impl CanvasApp<()> for App {
 
 		let form = p.form_create(&create_ball_geom(), default());
 
-		let mvp = u_type.create_mat4(p);
-		let norm = u_type.create_mat3(p);
+		let mvp = p.uniform_mat4();
+		let norm = p.uniform_mat3();
 
 		let sketch = p.shape_create(
 			form,
