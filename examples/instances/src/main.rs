@@ -71,12 +71,12 @@ impl CanvasApp<()> for App {
 
 		let instances = model_mats
 			.iter()
-			.map(|model| InstanceData {
+			.map(|model| InstanceUniforms {
 				uniforms: map! {
 					1 => model.uniform(),
 					2 => p.uniform_const_vec4(rand_vec4())
 				},
-				layers: Vec::with_capacity(0),
+				..default()
 			})
 			.collect();
 

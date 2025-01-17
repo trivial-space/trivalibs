@@ -102,7 +102,7 @@ impl Texture {
 		let storage = TextureStorage {
 			texture,
 			view,
-			bindings: Vec::with_capacity(32),
+			bindings: Vec::with_capacity(16),
 		};
 		painter.textures.push(storage);
 
@@ -203,6 +203,8 @@ impl Texture {
 		Uniform::Tex2D(*self)
 	}
 
+	// Suggestion: Do not recreate bindings multiple time, if they reference several textures.
+	// Instead mark them as dirty and rebuild them later.
 	pub(crate) fn rebuild_bindings(&self, painter: &mut Painter) {
 		let t = &painter.textures[self.0];
 		for b in t.bindings.clone() {

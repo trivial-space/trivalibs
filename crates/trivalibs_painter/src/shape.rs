@@ -2,8 +2,8 @@ use crate::{
 	binding::Binding,
 	form::Form,
 	layer::Layer,
-	shade::{InstanceData, Shade},
-	uniform::Uniform,
+	shade::Shade,
+	uniform::{InstanceUniforms, Uniform},
 	Painter,
 };
 
@@ -13,7 +13,7 @@ pub(crate) struct ShapeStorage {
 	pub shade: Shade,
 	pub uniforms: Vec<(u32, Uniform)>,
 	pub layer_uniforms: Vec<(u32, Layer)>,
-	pub instances: Vec<InstanceData>,
+	pub instances: Vec<InstanceUniforms>,
 	pub pipeline_key: Vec<u8>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
@@ -25,7 +25,7 @@ pub(crate) struct ShapeStorage {
 pub struct ShapeProps {
 	pub uniforms: Vec<(u32, Uniform)>,
 	pub layer_uniforms: Vec<(u32, Layer)>,
-	pub instances: Vec<InstanceData>,
+	pub instances: Vec<InstanceUniforms>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
 }

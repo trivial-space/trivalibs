@@ -1,4 +1,5 @@
 use crate::{
+	layer::Layer,
 	painter::get_padded_size,
 	texture::{Sampler, Texture},
 	Painter,
@@ -103,5 +104,20 @@ impl UniformBuffer<Vec3U> {
 
 	pub fn update_vec3(&self, painter: &Painter, data: Vec3) {
 		self.update(painter, Vec3U(Vec3A::from(data)));
+	}
+}
+
+#[derive(Clone)]
+pub struct InstanceUniforms {
+	pub uniforms: Vec<(u32, Uniform)>,
+	pub layers: Vec<(u32, Layer)>,
+}
+
+impl Default for InstanceUniforms {
+	fn default() -> Self {
+		Self {
+			uniforms: Vec::with_capacity(0),
+			layers: Vec::with_capacity(0),
+		}
 	}
 }

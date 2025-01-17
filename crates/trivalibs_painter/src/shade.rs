@@ -1,25 +1,9 @@
 use crate::{
 	binding::BindingLayout,
-	layer::Layer,
-	uniform::{LayerLayout, Uniform, UniformLayout},
+	uniform::{LayerLayout, UniformLayout},
 	Painter,
 };
 use std::fs;
-
-#[derive(Clone)]
-pub struct InstanceData {
-	pub uniforms: Vec<(u32, Uniform)>,
-	pub layers: Vec<(u32, Layer)>,
-}
-
-impl Default for InstanceData {
-	fn default() -> Self {
-		Self {
-			uniforms: Vec::with_capacity(0),
-			layers: Vec::with_capacity(0),
-		}
-	}
-}
 
 pub(crate) struct ShadeStorage {
 	pub vertex_path: Option<String>,

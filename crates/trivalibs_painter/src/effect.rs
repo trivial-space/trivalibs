@@ -1,8 +1,8 @@
 use crate::{
 	binding::Binding,
 	layer::Layer,
-	shade::{InstanceData, Shade},
-	uniform::Uniform,
+	shade::Shade,
+	uniform::{InstanceUniforms, Uniform},
 	Painter,
 };
 
@@ -10,7 +10,7 @@ pub(crate) struct EffectStorage {
 	pub shade: Shade,
 	pub uniforms: Vec<(u32, Uniform)>,
 	pub layer_uniforms: Vec<(u32, Layer)>,
-	pub instances: Vec<InstanceData>,
+	pub instances: Vec<InstanceUniforms>,
 	pub pipeline_key: Vec<u8>,
 	pub blend_state: wgpu::BlendState,
 	pub uniform_binding_index: u32,
@@ -23,7 +23,7 @@ pub struct EffectProps {
 	pub layer_uniforms: Vec<(u32, Layer)>,
 	/// Repeatedly render this effect multiple times with different uniforms into the same target without target swapping.
 	/// This is useful for example for deferred lighting, where each light is rendered with custom blend state on top of the last.
-	pub instances: Vec<InstanceData>,
+	pub instances: Vec<InstanceUniforms>,
 	pub blend_state: wgpu::BlendState,
 }
 
@@ -76,7 +76,7 @@ impl Effect {
 		Self(painter.effects.len() - 1)
 	}
 
-	pub fn prepare_uniforms(&self, painter: &mut Painter, layer: Layer) {
+	pub(crate) fn prepare_uniforms(&self, painter: &mut Painter, layer: Layer) {
 		let e = &painter.effects[self.0];
 		let s = &painter.shades[e.shade.0];
 		let l = &painter.layers[layer.0];

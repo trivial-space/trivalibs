@@ -61,7 +61,7 @@ impl CanvasApp<()> for App {
 		let mvp = p.uniform_mat4();
 		let norm = p.uniform_mat3();
 
-		let sketch = p.shape_create(
+		let shape = p.shape_create(
 			form,
 			shade,
 			ShapeProps {
@@ -83,7 +83,7 @@ impl CanvasApp<()> for App {
 				b: 0.7,
 				a: 1.0,
 			}),
-			shapes: vec![sketch],
+			shapes: vec![shape],
 			..default()
 		});
 

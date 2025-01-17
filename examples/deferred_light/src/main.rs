@@ -121,7 +121,7 @@ impl CanvasApp<()> for App {
 
 				let light_color_u = p.uniform_const_vec3(rand_vec3());
 
-				InstanceData {
+				InstanceUniforms {
 					uniforms: map! {
 						5 => light_pos_u,
 						6 => light_color_u,

@@ -2,9 +2,8 @@ use std::collections::btree_map;
 
 use crate::{
 	layer::Layer,
-	shade::InstanceData,
 	texture::{Sampler, Texture},
-	uniform::{LayerLayout, Uniform, UniformLayout},
+	uniform::{InstanceUniforms, LayerLayout, Uniform, UniformLayout},
 	Painter,
 };
 
@@ -151,7 +150,7 @@ impl Binding {
 		uniforms_length: usize,
 		uniform_layout: Option<BindingLayout>,
 		shape_uniforms: &Vec<(u32, Uniform)>,
-		shape_instances: &Vec<InstanceData>,
+		shape_instances: &Vec<InstanceUniforms>,
 		layer_uniforms: &Vec<(u32, Uniform)>,
 	) -> Vec<Self> {
 		if uniforms_length == 0 || uniform_layout.is_none() {
