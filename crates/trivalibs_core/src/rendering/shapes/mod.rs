@@ -1,2 +1,2 @@
-pub mod r#box;
+pub mod cuboid;
 pub mod sphere;

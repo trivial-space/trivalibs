@@ -3,7 +3,7 @@ use trivalibs::{
 	prelude::*,
 	rendering::{
 		mesh_geometry::{face_data, MeshBufferType, MeshGeometry},
-		shapes::{r#box::BoxGeom, sphere::create_sphere_mesh},
+		shapes::{cuboid::Cuboid, sphere::create_sphere_mesh},
 		BufferedGeometry,
 	},
 };
@@ -61,7 +61,7 @@ pub fn create_ball_geom() -> BufferedGeometry {
 }
 
 pub fn create_box_geom() -> BufferedGeometry {
-	let box_shape = BoxGeom::unit_cube();
+	let box_shape = Cuboid::unit_cube();
 	let mut geom = MeshGeometry::new();
 	let front = box_shape.front_face();
 	let back = box_shape.back_face();

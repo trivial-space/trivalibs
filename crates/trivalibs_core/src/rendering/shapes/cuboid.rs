@@ -1,12 +1,12 @@
 use glam::{vec3, Vec3};
 
-pub struct BoxGeom {
+pub struct Cuboid {
 	pub center: Vec3,
 	pub size: Vec3,
 }
 
-impl BoxGeom {
-	pub fn new(center: Vec3, width: f32, height: f32, depth: f32) -> Self {
+impl Cuboid {
+	pub fn box_at(center: Vec3, width: f32, height: f32, depth: f32) -> Self {
 		Self {
 			center,
 			size: vec3(width, height, depth),
