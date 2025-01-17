@@ -9,7 +9,7 @@ use spirv_std::spirv;
 pub fn main(
 	coord: Vec2,
 	#[spirv(uniform, descriptor_set = 0, binding = 0)] size: &UVec2,
-	#[spirv(uniform, descriptor_set = 1, binding = 0)] time: &f32,
+	#[spirv(uniform, descriptor_set = 0, binding = 1)] time: &f32,
 	out: &mut Vec4,
 ) {
 	let tile_dim = vec2(200.0, 100.0);

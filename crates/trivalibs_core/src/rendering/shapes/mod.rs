@@ -1,2 +1,2 @@
-pub mod qube;
+pub mod cuboid;
 pub mod sphere;

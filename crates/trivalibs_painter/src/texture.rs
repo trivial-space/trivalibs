@@ -1,4 +1,4 @@
-use crate::Painter;
+use crate::{binding::Binding, uniform::Uniform, Painter};
 use trivalibs_core::utils::default;
 
 #[derive(Clone, Copy)]
@@ -26,19 +26,32 @@ pub struct SamplerProps {
 
 impl Default for SamplerProps {
 	fn default() -> Self {
-		Self {
-			address_mode_u: wgpu::AddressMode::ClampToEdge,
-			address_mode_v: wgpu::AddressMode::ClampToEdge,
-			mag_filter: wgpu::FilterMode::Linear,
-			min_filter: wgpu::FilterMode::Linear,
-			sample_depth: false,
-		}
+		Self::NEAREST
 	}
+}
+
+impl SamplerProps {
+	pub const NEAREST: SamplerProps = SamplerProps {
+		address_mode_u: wgpu::AddressMode::ClampToEdge,
+		address_mode_v: wgpu::AddressMode::ClampToEdge,
+		mag_filter: wgpu::FilterMode::Nearest,
+		min_filter: wgpu::FilterMode::Nearest,
+		sample_depth: false,
+	};
+
+	pub const LINEAR: SamplerProps = SamplerProps {
+		address_mode_u: wgpu::AddressMode::ClampToEdge,
+		address_mode_v: wgpu::AddressMode::ClampToEdge,
+		mag_filter: wgpu::FilterMode::Linear,
+		min_filter: wgpu::FilterMode::Linear,
+		sample_depth: false,
+	};
 }
 
 pub(crate) struct TextureStorage {
 	pub texture: wgpu::Texture,
 	pub view: wgpu::TextureView,
+	pub bindings: Vec<Binding>,
 }
 
 #[derive(Clone, Copy)]
@@ -86,7 +99,11 @@ impl Texture {
 	pub fn create_2d(painter: &mut Painter, props: Texture2DProps, multi_sampled: bool) -> Self {
 		let texture = create_2d(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
-		let storage = TextureStorage { texture, view };
+		let storage = TextureStorage {
+			texture,
+			view,
+			bindings: Vec::with_capacity(16),
+		};
 		painter.textures.push(storage);
 
 		Self(painter.textures.len() - 1)
@@ -95,12 +112,20 @@ impl Texture {
 	pub fn replace_2d(&self, painter: &mut Painter, props: Texture2DProps, multi_sampled: bool) {
 		let texture = create_2d(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
-		let storage = TextureStorage { texture, view };
 
 		let old = &mut painter.textures[self.0];
+
+		let storage = TextureStorage {
+			texture,
+			view,
+			bindings: old.bindings.clone(),
+		};
+
 		old.texture.destroy();
 
 		painter.textures[self.0] = storage;
+
+		self.rebuild_bindings(painter);
 	}
 
 	pub fn create_depth(
@@ -110,7 +135,13 @@ impl Texture {
 	) -> Self {
 		let texture = create_depth(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
-		let storage = TextureStorage { texture, view };
+
+		let storage = TextureStorage {
+			texture,
+			view,
+			bindings: Vec::with_capacity(2),
+		};
+
 		painter.textures.push(storage);
 
 		Self(painter.textures.len() - 1)
@@ -124,12 +155,19 @@ impl Texture {
 	) {
 		let texture = create_depth(painter, props, multi_sampled);
 		let view = texture.create_view(&default());
-		let storage = TextureStorage { texture, view };
-
 		let old = &mut painter.textures[self.0];
+
+		let storage = TextureStorage {
+			texture,
+			view,
+			bindings: old.bindings.clone(),
+		};
+
 		old.texture.destroy();
 
 		painter.textures[self.0] = storage;
+
+		self.rebuild_bindings(painter);
 	}
 
 	pub fn fill_2d(&self, painter: &Painter, data: &[u8]) {
@@ -160,6 +198,19 @@ impl Texture {
 		let t = &mut painter.textures[self.0];
 		t.texture.destroy();
 	}
+
+	pub fn uniform(&self) -> Uniform {
+		Uniform::Tex2D(*self)
+	}
+
+	// Suggestion: Do not recreate bindings multiple time, if they reference several textures.
+	// Instead mark them as dirty and rebuild them later.
+	pub(crate) fn rebuild_bindings(&self, painter: &mut Painter) {
+		let t = &painter.textures[self.0];
+		for b in t.bindings.clone() {
+			b.rebuild(painter);
+		}
+	}
 }
 
 #[derive(Clone, Copy)]
@@ -181,5 +232,9 @@ impl Sampler {
 		painter.samplers.push(sampler);
 
 		Self(painter.samplers.len() - 1)
+	}
+
+	pub fn uniform(&self) -> Uniform {
+		Uniform::Sampler(*self)
 	}
 }

@@ -1,0 +1,7 @@
+[
+  {
+    "source_path": "fragment.spv",
+    "entry_point": "fragment",
+    "wgsl_entry_point": "fragment"
+  }
+]

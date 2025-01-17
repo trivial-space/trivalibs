@@ -1,6 +1,7 @@
 use trivalibs::painter::{
+	app::{CanvasApp, Event},
 	wgpu::{self, include_spirv},
-	CanvasApp, Event, Painter,
+	Painter,
 };
 
 struct App {

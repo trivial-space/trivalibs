@@ -1,13 +1,7 @@
 use trivalibs::{
+	map,
 	math::transform::Transform,
-	painter::{
-		load_fragment_shader, load_vertex_shader,
-		shade::ShadeProps,
-		sketch::{Sketch, SketchProps},
-		uniform::UniformBuffer,
-		wgpu::{self, VertexFormat},
-		AppConfig, CanvasApp, Event, Painter,
-	},
+	painter::prelude::*,
 	prelude::*,
 	rendering::{
 		camera::{CamProps, PerspectiveCamera},
@@ -26,7 +20,7 @@ struct App {
 	cam: PerspectiveCamera,
 	triangles: Vec<Triangle>,
 
-	sketch: Sketch,
+	canvas: Layer,
 	model_mats: Vec<UniformBuffer<Mat4>>,
 	vp_mat: UniformBuffer<Mat4>,
 }
@@ -55,12 +49,14 @@ impl CanvasApp<()> for App {
 				.unwrap()
 		});
 
-		let vert_u_type = p.uniform_type_buffered_vert();
-		let frag_u_type = p.uniform_type_buffered_frag();
-
 		let shade = p.shade_create(ShadeProps {
-			vertex_format: vec![VertexFormat::Float32x3],
-			uniform_types: &[vert_u_type, vert_u_type, frag_u_type],
+			attributes: vec![Float32x3],
+			uniforms: &[
+				UNIFORM_BUFFER_VERT,
+				UNIFORM_BUFFER_VERT,
+				UNIFORM_BUFFER_FRAG,
+			],
+			layers: &[],
 		});
 		load_vertex_shader!(shade, p, "../shader/vertex.spv");
 		load_fragment_shader!(shade, p, "../shader/fragment.spv");
@@ -68,32 +64,41 @@ impl CanvasApp<()> for App {
 		let form = p.form_create(VERTICES, default());
 
 		let model_mats = (0..triangles.len())
-			.map(|_| vert_u_type.create_mat4(p))
+			.map(|_| p.uniform_mat4())
 			.collect::<Vec<_>>();
 
-		let cam = vert_u_type.create_mat4(p);
+		let cam = p.uniform_mat4();
 
 		let instances = model_mats
 			.iter()
-			.map(|model| {
-				vec![
-					(1, model.uniform),
-					(2, frag_u_type.const_vec4(p, rand_vec4())),
-				]
+			.map(|model| InstanceUniforms {
+				uniforms: map! {
+					1 => model.uniform(),
+					2 => p.uniform_const_vec4(rand_vec4())
+				},
+				..default()
 			})
 			.collect();
 
-		let sketch = p.sketch_create(
+		let shape = p.shape_create(
 			form,
 			shade,
-			SketchProps {
-				uniforms: vec![(0, cam.uniform)],
+			ShapeProps {
+				uniforms: map! {
+					0 => cam.uniform()
+				},
 				instances,
 				cull_mode: None,
 				blend_state: wgpu::BlendState::ALPHA_BLENDING,
 				..default()
 			},
 		);
+
+		let canvas = p.layer_create(LayerProps {
+			shapes: vec![shape],
+			clear_color: Some(wgpu::Color::BLACK),
+			..default()
+		});
 
 		Self {
 			cam: PerspectiveCamera::create(CamProps {
@@ -103,7 +108,7 @@ impl CanvasApp<()> for App {
 			}),
 			triangles,
 
-			sketch,
+			canvas,
 			model_mats,
 			vp_mat: cam,
 		}
@@ -123,14 +128,19 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
+	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
 		p.request_next_frame();
-		p.draw(self.sketch)
+		p.paint_and_show(self.canvas)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {
-	App::create().config(AppConfig { show_fps: true }).start();
+	App::create()
+		.config(AppConfig {
+			show_fps: true,
+			use_vsync: false,
+		})
+		.start();
 }

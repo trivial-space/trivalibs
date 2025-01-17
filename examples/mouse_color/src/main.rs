@@ -1,4 +1,9 @@
-use trivalibs::painter::{wgpu, winit::event::WindowEvent, CanvasApp, Event, Painter};
+use trivalibs::painter::{
+	app::{CanvasApp, Event},
+	wgpu::{self, SurfaceError},
+	winit::event::WindowEvent,
+	Painter,
+};
 
 struct App {
 	color: wgpu::Color,
@@ -16,7 +21,7 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
+	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
 		let frame = p.surface.get_current_texture()?;
 
 		let view = frame

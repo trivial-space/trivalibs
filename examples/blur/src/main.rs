@@ -2,16 +2,7 @@ use trivalibs::{
 	glam::{vec2, Vec2},
 	gpu_data,
 	macros::apply,
-	painter::{
-		effect::EffectProps,
-		layer::{Layer, LayerProps},
-		load_fragment_shader, load_vertex_shader,
-		shade::{ShadeEffectProps, ShadeProps},
-		sketch::SketchProps,
-		uniform::UniformBuffer,
-		wgpu::{self, VertexFormat::*},
-		AppConfig, CanvasApp, Event, Painter,
-	},
+	painter::prelude::*,
 	utils::default,
 };
 
@@ -45,28 +36,31 @@ struct App {
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let u_fs_type = p.uniform_type_buffered_frag();
-		let tex_type = p.uniform_type_tex_2d_frag();
-
 		let triangle_shade = p.shade_create(ShadeProps {
-			uniform_types: &[],
-			vertex_format: &[Float32x2, Float32x2],
+			attributes: &[Float32x2, Float32x2],
+			uniforms: &[],
+			layers: &[],
 		});
 		load_vertex_shader!(triangle_shade, p, "../triangle_shader/vert.spv");
 		load_fragment_shader!(triangle_shade, p, "../triangle_shader/frag.spv");
 
 		let blur_shade = p.shade_create_effect(ShadeEffectProps {
-			uniform_types: &[tex_type, u_fs_type, u_fs_type, u_fs_type],
+			uniforms: &[
+				UNIFORM_BUFFER_FRAG,
+				UNIFORM_BUFFER_FRAG,
+				UNIFORM_BUFFER_FRAG,
+			],
+			layers: &[UNIFORM_LAYER_FRAG],
 		});
 		load_fragment_shader!(blur_shade, p, "../blur_shader/frag.spv");
 
 		let tri_form = p.form_create(TRIANGLE, default());
 
-		let tri_sketch = p.sketch_create(tri_form, triangle_shade, SketchProps { ..default() });
+		let tri_shape = p.shape_create(tri_form, triangle_shade, ShapeProps { ..default() });
 
-		let size = u_fs_type.create_vec2(p);
-		let horiz = u_fs_type.const_vec2(p, vec2(1.0, 0.0));
-		let vertical = u_fs_type.const_vec2(p, vec2(0.0, 1.0));
+		let size = p.uniform_vec2();
+		let horiz = p.uniform_const_vec2(vec2(1.0, 0.0));
+		let vertical = p.uniform_const_vec2(vec2(0.0, 1.0));
 
 		let mut effects = vec![];
 
@@ -75,18 +69,18 @@ impl CanvasApp<()> for App {
 
 		let mut counter = BLUR_DIAMETER / 9.0; // Fixed diameter in shader is 9.0
 		while counter > 1.0 {
-			let diameter = u_fs_type.const_f32(p, counter);
+			let diameter = p.uniform_const_f32(counter);
 			effects.push(p.effect_create(
 				blur_shade,
 				EffectProps {
-					uniforms: vec![(1, diameter), (2, size.uniform), (3, horiz)],
+					uniforms: vec![(0, diameter), (1, size.uniform()), (2, horiz)],
 					..default()
 				},
 			));
 			effects.push(p.effect_create(
 				blur_shade,
 				EffectProps {
-					uniforms: vec![(1, diameter), (2, size.uniform), (3, vertical)],
+					uniforms: vec![(0, diameter), (1, size.uniform()), (2, vertical)],
 					..default()
 				},
 			));
@@ -114,7 +108,7 @@ impl CanvasApp<()> for App {
 		// ));
 
 		let canvas = p.layer_create(LayerProps {
-			sketches: vec![tri_sketch],
+			shapes: vec![tri_shape],
 			effects,
 			clear_color: Some(wgpu::Color::BLUE),
 			..default()
@@ -131,14 +125,18 @@ impl CanvasApp<()> for App {
 		p.request_next_frame();
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
-		p.paint(self.canvas)?;
-		p.show(self.canvas)
+	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
+		p.paint_and_show(self.canvas)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {
-	App::create().config(AppConfig { show_fps: true }).start();
+	App::create()
+		.config(AppConfig {
+			show_fps: true,
+			use_vsync: false,
+		})
+		.start();
 }
