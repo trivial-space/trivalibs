@@ -58,8 +58,8 @@ impl CanvasApp<()> for App {
 			],
 			layers: &[],
 		});
-		load_vertex_shader!(shade, p, "../shader/vertex.spv");
-		load_fragment_shader!(shade, p, "../shader/fragment.spv");
+		load_vertex_shader!(shade, p, "./shader/vertex.spv");
+		load_fragment_shader!(shade, p, "./shader/fragment.spv");
 
 		let form = p.form_create(VERTICES, default());
 

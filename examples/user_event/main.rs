@@ -29,10 +29,10 @@ impl CanvasApp<UserEvent> for App {
 		// Load the shaders from disk
 		let vert_shader = p
 			.device
-			.create_shader_module(include_spirv!("../shader/vertex.spv"));
+			.create_shader_module(include_spirv!("./shader/vertex.spv"));
 		let frag_shader = p
 			.device
-			.create_shader_module(include_spirv!("../shader/fragment.spv"));
+			.create_shader_module(include_spirv!("./shader/fragment.spv"));
 
 		let pipeline = p
 			.device

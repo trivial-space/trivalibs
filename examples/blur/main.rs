@@ -41,8 +41,8 @@ impl CanvasApp<()> for App {
 			uniforms: &[],
 			layers: &[],
 		});
-		load_vertex_shader!(triangle_shade, p, "../triangle_shader/vert.spv");
-		load_fragment_shader!(triangle_shade, p, "../triangle_shader/frag.spv");
+		load_vertex_shader!(triangle_shade, p, "./triangle_shader/vert.spv");
+		load_fragment_shader!(triangle_shade, p, "./triangle_shader/frag.spv");
 
 		let blur_shade = p.shade_create_effect(ShadeEffectProps {
 			uniforms: &[
@@ -52,7 +52,7 @@ impl CanvasApp<()> for App {
 			],
 			layers: &[UNIFORM_LAYER_FRAG],
 		});
-		load_fragment_shader!(blur_shade, p, "../blur_shader/frag.spv");
+		load_fragment_shader!(blur_shade, p, "./blur_shader/frag.spv");
 
 		let tri_form = p.form_create(TRIANGLE, default());
 

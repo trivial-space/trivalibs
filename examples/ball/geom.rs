@@ -81,7 +81,7 @@ pub fn create_ball_geom() -> BufferedGeometry {
 }
 
 #[test]
-fn test_ball1() {
+fn ball1() {
 	let res = create_ball_geom();
 	// println!("{:?}", res);
 	assert!(res.vertex_buffer.len() > 0);

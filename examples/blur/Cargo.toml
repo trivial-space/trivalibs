@@ -1,8 +1,0 @@
-[package]
-name = "test_blur"
-version = "0.1.0"
-edition.workspace = true
-
-[dependencies]
-trivalibs.workspace = true
-bytemuck.workspace = true

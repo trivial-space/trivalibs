@@ -14,7 +14,7 @@ impl CanvasApp<()> for App {
 			uniforms: &[UNIFORM_BUFFER_FRAG, UNIFORM_BUFFER_FRAG],
 			layers: &[],
 		});
-		load_fragment_shader!(shade, p, "../shader/main.spv");
+		load_fragment_shader!(shade, p, "./shader/main.spv");
 
 		let u_time = p.uniform_f32();
 		let u_size = p.uniform_uvec2();

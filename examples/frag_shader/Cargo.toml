@@ -1,7 +1,0 @@
-[package]
-name = "test_frag_shader"
-edition.workspace = true
-version = "0.1.0"
-
-[dependencies]
-trivalibs.workspace = true

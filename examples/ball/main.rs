@@ -23,7 +23,7 @@ struct App {
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let tex_bytes = include_bytes!("../texture.png");
+		let tex_bytes = include_bytes!("./texture.png");
 		let mut reader = png::Decoder::new(std::io::Cursor::new(tex_bytes))
 			.read_info()
 			.unwrap();
@@ -53,8 +53,8 @@ impl CanvasApp<()> for App {
 			],
 			layers: &[],
 		});
-		load_vertex_shader!(shade, p, "../shader/vertex.spv");
-		load_fragment_shader!(shade, p, "../shader/fragment.spv");
+		load_vertex_shader!(shade, p, "./shader/vertex.spv");
+		load_fragment_shader!(shade, p, "./shader/fragment.spv");
 
 		let form = p.form_create(&create_ball_geom(), default());
 

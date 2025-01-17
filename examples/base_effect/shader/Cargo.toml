@@ -1,5 +1,5 @@
 [package]
-name = "test_frag_shader_shader"
+name = "base_effect_shader"
 edition.workspace = true
 version = "0.1.0"
 

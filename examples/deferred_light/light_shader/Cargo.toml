@@ -1,5 +1,5 @@
 [package]
-name = "test_deferred_light_light_shader"
+name = "deferred_light_light_shader"
 edition.workspace = true
 version = "0.1.0"
 

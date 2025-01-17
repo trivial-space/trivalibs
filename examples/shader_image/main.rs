@@ -45,8 +45,8 @@ async fn run(_path: Option<String>) {
 		.unwrap();
 
 	// Load the shaders from disk
-	let vert = device.create_shader_module(include_spirv!("../shader/main_vs.spv"));
-	let frag = device.create_shader_module(include_spirv!("../shader/main_fs.spv"));
+	let vert = device.create_shader_module(include_spirv!("./shader/main_vs.spv"));
+	let frag = device.create_shader_module(include_spirv!("./shader/main_fs.spv"));
 
 	let render_target = device.create_texture(&wgpu::TextureDescriptor {
 		label: None,

@@ -1,5 +1,5 @@
 [package]
-name = "test_user_event_shader"
+name = "user_event_shader"
 edition.workspace = true
 version = "0.1.0"
 
