@@ -407,14 +407,6 @@ where
 				vertex_normal: None,
 			});
 		}
-		Self::add_vertex_face(vertices, vertex_idx, face_idx);
-	}
-
-	fn add_vertex_face(
-		vertices: &mut Vec<MeshVertex<V>>,
-		vertex_idx: usize,
-		face_idx: SectionIndex,
-	) {
 		let v = &mut vertices[vertex_idx];
 		v.faces.push(face_idx);
 	}
