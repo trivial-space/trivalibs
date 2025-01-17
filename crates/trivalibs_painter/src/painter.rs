@@ -384,15 +384,20 @@ impl Painter {
 		}
 	}
 
-	fn render_shape(&mut self, rpass: &mut wgpu::RenderPass<'_>, shape: Shape, layer: Layer) {
-		let draw = |painter: &Painter, rpass: &mut wgpu::RenderPass, binding: Option<Binding>| {
-			let s = &painter.shapes[shape.0];
-			let binding_index = s.uniform_binding_index;
+	fn render_shape(&self, rpass: &mut wgpu::RenderPass<'_>, shape: Shape, layer: Layer) {
+		let s = &self.shapes[shape.0];
+		let f = &self.forms[s.form.0];
+		let l = &self.layers[layer.0];
+
+		let draw = |rpass: &mut wgpu::RenderPass, binding: Option<Binding>| {
 			if let Some(binding) = binding {
-				rpass.set_bind_group(binding_index, &painter.bindings[binding.0].binding, &[]);
+				rpass.set_bind_group(
+					s.uniform_binding_index,
+					&self.bindings[binding.0].binding,
+					&[],
+				);
 			}
 
-			let f = &painter.forms[s.form.0];
 			rpass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
 			if let Some(index_buffer) = &f.index_buffer {
 				rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -406,7 +411,6 @@ impl Painter {
 		let pipeline = &self.pipelines[&pipeline_key];
 		rpass.set_pipeline(&pipeline.pipeline);
 
-		let l = &self.layers[layer.0];
 		for (index, layer) in &l.layer_uniforms {
 			let l = &self.layers[layer.0];
 			let b = l.current_source();
@@ -421,20 +425,21 @@ impl Painter {
 		}
 
 		if s.uniform_bindings.is_empty() {
-			draw(self, rpass, None);
+			draw(rpass, None);
 		} else {
 			for binding in &s.uniform_bindings {
-				draw(self, rpass, Some(binding.clone()));
+				draw(rpass, Some(binding.clone()));
 			}
 		}
 	}
 
 	fn render_effect(
-		&mut self,
+		&self,
 		effect: Effect,
 		layer: Layer,
 		skip_source: bool,
 	) -> Result<(), wgpu::SurfaceError> {
+		let e = &self.effects[effect.0];
 		let l = &self.layers[layer.0];
 
 		let view = &self.textures[l.current_target().0].view;
@@ -465,11 +470,8 @@ impl Painter {
 			let pipeline = &self.pipelines[&pipeline_key];
 			rpass.set_pipeline(&pipeline.pipeline);
 
-			let e = &self.effects[effect.0];
-			let l = &self.layers[layer.0];
-
 			if !skip_source {
-				let b = self.layers[layer.0].current_source();
+				let b = l.current_source();
 				rpass.set_bind_group(0, &self.bindings[b.0].binding, &[]);
 			}
 
@@ -575,7 +577,7 @@ impl Painter {
 				});
 
 				for i in 0..shapes_len {
-					let shape = self.layers[layer.0].shapes[i];
+					let shape = l.shapes[i];
 					self.render_shape(&mut rpass, shape, layer);
 				}
 			}
