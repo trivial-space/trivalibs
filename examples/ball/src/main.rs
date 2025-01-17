@@ -84,6 +84,7 @@ impl CanvasApp<()> for App {
 				a: 1.0,
 			}),
 			shapes: vec![shape],
+			multisampled: true,
 			..default()
 		});
 

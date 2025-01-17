@@ -60,5 +60,10 @@ impl CanvasApp<()> for App {
 }
 
 pub fn main() {
-	App::create().start();
+	App::create()
+		.config(AppConfig {
+			show_fps: true,
+			use_vsync: false,
+		})
+		.start();
 }
