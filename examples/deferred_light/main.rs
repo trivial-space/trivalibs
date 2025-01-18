@@ -39,8 +39,8 @@ impl CanvasApp<()> for App {
 			],
 			layers: &[],
 		});
-		load_vertex_shader!(scene_shade, p, "../scene_shader/vertex.spv");
-		load_fragment_shader!(scene_shade, p, "../scene_shader/fragment.spv");
+		load_vertex_shader!(scene_shade, p, "./scene_shader/vertex.spv");
+		load_fragment_shader!(scene_shade, p, "./scene_shader/fragment.spv");
 
 		let ball_form = p.form_create(&create_ball_geom(), default());
 
@@ -107,7 +107,7 @@ impl CanvasApp<()> for App {
 			],
 			layers: &[],
 		});
-		load_fragment_shader!(canvas_shade, p, "../light_shader/fragment.spv");
+		load_fragment_shader!(canvas_shade, p, "./light_shader/fragment.spv");
 
 		let color_target = scene_layer.get_target_uniform(p, 0);
 		let normal_target = scene_layer.get_target_uniform(p, 1);

@@ -361,6 +361,10 @@ where
 								Err(wgpu::SurfaceError::Timeout) => {
 									log::warn!("Surface timeout")
 								}
+
+								Err(other) => {
+									log::error!("Other error: {:?}", other);
+								}
 							}
 
 							self.is_resizing = false;

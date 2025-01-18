@@ -1,5 +1,5 @@
 [package]
-name = "trivalibs"
+name = "trivalibs_examples"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.82" # Prevent Cargo.lock version 4, cargo gpu does not support it yet
@@ -8,7 +8,7 @@ rust-version = "1.82" # Prevent Cargo.lock version 4, cargo gpu does not support
 resolver = "2"
 members = [
 	"crates/*",
-	"examples/triangle", # special example where the code references a shader crate
+	"examples/triangle",    # special example where the code references a shader crate
 	"examples/**/shader",
 	"examples/**/*_shader",
 ]
@@ -17,7 +17,9 @@ members = [
 edition = "2021"
 
 [workspace.dependencies]
-trivalibs = { path = "." }
+trivalibs = { path = "crates/trivalibs" }
+trivalibs_core = { path = "crates/trivalibs_core" }
+trivalibs_painter = { path = "crates/trivalibs_painter" }
 trivalibs_shaders = { path = "crates/trivalibs_shaders" }
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
@@ -35,7 +37,7 @@ glam = { version = "0.29.2", features = [
 	"approx",
 ] }
 winit = "0.30.5"
-wgpu = { version = "23.0.1", features = ["spirv"] }
+wgpu = { version = "24.0", features = ["spirv"] }
 spirv-std = { version = "0.9" }
 log = "0.4"
 env_logger = "0.11"
@@ -43,9 +45,11 @@ pollster = "0.4.0"
 macro_rules_attribute = "0.2.0"
 png = "0.17.14"
 flume = "0.11.1"
-notify = "7.0.0"
+notify = "8.0.0"
 
 [dependencies]
+
+trivalibs = { path = "crates/trivalibs" }
 trivalibs_core = { path = "crates/trivalibs_core" }
 trivalibs_painter = { path = "crates/trivalibs_painter" }
 png.workspace = true

@@ -88,6 +88,7 @@ fn map_format_to_u8(format: wgpu::TextureFormat) -> u8 {
 			block: _,
 			channel: _,
 		} => 75,
+		wgpu::TextureFormat::R64Uint => 76,
 	}
 }
 

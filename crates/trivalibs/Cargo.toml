@@ -1,0 +1,9 @@
+[package]
+name = "trivalibs"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82" # Prevent Cargo.lock version 4, cargo gpu does not support it yet
+
+[dependencies]
+trivalibs_core.workspace = true
+trivalibs_painter.workspace = true

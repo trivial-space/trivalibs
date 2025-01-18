@@ -176,7 +176,7 @@ impl Texture {
 		let size = texture.size();
 		painter.queue.write_texture(
 			// Tells wgpu where to copy the pixel data
-			wgpu::ImageCopyTexture {
+			wgpu::TexelCopyTextureInfo {
 				texture,
 				mip_level: 0,
 				origin: wgpu::Origin3d::ZERO,
@@ -185,7 +185,7 @@ impl Texture {
 			// The actual pixel data
 			data,
 			// The layout of the texture
-			wgpu::ImageDataLayout {
+			wgpu::TexelCopyBufferLayout {
 				offset: 0,
 				bytes_per_row: Some(4 * size.width),
 				rows_per_image: Some(size.height),
