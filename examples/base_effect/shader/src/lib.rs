@@ -1,4 +1,5 @@
 #![no_std]
+#![allow(unexpected_cfgs)]
 
 use spirv_std::glam::{vec2, vec4, UVec2, Vec2, Vec4};
 #[allow(unused_imports)]

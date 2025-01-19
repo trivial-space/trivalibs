@@ -1,4 +1,5 @@
 #![no_std]
+#![allow(unexpected_cfgs)]
 
 use spirv_std::glam::{Mat4, Quat, Vec3, Vec4, Vec4Swizzles};
 use spirv_std::spirv;

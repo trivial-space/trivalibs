@@ -1,9 +1,10 @@
 #![no_std]
+#![allow(unexpected_cfgs)]
 
 use spirv_std::glam::{Vec2, Vec4};
 use spirv_std::{spirv, Image, Sampler};
 #[allow(unused_imports)]
-use trivalibs_shaders::{gaussian_blur, gaussian_blur_13, gaussian_blur_9};
+use trivalibs_shaders::blur::{gaussian_blur, gaussian_blur_13, gaussian_blur_9};
 
 #[spirv(fragment)]
 pub fn frag(

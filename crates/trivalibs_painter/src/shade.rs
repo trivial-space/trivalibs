@@ -259,6 +259,7 @@ macro_rules! load_fragment_shader {
 		{
 			let current_file = file!();
 			let current_dir = std::path::Path::new(current_file).parent().unwrap();
+			println!("try loading shader: {:?}, {:?}", current_dir, $path);
 			let full_path = current_dir.join($path);
 			let full_path = std::fs::canonicalize(full_path).unwrap();
 			let full_path = full_path.to_str().unwrap();

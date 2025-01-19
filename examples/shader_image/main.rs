@@ -119,7 +119,7 @@ async fn run(_path: Option<String>) {
 	}
 	// The texture now contains our rendered image
 	command_encoder.copy_texture_to_buffer(
-		wgpu::ImageCopyTexture {
+		wgpu::ImageCopTexture {
 			texture: &render_target,
 			mip_level: 0,
 			origin: wgpu::Origin3d::ZERO,
