@@ -1,0 +1,22 @@
+[
+  {
+    "source_path": "color_fs.spv",
+    "entry_point": "color_fs",
+    "wgsl_entry_point": "color_fs"
+  },
+  {
+    "source_path": "color_vs.spv",
+    "entry_point": "color_vs",
+    "wgsl_entry_point": "color_vs"
+  },
+  {
+    "source_path": "texture_fs.spv",
+    "entry_point": "texture_fs",
+    "wgsl_entry_point": "texture_fs"
+  },
+  {
+    "source_path": "texture_vs.spv",
+    "entry_point": "texture_vs",
+    "wgsl_entry_point": "texture_vs"
+  }
+]

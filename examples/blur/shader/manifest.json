@@ -1,0 +1,17 @@
+[
+  {
+    "source_path": "blur_fs.spv",
+    "entry_point": "blur_fs",
+    "wgsl_entry_point": "blur_fs"
+  },
+  {
+    "source_path": "triangle_fs.spv",
+    "entry_point": "triangle_fs",
+    "wgsl_entry_point": "triangle_fs"
+  },
+  {
+    "source_path": "triangle_vs.spv",
+    "entry_point": "triangle_vs",
+    "wgsl_entry_point": "triangle_vs"
+  }
+]

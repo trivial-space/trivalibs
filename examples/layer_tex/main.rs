@@ -101,16 +101,16 @@ impl CanvasApp<ResizeEvent> for App {
 			uniforms: &[UNIFORM_BUFFER_VERT, UNIFORM_BUFFER_FRAG],
 			layers: &[],
 		});
-		load_vertex_shader!(color_shade, p, "./color_shader/vs_main.spv");
-		load_fragment_shader!(color_shade, p, "./color_shader/fs_main.spv");
+		load_vertex_shader!(color_shade, p, "./shader/color_vs.spv");
+		load_fragment_shader!(color_shade, p, "./shader/color_fs.spv");
 
 		let tex_shader = p.shade_create(ShadeProps {
 			attributes: &[Float32x3, Float32x2],
 			uniforms: &[UNIFORM_BUFFER_VERT],
 			layers: &[UNIFORM_LAYER_FRAG],
 		});
-		load_vertex_shader!(tex_shader, p, "./tex_shader/vs_main.spv");
-		load_fragment_shader!(tex_shader, p, "./tex_shader/fs_main.spv");
+		load_vertex_shader!(tex_shader, p, "./shader/texture_vs.spv");
+		load_fragment_shader!(tex_shader, p, "./shader/texture_fs.spv");
 
 		let quad_form = p.form_create(QUAD, default());
 		let triangle_form = p.form_create(TRIANGLE, default());

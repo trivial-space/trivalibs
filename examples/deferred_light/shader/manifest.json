@@ -1,0 +1,17 @@
+[
+  {
+    "source_path": "light_fs.spv",
+    "entry_point": "light_fs",
+    "wgsl_entry_point": "light_fs"
+  },
+  {
+    "source_path": "scene_fs.spv",
+    "entry_point": "scene_fs",
+    "wgsl_entry_point": "scene_fs"
+  },
+  {
+    "source_path": "scene_vs.spv",
+    "entry_point": "scene_vs",
+    "wgsl_entry_point": "scene_vs"
+  }
+]
