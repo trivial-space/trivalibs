@@ -17,6 +17,7 @@ pub enum Event<UserEvent> {
 	WindowEvent(WindowEvent),
 	DeviceEvent(DeviceEvent),
 	UserEvent(UserEvent),
+	ShaderReloadEvent,
 }
 
 pub trait CanvasApp<UserEvent> {
@@ -291,8 +292,9 @@ where
 			CustomEvent::ReloadShaders(path) => {
 				#[cfg(debug_assertions)]
 				{
-					if let WindowState::Initialized(painter, _) = &mut self.state {
+					if let WindowState::Initialized(painter, app) = &mut self.state {
 						painter.reload_shader(path);
+						app.event(Event::ShaderReloadEvent, painter);
 					}
 				}
 			}
