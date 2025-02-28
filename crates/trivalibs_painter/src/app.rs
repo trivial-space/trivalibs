@@ -1,3 +1,4 @@
+use crate::window_state::WindowDimensions;
 use crate::{painter::PainterConfig, Painter};
 #[cfg(debug_assertions)]
 use notify::Watcher;
@@ -5,7 +6,7 @@ use std::{sync::Arc, time::Instant};
 use wgpu::SurfaceError;
 use winit::{
 	application::ApplicationHandler,
-	dpi::PhysicalSize,
+	dpi::{PhysicalPosition, PhysicalSize},
 	event::{DeviceEvent, DeviceId, ElementState, KeyEvent, WindowEvent},
 	event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
 	keyboard::{KeyCode, PhysicalKey},
@@ -56,6 +57,7 @@ pub trait CanvasApp<UserEvent> {
 			frame_count: 0,
 			frame_time: 0.0,
 			now: Instant::now(),
+			keep_window_dimensions: true,
 		};
 
 		CanvasAppStarter { runner, event_loop }
@@ -89,6 +91,7 @@ where
 	frame_count: u32,
 	frame_time: f32,
 	now: Instant,
+	keep_window_dimensions: bool,
 }
 
 pub struct CanvasHandle<UserEvent>
@@ -112,6 +115,7 @@ impl<UserEvent> CanvasHandle<UserEvent> {
 pub struct AppConfig {
 	pub show_fps: bool,
 	pub use_vsync: bool,
+	pub keep_window_dimensions: bool,
 }
 
 impl Default for AppConfig {
@@ -119,6 +123,7 @@ impl Default for AppConfig {
 		Self {
 			show_fps: false,
 			use_vsync: true,
+			keep_window_dimensions: false,
 		}
 	}
 }
@@ -140,6 +145,7 @@ where
 	pub fn config(mut self, config: AppConfig) -> Self {
 		self.runner.show_fps = config.show_fps;
 		self.runner.use_vsync = config.use_vsync;
+		self.runner.keep_window_dimensions = config.keep_window_dimensions;
 		self
 	}
 
@@ -215,10 +221,24 @@ where
 			WindowState::Uninitialized => {
 				self.state = WindowState::Initializing;
 
-				let window = event_loop
-					.create_window(Window::default_attributes())
-					.unwrap();
+				let mut window_attributes = Window::default_attributes();
 
+				// Load and apply saved window state
+				#[cfg(not(target_arch = "wasm32"))]
+				if self.keep_window_dimensions {
+					if let Some(state) = WindowDimensions::load() {
+						window_attributes = window_attributes
+							.with_inner_size(PhysicalSize::new(state.size.0, state.size.1));
+						window_attributes = window_attributes.with_position(PhysicalPosition::new(
+							state.position.0,
+							state.position.1,
+						));
+					}
+				} else {
+					let _ = WindowDimensions::cleanup();
+				}
+
+				let window = event_loop.create_window(window_attributes).unwrap();
 				let window = Arc::new(window);
 
 				#[cfg(target_arch = "wasm32")]
@@ -317,6 +337,28 @@ where
 						// On macos the window needs to be redrawn manually after resizing
 						painter.request_next_frame();
 						self.is_resizing = true;
+
+						#[cfg(not(target_arch = "wasm32"))]
+						{
+							let window = painter.window();
+							if self.keep_window_dimensions {
+								let dim = WindowDimensions::from_window(
+									new_size,
+									window.outer_position().unwrap_or_default(),
+								);
+								let _ = dim.save();
+							}
+						}
+					}
+
+					#[cfg(not(target_arch = "wasm32"))]
+					WindowEvent::Moved(new_position) => {
+						let window = painter.window();
+						if self.keep_window_dimensions {
+							let dim =
+								WindowDimensions::from_window(window.inner_size(), new_position);
+							let _ = dim.save();
+						}
 					}
 
 					WindowEvent::RedrawRequested => {
