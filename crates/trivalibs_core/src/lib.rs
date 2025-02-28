@@ -17,4 +17,5 @@ pub mod prelude {
 	pub use glam::*;
 	pub use lerp::*;
 	pub use rand::prelude::*;
+	pub use rand::random;
 }
