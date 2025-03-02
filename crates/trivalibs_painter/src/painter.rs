@@ -193,6 +193,10 @@ impl Painter {
 		painter
 	}
 
+	pub fn window(&self) -> &Arc<Window> {
+		&self.window
+	}
+
 	// form helpers
 
 	pub fn form_update<'a>(&mut self, form: &Form, buffers: impl Into<FormBuffers<'a>>) {
