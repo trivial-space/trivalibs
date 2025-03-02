@@ -15,7 +15,7 @@ pub mod shape;
 pub mod texture;
 pub mod uniform;
 pub mod uniform_constants;
-pub(crate) mod window_state;
+pub(crate) mod window_dimensions;
 
 pub mod prelude {
 	pub use crate::{

@@ -1,4 +1,4 @@
-use crate::window_state::WindowDimensions;
+use crate::window_dimensions::WindowDimensions;
 use crate::{painter::PainterConfig, Painter};
 #[cfg(debug_assertions)]
 use notify::Watcher;
