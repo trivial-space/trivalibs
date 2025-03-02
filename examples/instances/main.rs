@@ -49,19 +49,18 @@ impl CanvasApp<()> for App {
 				.unwrap()
 		});
 
-		let shade = p.shade_create(ShadeProps {
-			attributes: vec![Float32x3],
-			uniforms: &[
+		let shade = p
+			.shade(&[Float32x3])
+			.with_uniforms(&[
 				UNIFORM_BUFFER_VERT,
 				UNIFORM_BUFFER_VERT,
 				UNIFORM_BUFFER_FRAG,
-			],
-			layers: &[],
-		});
+			])
+			.create();
 		load_vertex_shader!(shade, p, "./shader/vertex.spv");
 		load_fragment_shader!(shade, p, "./shader/fragment.spv");
 
-		let form = p.form_create(VERTICES, default());
+		let form = p.form(VERTICES).create();
 
 		let model_mats = (0..triangles.len())
 			.map(|_| p.uniform_mat4())
@@ -80,19 +79,15 @@ impl CanvasApp<()> for App {
 			})
 			.collect();
 
-		let shape = p.shape_create(
-			form,
-			shade,
-			ShapeProps {
-				uniforms: map! {
-					0 => cam.uniform()
-				},
-				instances,
-				cull_mode: None,
-				blend_state: wgpu::BlendState::ALPHA_BLENDING,
-				..default()
-			},
-		);
+		let shape = p
+			.shape(form, shade)
+			.with_uniforms(map! {
+				0 => cam.uniform()
+			})
+			.with_instances(instances)
+			.with_cull_mode(None)
+			.with_blend_state(wgpu::BlendState::ALPHA_BLENDING)
+			.create();
 
 		let canvas = p.layer_create(LayerProps {
 			shapes: vec![shape],

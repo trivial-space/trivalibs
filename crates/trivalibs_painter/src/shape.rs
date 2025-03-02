@@ -104,3 +104,50 @@ impl Shape {
 		painter.shapes[self.0].uniform_bindings = uniforms;
 	}
 }
+
+pub struct ShapeBuilder<'a> {
+	form: Form,
+	shade: Shade,
+	painter: &'a mut Painter,
+	props: ShapeProps,
+}
+
+impl<'a> ShapeBuilder<'a> {
+	pub fn new(painter: &'a mut Painter, form: Form, shade: Shade) -> Self {
+		ShapeBuilder {
+			form,
+			shade,
+			painter,
+			props: ShapeProps::default(),
+		}
+	}
+
+	pub fn create(&mut self) -> Shape {
+		Shape::new(self.painter, self.form, self.shade, self.props.clone())
+	}
+
+	pub fn with_uniforms(mut self, uniforms: Vec<(u32, Uniform)>) -> Self {
+		self.props.uniforms = uniforms;
+		self
+	}
+
+	pub fn with_layer_uniforms(mut self, layer_uniforms: Vec<(u32, Layer)>) -> Self {
+		self.props.layer_uniforms = layer_uniforms;
+		self
+	}
+
+	pub fn with_instances(mut self, instances: Vec<InstanceUniforms>) -> Self {
+		self.props.instances = instances;
+		self
+	}
+
+	pub fn with_cull_mode(mut self, cull_mode: Option<wgpu::Face>) -> Self {
+		self.props.cull_mode = cull_mode;
+		self
+	}
+
+	pub fn with_blend_state(mut self, blend_state: wgpu::BlendState) -> Self {
+		self.props.blend_state = blend_state;
+		self
+	}
+}

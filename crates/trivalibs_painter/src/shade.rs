@@ -252,6 +252,75 @@ impl Shade {
 	}
 }
 
+pub struct ShadeBuilder<'a, 'b, Format>
+where
+	Format: Into<AttribsFormat>,
+{
+	props: ShadeProps<'a, Format>,
+	painter: &'b mut Painter,
+}
+
+impl<'a, 'b, Format> ShadeBuilder<'a, 'b, Format>
+where
+	Format: Into<AttribsFormat>,
+{
+	pub fn new(painter: &'b mut Painter, attributes: Format) -> Self {
+		ShadeBuilder {
+			props: ShadeProps {
+				attributes,
+				uniforms: &[],
+				layers: &[],
+			},
+			painter,
+		}
+	}
+
+	pub fn with_uniforms(mut self, uniforms: &'a [UniformLayout]) -> Self {
+		self.props.uniforms = uniforms;
+		self
+	}
+
+	pub fn with_layers(mut self, layers: &'a [LayerLayout]) -> Self {
+		self.props.layers = layers;
+		self
+	}
+
+	pub fn create(self) -> Shade {
+		Shade::new(self.painter, self.props)
+	}
+}
+
+pub struct ShadeEffectBuilder<'a, 'b> {
+	props: ShadeEffectProps<'a>,
+	painter: &'b mut Painter,
+}
+
+impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
+	pub fn new(painter: &'b mut Painter) -> Self {
+		ShadeEffectBuilder {
+			props: ShadeEffectProps {
+				uniforms: &[],
+				layers: &[],
+			},
+			painter,
+		}
+	}
+
+	pub fn with_uniforms(mut self, uniforms: &'a [UniformLayout]) -> Self {
+		self.props.uniforms = uniforms;
+		self
+	}
+
+	pub fn with_layers(mut self, layers: &'a [LayerLayout]) -> Self {
+		self.props.layers = layers;
+		self
+	}
+
+	pub fn create(self) -> Shade {
+		Shade::new_effect(self.painter, self.props)
+	}
+}
+
 #[macro_export]
 macro_rules! load_fragment_shader {
 	($shade:expr, $painter:expr, $path:expr) => {

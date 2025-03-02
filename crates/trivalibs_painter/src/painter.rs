@@ -1,13 +1,13 @@
 use crate::{
 	binding::{Binding, BindingLayout, BindingStorage},
-	effect::{Effect, EffectProps, EffectStorage},
-	form::{Form, FormBuffers, FormProps, FormStorage},
+	effect::{Effect, EffectBuilder, EffectStorage},
+	form::{Form, FormBuffers, FormBuilder, FormStorage},
 	layer::{Layer, LayerProps, LayerStorage},
 	pipeline::PipelineStorage,
 	prelude::UNIFORM_LAYER_FRAG,
-	shade::{AttribsFormat, Shade, ShadeEffectProps, ShadeProps, ShadeStorage},
+	shade::{AttribsFormat, Shade, ShadeBuilder, ShadeEffectBuilder, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
-	shape::{Shape, ShapeProps, ShapeStorage},
+	shape::{Shape, ShapeBuilder, ShapeStorage},
 	texture::{Sampler, SamplerProps, Texture, Texture2DProps, TextureStorage},
 	uniform::{Mat3U, Uniform, UniformBuffer, Vec3U},
 };
@@ -199,29 +199,25 @@ impl Painter {
 
 	// form helpers
 
-	pub fn form_update<'a>(&mut self, form: &Form, buffers: impl Into<FormBuffers<'a>>) {
-		form.update(self, buffers);
+	pub fn form<'a>(&mut self, buffer: impl Into<FormBuffers<'a>>) -> FormBuilder<'_, 'a> {
+		FormBuilder::new(self, buffer)
 	}
 
-	pub fn form_create<'a>(
-		&mut self,
-		buffer: impl Into<FormBuffers<'a>>,
-		props: FormProps,
-	) -> Form {
-		Form::new(self, buffer, props)
+	pub fn form_update<'a>(&mut self, form: &Form, buffers: &'a FormBuffers<'a>) {
+		form.update(self, buffers);
 	}
 
 	// shade helpers
 
-	pub fn shade_create<Format: Into<AttribsFormat>>(
+	pub fn shade<Format: Into<AttribsFormat>>(
 		&mut self,
-		props: ShadeProps<Format>,
-	) -> Shade {
-		Shade::new(self, props)
+		attributes: Format,
+	) -> ShadeBuilder<'_, '_, Format> {
+		ShadeBuilder::new(self, attributes)
 	}
 
-	pub fn shade_create_effect(&mut self, props: ShadeEffectProps) -> Shade {
-		Shade::new_effect(self, props)
+	pub fn shade_effect(&mut self) -> ShadeEffectBuilder<'_, '_> {
+		ShadeEffectBuilder::new(self)
 	}
 
 	// texture helpers
@@ -244,12 +240,12 @@ impl Painter {
 
 	// shape utils
 
-	pub fn shape_create(&mut self, form: Form, shade: Shade, props: ShapeProps) -> Shape {
-		Shape::new(self, form, shade, props)
+	pub fn shape(&mut self, form: Form, shade: Shade) -> ShapeBuilder<'_> {
+		ShapeBuilder::new(self, form, shade)
 	}
 
-	pub fn effect_create(&mut self, shade: Shade, props: EffectProps) -> Effect {
-		Effect::new(self, shade, props)
+	pub fn effect(&mut self, shade: Shade) -> EffectBuilder {
+		EffectBuilder::new(self, shade)
 	}
 
 	// layer utils

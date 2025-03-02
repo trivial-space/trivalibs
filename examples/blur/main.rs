@@ -36,27 +36,24 @@ struct App {
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let triangle_shade = p.shade_create(ShadeProps {
-			attributes: &[Float32x2, Float32x2],
-			uniforms: &[],
-			layers: &[],
-		});
+		let triangle_shade = p.shade(&[Float32x2, Float32x2]).create();
 		load_vertex_shader!(triangle_shade, p, "./shader/triangle_vs.spv");
 		load_fragment_shader!(triangle_shade, p, "./shader/triangle_fs.spv");
 
-		let blur_shade = p.shade_create_effect(ShadeEffectProps {
-			uniforms: &[
+		let blur_shade = p
+			.shade_effect()
+			.with_uniforms(&[
 				UNIFORM_BUFFER_FRAG,
 				UNIFORM_BUFFER_FRAG,
 				UNIFORM_BUFFER_FRAG,
-			],
-			layers: &[UNIFORM_LAYER_FRAG],
-		});
+			])
+			.with_layers(&[UNIFORM_LAYER_FRAG])
+			.create();
 		load_fragment_shader!(blur_shade, p, "./shader/blur_fs.spv");
 
-		let tri_form = p.form_create(TRIANGLE, default());
+		let tri_form = p.form(TRIANGLE).create();
 
-		let tri_shape = p.shape_create(tri_form, triangle_shade, ShapeProps { ..default() });
+		let tri_shape = p.shape(tri_form, triangle_shade).create();
 
 		let size = p.uniform_vec2();
 		let horiz = p.uniform_const_vec2(vec2(1.0, 0.0));
@@ -70,20 +67,16 @@ impl CanvasApp<()> for App {
 		let mut counter = BLUR_DIAMETER / 9.0; // Fixed diameter in shader is 9.0
 		while counter > 1.0 {
 			let diameter = p.uniform_const_f32(counter);
-			effects.push(p.effect_create(
-				blur_shade,
-				EffectProps {
-					uniforms: vec![(0, diameter), (1, size.uniform()), (2, horiz)],
-					..default()
-				},
-			));
-			effects.push(p.effect_create(
-				blur_shade,
-				EffectProps {
-					uniforms: vec![(0, diameter), (1, size.uniform()), (2, vertical)],
-					..default()
-				},
-			));
+			effects.push(
+				p.effect(blur_shade)
+					.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, horiz)])
+					.create(),
+			);
+			effects.push(
+				p.effect(blur_shade)
+					.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, vertical)])
+					.create(),
+			);
 			counter /= 2.0;
 		}
 

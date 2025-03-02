@@ -1,4 +1,5 @@
 use trivalibs::{
+	map,
 	math::transform::Transform,
 	painter::prelude::*,
 	prelude::*,
@@ -96,24 +97,23 @@ struct ResizeEvent;
 
 impl CanvasApp<ResizeEvent> for App {
 	fn init(p: &mut Painter) -> Self {
-		let color_shade = p.shade_create(ShadeProps {
-			attributes: &[Float32x3, Float32x2],
-			uniforms: &[UNIFORM_BUFFER_VERT, UNIFORM_BUFFER_FRAG],
-			layers: &[],
-		});
+		let color_shade = p
+			.shade(&[Float32x3, Float32x2])
+			.with_uniforms(&[UNIFORM_BUFFER_VERT, UNIFORM_BUFFER_FRAG])
+			.create();
 		load_vertex_shader!(color_shade, p, "./shader/color_vs.spv");
 		load_fragment_shader!(color_shade, p, "./shader/color_fs.spv");
 
-		let tex_shader = p.shade_create(ShadeProps {
-			attributes: &[Float32x3, Float32x2],
-			uniforms: &[UNIFORM_BUFFER_VERT],
-			layers: &[UNIFORM_LAYER_FRAG],
-		});
+		let tex_shader = p
+			.shade(&[Float32x3, Float32x2])
+			.with_uniforms(&[UNIFORM_BUFFER_VERT])
+			.with_layers(&[UNIFORM_LAYER_FRAG])
+			.create();
 		load_vertex_shader!(tex_shader, p, "./shader/texture_vs.spv");
 		load_fragment_shader!(tex_shader, p, "./shader/texture_fs.spv");
 
-		let quad_form = p.form_create(QUAD, default());
-		let triangle_form = p.form_create(TRIANGLE, default());
+		let quad_form = p.form(QUAD).create();
+		let triangle_form = p.form(TRIANGLE).create();
 
 		let color_quad_mvp = p.uniform_mat4();
 		let color_triangle_mvp = p.uniform_mat4();
@@ -121,25 +121,23 @@ impl CanvasApp<ResizeEvent> for App {
 		let quad_color = p.uniform_const_vec3(vec3(0.0, 0.0, 1.0));
 		let triangle_color = p.uniform_const_vec3(vec3(1.0, 0.0, 0.0));
 
-		let color_quad_shape = p.shape_create(
-			quad_form,
-			color_shade,
-			ShapeProps {
-				cull_mode: None,
-				uniforms: vec![(0, color_quad_mvp.uniform()), (1, quad_color)],
-				..default()
-			},
-		);
+		let color_quad_shape = p
+			.shape(quad_form, color_shade)
+			.with_uniforms(map! {
+				0 => color_quad_mvp.uniform(),
+				1 => quad_color,
+			})
+			.with_cull_mode(None)
+			.create();
 
-		let color_triangle_shape = p.shape_create(
-			triangle_form,
-			color_shade,
-			ShapeProps {
-				cull_mode: None,
-				uniforms: vec![(0, color_triangle_mvp.uniform()), (1, triangle_color)],
-				..default()
-			},
-		);
+		let color_triangle_shape = p
+			.shape(triangle_form, color_shade)
+			.with_uniforms(map! {
+				0 => color_triangle_mvp.uniform(),
+				1 => triangle_color,
+			})
+			.with_cull_mode(None)
+			.create();
 
 		let color_triangle_layer = p.layer_create(LayerProps {
 			shapes: vec![color_triangle_shape],
@@ -163,27 +161,27 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_triangle_mvp = p.uniform_mat4();
 		let tex_quad_mvp = p.uniform_mat4();
 
-		let tex_quad_shape = p.shape_create(
-			quad_form,
-			tex_shader,
-			ShapeProps {
-				cull_mode: None,
-				uniforms: vec![(0, tex_quad_mvp.uniform())],
-				layer_uniforms: vec![(0, color_triangle_layer)],
-				..default()
-			},
-		);
+		let tex_quad_shape = p
+			.shape(quad_form, tex_shader)
+			.with_cull_mode(None)
+			.with_uniforms(map! {
+				0 => tex_quad_mvp.uniform(),
+			})
+			.with_layer_uniforms(map! {
+				0 => color_triangle_layer,
+			})
+			.create();
 
-		let tex_triangle_shape = p.shape_create(
-			triangle_form,
-			tex_shader,
-			ShapeProps {
-				cull_mode: None,
-				uniforms: vec![(0, tex_triangle_mvp.uniform())],
-				layer_uniforms: vec![(0, color_quad_layer)],
-				..default()
-			},
-		);
+		let tex_triangle_shape = p
+			.shape(triangle_form, tex_shader)
+			.with_uniforms(map! {
+				0 => tex_triangle_mvp.uniform(),
+			})
+			.with_layer_uniforms(map! {
+				0 => color_quad_layer,
+			})
+			.with_cull_mode(None)
+			.create();
 
 		let canvas = p.layer_create(LayerProps {
 			shapes: vec![tex_quad_shape, tex_triangle_shape],

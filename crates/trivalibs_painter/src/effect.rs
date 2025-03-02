@@ -96,3 +96,52 @@ impl Effect {
 		painter.effects[self.0].uniform_bindings = uniforms;
 	}
 }
+
+pub struct EffectBuilder<'a> {
+	shade: Shade,
+	props: EffectProps,
+	painter: &'a mut Painter,
+}
+
+impl<'a> EffectBuilder<'a> {
+	pub fn new(painter: &'a mut Painter, shade: Shade) -> Self {
+		EffectBuilder {
+			shade,
+			painter,
+			props: EffectProps::default(),
+		}
+	}
+
+	// pub struct EffectProps {
+	// 	pub uniforms: Vec<(u32, Uniform)>,
+	// 	pub layer_uniforms: Vec<(u32, Layer)>,
+	// 	/// Repeatedly render this effect multiple times with different uniforms into the same target without target swapping.
+	// 	/// This is useful for example for deferred lighting, where each light is rendered with custom blend state on top of the last.
+	// 	pub instances: Vec<InstanceUniforms>,
+	// 	pub blend_state: wgpu::BlendState,
+	// }
+
+	pub fn with_uniforms(mut self, uniforms: Vec<(u32, Uniform)>) -> Self {
+		self.props.uniforms = uniforms;
+		self
+	}
+
+	pub fn with_layer_uniforms(mut self, uniforms: Vec<(u32, Layer)>) -> Self {
+		self.props.layer_uniforms = uniforms;
+		self
+	}
+
+	pub fn with_instances(mut self, instances: Vec<InstanceUniforms>) -> Self {
+		self.props.instances = instances;
+		self
+	}
+
+	pub fn with_blend_state(mut self, blend_state: wgpu::BlendState) -> Self {
+		self.props.blend_state = blend_state;
+		self
+	}
+
+	pub fn create(self) -> Effect {
+		Effect::new(self.painter, self.shade, self.props)
+	}
+}
