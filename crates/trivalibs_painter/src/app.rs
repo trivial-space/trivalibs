@@ -52,12 +52,10 @@ pub trait CanvasApp<UserEvent> {
 			event_loop_proxy,
 			is_running: true,
 			is_resizing: false,
-			show_fps: false,
-			use_vsync: true,
 			frame_count: 0,
 			frame_time: 0.0,
 			now: Instant::now(),
-			keep_window_dimensions: true,
+			config: AppConfig::default(),
 		};
 
 		CanvasAppStarter { runner, event_loop }
@@ -86,12 +84,10 @@ where
 	event_loop_proxy: EventLoopProxy<CustomEvent<UserEvent>>,
 	is_running: bool,
 	is_resizing: bool,
-	show_fps: bool,
-	use_vsync: bool,
 	frame_count: u32,
 	frame_time: f32,
 	now: Instant,
-	keep_window_dimensions: bool,
+	config: AppConfig,
 }
 
 pub struct CanvasHandle<UserEvent>
@@ -143,9 +139,7 @@ where
 	App: CanvasApp<UserEvent> + std::marker::Send + 'static,
 {
 	pub fn config(mut self, config: AppConfig) -> Self {
-		self.runner.show_fps = config.show_fps;
-		self.runner.use_vsync = config.use_vsync;
-		self.runner.keep_window_dimensions = config.keep_window_dimensions;
+		self.runner.config = config;
 		self
 	}
 
@@ -225,7 +219,7 @@ where
 
 				// Load and apply saved window state
 				#[cfg(not(target_arch = "wasm32"))]
-				if self.keep_window_dimensions {
+				if self.config.keep_window_dimensions {
 					if let Some(state) = WindowDimensions::load() {
 						window_attributes = window_attributes
 							.with_inner_size(PhysicalSize::new(state.size.0, state.size.1));
@@ -262,7 +256,7 @@ where
 				let renderer_future = Painter::new(
 					window,
 					PainterConfig {
-						use_vsync: self.use_vsync,
+						use_vsync: self.config.use_vsync,
 					},
 				);
 
@@ -341,7 +335,7 @@ where
 						#[cfg(not(target_arch = "wasm32"))]
 						{
 							let window = painter.window();
-							if self.keep_window_dimensions {
+							if self.config.keep_window_dimensions {
 								let dim = WindowDimensions::from_window(
 									new_size,
 									window.outer_position().unwrap_or_default(),
@@ -354,7 +348,7 @@ where
 					#[cfg(not(target_arch = "wasm32"))]
 					WindowEvent::Moved(new_position) => {
 						let window = painter.window();
-						if self.keep_window_dimensions {
+						if self.config.keep_window_dimensions {
 							let dim =
 								WindowDimensions::from_window(window.inner_size(), new_position);
 							let _ = dim.save();
@@ -368,7 +362,7 @@ where
 
 							let elapsed = if self.is_running { elapsed } else { 0.0 };
 
-							if self.show_fps && self.is_running {
+							if self.config.show_fps && self.is_running {
 								self.frame_count += 1;
 								self.frame_time += elapsed;
 								if self.frame_time >= 2.0 {
