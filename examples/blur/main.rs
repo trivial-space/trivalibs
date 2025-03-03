@@ -3,6 +3,7 @@ use trivalibs::{
 	gpu_data,
 	macros::apply,
 	painter::prelude::*,
+	utils::default,
 };
 
 const BLUR_DIAMETER: f32 = 400.0;
@@ -126,6 +127,7 @@ pub fn main() {
 			show_fps: true,
 			use_vsync: false,
 			keep_window_dimensions: true,
+			..default()
 		})
 		.start();
 }
