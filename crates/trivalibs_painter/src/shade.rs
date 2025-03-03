@@ -306,6 +306,10 @@ impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
 		}
 	}
 
+	pub fn create(self) -> Shade {
+		Shade::new_effect(self.painter, self.props)
+	}
+
 	pub fn with_uniforms(mut self, uniforms: &'a [UniformLayout]) -> Self {
 		self.props.uniforms = uniforms;
 		self
@@ -314,10 +318,6 @@ impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
 	pub fn with_layers(mut self, layers: &'a [LayerLayout]) -> Self {
 		self.props.layers = layers;
 		self
-	}
-
-	pub fn create(self) -> Shade {
-		Shade::new_effect(self.painter, self.props)
 	}
 }
 

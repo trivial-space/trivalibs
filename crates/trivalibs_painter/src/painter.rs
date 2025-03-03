@@ -204,8 +204,8 @@ impl Painter {
 		FormBuilder::new(self, buffer)
 	}
 
-	pub fn form_update<'a>(&mut self, form: &Form, buffers: &'a FormBuffers<'a>) {
-		form.update(self, buffers);
+	pub fn form_update<'a>(&mut self, form: &Form, buffers: impl Into<FormBuffers<'a>>) {
+		form.update(self, &buffers.into());
 	}
 
 	// shade helpers

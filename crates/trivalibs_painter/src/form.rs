@@ -131,7 +131,7 @@ impl Form {
 	pub fn new<'a>(painter: &mut Painter, buffer: &'a FormBuffers<'a>, props: FormProps) -> Self {
 		let form = Form::new_with_size(painter, buffer.vertex_buffer.len() as u64, props);
 
-		form.update(painter, &buffer);
+		form.update(painter, buffer);
 
 		form
 	}
@@ -152,6 +152,10 @@ impl<'a, 'b> FormBuilder<'a, 'b> {
 		}
 	}
 
+	pub fn create(self) -> Form {
+		Form::new(self.painter, &self.buffer, self.props)
+	}
+
 	pub fn with_topology(mut self, topology: wgpu::PrimitiveTopology) -> Self {
 		self.props.topology = topology;
 		self
@@ -160,9 +164,5 @@ impl<'a, 'b> FormBuilder<'a, 'b> {
 	pub fn with_front_face(mut self, front_face: wgpu::FrontFace) -> Self {
 		self.props.front_face = front_face;
 		self
-	}
-
-	pub fn create(self) -> Form {
-		Form::new(self.painter, &self.buffer, self.props)
 	}
 }

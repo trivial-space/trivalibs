@@ -93,6 +93,7 @@ impl CanvasApp<()> for App {
 			.layer()
 			.with_shape(shape)
 			.with_clear_color(wgpu::Color::BLACK)
+			.with_multisampling()
 			.create();
 
 		Self {
