@@ -46,6 +46,7 @@ pub struct Painter {
 
 pub(crate) struct PainterConfig {
 	pub use_vsync: bool,
+	pub features: Option<wgpu::Features>,
 }
 
 impl Painter {
@@ -72,7 +73,7 @@ impl Painter {
 			.request_device(
 				&wgpu::DeviceDescriptor {
 					label: None,
-					required_features: wgpu::Features::empty(),
+					required_features: painter_config.features.unwrap_or(wgpu::Features::empty()),
 					// Make sure we use the texture resolution limits from the adapter, so we can support images the size of the swapchain.
 					required_limits: wgpu::Limits::downlevel_webgl2_defaults()
 						.using_resolution(adapter.limits()),

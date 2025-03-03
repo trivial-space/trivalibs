@@ -162,6 +162,7 @@ impl Texture {
 
 	pub fn fill_2d(&self, painter: &Painter, data: &[u8]) {
 		let texture = &painter.textures[self.0].texture;
+		let bytes_per_pixel = texture.format().block_copy_size(None).unwrap();
 
 		let size = texture.size();
 		painter.queue.write_texture(
@@ -177,7 +178,7 @@ impl Texture {
 			// The layout of the texture
 			wgpu::TexelCopyBufferLayout {
 				offset: 0,
-				bytes_per_row: Some(4 * size.width),
+				bytes_per_row: Some(size.width * bytes_per_pixel),
 				rows_per_image: Some(size.height),
 			},
 			size,
@@ -237,12 +238,12 @@ impl<'a> Texture2DBuilder<'a> {
 		Texture::create_2d(self.painter, self.width, self.height, self.props, false)
 	}
 
-	pub fn width_format(mut self, format: wgpu::TextureFormat) -> Self {
+	pub fn with_format(mut self, format: wgpu::TextureFormat) -> Self {
 		self.props.format = format;
 		self
 	}
 
-	pub fn width_usage(mut self, usage: wgpu::TextureUsages) -> Self {
+	pub fn with_usage(mut self, usage: wgpu::TextureUsages) -> Self {
 		self.props.usage = usage;
 		self
 	}

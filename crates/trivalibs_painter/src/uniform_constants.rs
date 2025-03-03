@@ -55,6 +55,33 @@ pub const UNIFORM_TEX2D_BOTH: UniformLayout = UniformLayout {
 	},
 };
 
+pub const UNIFORM_TEX2D_VERT_NO_FILTER: UniformLayout = UniformLayout {
+	visibility: wgpu::ShaderStages::VERTEX,
+	binding_type: wgpu::BindingType::Texture {
+		multisampled: false,
+		view_dimension: wgpu::TextureViewDimension::D2,
+		sample_type: wgpu::TextureSampleType::Float { filterable: false },
+	},
+};
+
+pub const UNIFORM_TEX2D_FRAG_NO_FILTER: UniformLayout = UniformLayout {
+	visibility: wgpu::ShaderStages::FRAGMENT,
+	binding_type: wgpu::BindingType::Texture {
+		multisampled: false,
+		view_dimension: wgpu::TextureViewDimension::D2,
+		sample_type: wgpu::TextureSampleType::Float { filterable: false },
+	},
+};
+
+pub const UNIFORM_TEX2D_BOTH_NO_FILTER: UniformLayout = UniformLayout {
+	visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+	binding_type: wgpu::BindingType::Texture {
+		multisampled: false,
+		view_dimension: wgpu::TextureViewDimension::D2,
+		sample_type: wgpu::TextureSampleType::Float { filterable: false },
+	},
+};
+
 pub const UNIFORM_SAMPLER_VERT: UniformLayout = UniformLayout {
 	visibility: wgpu::ShaderStages::VERTEX,
 	binding_type: BindingType::Sampler(wgpu::SamplerBindingType::Filtering),

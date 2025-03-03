@@ -112,6 +112,7 @@ pub struct AppConfig {
 	pub show_fps: bool,
 	pub use_vsync: bool,
 	pub keep_window_dimensions: bool,
+	pub features: Option<wgpu::Features>,
 }
 
 impl Default for AppConfig {
@@ -120,6 +121,7 @@ impl Default for AppConfig {
 			show_fps: false,
 			use_vsync: true,
 			keep_window_dimensions: false,
+			features: None,
 		}
 	}
 }
@@ -257,6 +259,7 @@ where
 					window,
 					PainterConfig {
 						use_vsync: self.config.use_vsync,
+						features: self.config.features,
 					},
 				);
 
