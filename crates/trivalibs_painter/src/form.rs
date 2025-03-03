@@ -1,6 +1,7 @@
 use crate::{painter::get_padded_size, Painter};
 use trivalibs_core::rendering::BufferedGeometry;
 
+#[derive(Clone, Copy)]
 pub struct FormProps {
 	pub topology: wgpu::PrimitiveTopology,
 	pub front_face: wgpu::FrontFace,
@@ -78,9 +79,8 @@ impl<'a, T: bytemuck::Pod> Into<FormBuffers<'a>> for &'a [T] {
 pub struct Form(pub(crate) usize);
 
 impl Form {
-	pub fn update<'a>(&self, painter: &mut Painter, buffers: impl Into<FormBuffers<'a>>) {
+	pub fn update<'a>(&self, painter: &mut Painter, buffers: &'a FormBuffers<'a>) {
 		let f = &mut painter.forms[self.0];
-		let buffers = buffers.into();
 
 		f.vertex_count = buffers.vertex_count;
 
@@ -128,16 +128,41 @@ impl Form {
 		return Form(i);
 	}
 
-	pub fn new<'a>(
-		painter: &mut Painter,
-		buffer: impl Into<FormBuffers<'a>>,
-		props: FormProps,
-	) -> Self {
-		let buffer = buffer.into();
+	pub fn new<'a>(painter: &mut Painter, buffer: &'a FormBuffers<'a>, props: FormProps) -> Self {
 		let form = Form::new_with_size(painter, buffer.vertex_buffer.len() as u64, props);
 
 		form.update(painter, buffer);
 
 		form
+	}
+}
+
+pub struct FormBuilder<'a, 'b> {
+	painter: &'a mut Painter,
+	buffer: FormBuffers<'b>,
+	props: FormProps,
+}
+
+impl<'a, 'b> FormBuilder<'a, 'b> {
+	pub fn new(painter: &'a mut Painter, buffer: impl Into<FormBuffers<'b>>) -> Self {
+		FormBuilder {
+			buffer: buffer.into(),
+			painter,
+			props: FormProps::default(),
+		}
+	}
+
+	pub fn create(self) -> Form {
+		Form::new(self.painter, &self.buffer, self.props)
+	}
+
+	pub fn with_topology(mut self, topology: wgpu::PrimitiveTopology) -> Self {
+		self.props.topology = topology;
+		self
+	}
+
+	pub fn with_front_face(mut self, front_face: wgpu::FrontFace) -> Self {
+		self.props.front_face = front_face;
+		self
 	}
 }

@@ -1,14 +1,15 @@
 use crate::{
 	binding::{Binding, BindingLayout, BindingStorage},
-	effect::{Effect, EffectProps, EffectStorage},
-	form::{Form, FormBuffers, FormProps, FormStorage},
-	layer::{Layer, LayerProps, LayerStorage},
+	effect::{Effect, EffectBuilder, EffectStorage},
+	form::{Form, FormBuffers, FormBuilder, FormStorage},
+	layer::{Layer, LayerBuilder, LayerStorage},
 	pipeline::PipelineStorage,
 	prelude::UNIFORM_LAYER_FRAG,
-	shade::{AttribsFormat, Shade, ShadeEffectProps, ShadeProps, ShadeStorage},
+	sampler::{Sampler, SamplerBuilder, SamplerProps},
+	shade::{AttribsFormat, Shade, ShadeBuilder, ShadeEffectBuilder, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
-	shape::{Shape, ShapeProps, ShapeStorage},
-	texture::{Sampler, SamplerProps, Texture, Texture2DProps, TextureStorage},
+	shape::{Shape, ShapeBuilder, ShapeStorage},
+	texture::{Texture2DBuilder, TextureStorage},
 	uniform::{Mat3U, Uniform, UniformBuffer, Vec3U},
 };
 use std::{collections::BTreeMap, sync::Arc};
@@ -199,39 +200,35 @@ impl Painter {
 
 	// form helpers
 
-	pub fn form_update<'a>(&mut self, form: &Form, buffers: impl Into<FormBuffers<'a>>) {
-		form.update(self, buffers);
+	pub fn form<'a>(&mut self, buffer: impl Into<FormBuffers<'a>>) -> FormBuilder<'_, 'a> {
+		FormBuilder::new(self, buffer)
 	}
 
-	pub fn form_create<'a>(
-		&mut self,
-		buffer: impl Into<FormBuffers<'a>>,
-		props: FormProps,
-	) -> Form {
-		Form::new(self, buffer, props)
+	pub fn form_update<'a>(&mut self, form: Form, buffers: impl Into<FormBuffers<'a>>) {
+		form.update(self, &buffers.into());
 	}
 
 	// shade helpers
 
-	pub fn shade_create<Format: Into<AttribsFormat>>(
+	pub fn shade<Format: Into<AttribsFormat>>(
 		&mut self,
-		props: ShadeProps<Format>,
-	) -> Shade {
-		Shade::new(self, props)
+		attributes: Format,
+	) -> ShadeBuilder<'_, '_, Format> {
+		ShadeBuilder::new(self, attributes)
 	}
 
-	pub fn shade_create_effect(&mut self, props: ShadeEffectProps) -> Shade {
-		Shade::new_effect(self, props)
+	pub fn shade_effect(&mut self) -> ShadeEffectBuilder<'_, '_> {
+		ShadeEffectBuilder::new(self)
 	}
 
 	// texture helpers
 
-	pub fn texture_2d_create(&mut self, props: Texture2DProps) -> Texture {
-		Texture::create_2d(self, props, false)
+	pub fn texture_2d(&mut self, width: u32, height: u32) -> Texture2DBuilder<'_> {
+		Texture2DBuilder::new(self, width, height)
 	}
 
-	pub fn sampler_create(&mut self, props: SamplerProps) -> Sampler {
-		Sampler::create(self, props)
+	pub fn sampler(&mut self) -> SamplerBuilder<'_> {
+		SamplerBuilder::new(self)
 	}
 
 	pub fn sampler_nearest(&self) -> Sampler {
@@ -244,18 +241,18 @@ impl Painter {
 
 	// shape utils
 
-	pub fn shape_create(&mut self, form: Form, shade: Shade, props: ShapeProps) -> Shape {
-		Shape::new(self, form, shade, props)
+	pub fn shape(&mut self, form: Form, shade: Shade) -> ShapeBuilder<'_> {
+		ShapeBuilder::new(self, form, shade)
 	}
 
-	pub fn effect_create(&mut self, shade: Shade, props: EffectProps) -> Effect {
-		Effect::new(self, shade, props)
+	pub fn effect(&mut self, shade: Shade) -> EffectBuilder {
+		EffectBuilder::new(self, shade)
 	}
 
 	// layer utils
 
-	pub fn layer_create(&mut self, props: LayerProps) -> Layer {
-		Layer::new(self, props)
+	pub fn layer(&mut self) -> LayerBuilder<'_> {
+		LayerBuilder::new(self)
 	}
 
 	// uniform utils

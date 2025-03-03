@@ -34,59 +34,48 @@ impl CanvasApp<()> for App {
 		// Grab the bytes of the image.
 		let tex_rgba = &buf[..info.buffer_size()];
 
-		let tex = p.texture_2d_create(Texture2DProps {
-			width: info.width,
-			height: info.height,
-			format: wgpu::TextureFormat::Rgba8UnormSrgb,
-			usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-		});
-
+		let tex = p.texture_2d(info.width, info.height).create();
 		tex.fill_2d(p, tex_rgba);
 
-		let shade = p.shade_create(ShadeProps {
-			attributes: &[Float32x3, Float32x2, Float32x3, Float32x3],
-			uniforms: &[
+		let shade = p
+			.shade(&[Float32x3, Float32x2, Float32x3, Float32x3])
+			.with_uniforms(&[
 				UNIFORM_BUFFER_VERT,
 				UNIFORM_BUFFER_VERT,
 				UNIFORM_TEX2D_FRAG,
 				UNIFORM_SAMPLER_FRAG,
-			],
-			layers: &[],
-		});
+			])
+			.create();
 		load_vertex_shader!(shade, p, "./shader/vertex.spv");
 		load_fragment_shader!(shade, p, "./shader/fragment.spv");
 
-		let form = p.form_create(&create_ball_geom(), default());
+		let form = p.form(&create_ball_geom()).create();
 
 		let mvp = p.uniform_mat4();
 		let norm = p.uniform_mat3();
 
-		let shape = p.shape_create(
-			form,
-			shade,
-			ShapeProps {
-				uniforms: map! {
-					0 => mvp.uniform(),
-					1 => norm.uniform(),
-					2 => tex.uniform(),
-					3 => p.sampler_linear().uniform(),
-				},
-				cull_mode: Some(wgpu::Face::Back),
-				..default()
-			},
-		);
+		let s = p.sampler_linear().uniform();
+		let shape = p
+			.shape(form, shade)
+			.with_uniforms(map! {
+				0 => mvp.uniform(),
+				1 => norm.uniform(),
+				2 => tex.uniform(),
+				3 => s,
+			})
+			.create();
 
-		let canvas = p.layer_create(LayerProps {
-			clear_color: Some(wgpu::Color {
+		let canvas = p
+			.layer()
+			.with_shape(shape)
+			.with_clear_color(wgpu::Color {
 				r: 0.5,
 				g: 0.6,
 				b: 0.7,
 				a: 1.0,
-			}),
-			shapes: vec![shape],
-			multisampled: true,
-			..default()
-		});
+			})
+			.with_multisampling()
+			.create();
 
 		Self {
 			canvas,

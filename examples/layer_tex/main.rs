@@ -1,4 +1,5 @@
 use trivalibs::{
+	map,
 	math::transform::Transform,
 	painter::prelude::*,
 	prelude::*,
@@ -96,24 +97,23 @@ struct ResizeEvent;
 
 impl CanvasApp<ResizeEvent> for App {
 	fn init(p: &mut Painter) -> Self {
-		let color_shade = p.shade_create(ShadeProps {
-			attributes: &[Float32x3, Float32x2],
-			uniforms: &[UNIFORM_BUFFER_VERT, UNIFORM_BUFFER_FRAG],
-			layers: &[],
-		});
+		let color_shade = p
+			.shade(&[Float32x3, Float32x2])
+			.with_uniforms(&[UNIFORM_BUFFER_VERT, UNIFORM_BUFFER_FRAG])
+			.create();
 		load_vertex_shader!(color_shade, p, "./shader/color_vs.spv");
 		load_fragment_shader!(color_shade, p, "./shader/color_fs.spv");
 
-		let tex_shader = p.shade_create(ShadeProps {
-			attributes: &[Float32x3, Float32x2],
-			uniforms: &[UNIFORM_BUFFER_VERT],
-			layers: &[UNIFORM_LAYER_FRAG],
-		});
+		let tex_shader = p
+			.shade(&[Float32x3, Float32x2])
+			.with_uniforms(&[UNIFORM_BUFFER_VERT])
+			.with_layers(&[UNIFORM_LAYER_FRAG])
+			.create();
 		load_vertex_shader!(tex_shader, p, "./shader/texture_vs.spv");
 		load_fragment_shader!(tex_shader, p, "./shader/texture_fs.spv");
 
-		let quad_form = p.form_create(QUAD, default());
-		let triangle_form = p.form_create(TRIANGLE, default());
+		let quad_form = p.form(QUAD).create();
+		let triangle_form = p.form(TRIANGLE).create();
 
 		let color_quad_mvp = p.uniform_mat4();
 		let color_triangle_mvp = p.uniform_mat4();
@@ -121,77 +121,73 @@ impl CanvasApp<ResizeEvent> for App {
 		let quad_color = p.uniform_const_vec3(vec3(0.0, 0.0, 1.0));
 		let triangle_color = p.uniform_const_vec3(vec3(1.0, 0.0, 0.0));
 
-		let color_quad_shape = p.shape_create(
-			quad_form,
-			color_shade,
-			ShapeProps {
-				cull_mode: None,
-				uniforms: vec![(0, color_quad_mvp.uniform()), (1, quad_color)],
-				..default()
-			},
-		);
+		let color_quad_shape = p
+			.shape(quad_form, color_shade)
+			.with_uniforms(map! {
+				0 => color_quad_mvp.uniform(),
+				1 => quad_color,
+			})
+			.with_cull_mode(None)
+			.create();
 
-		let color_triangle_shape = p.shape_create(
-			triangle_form,
-			color_shade,
-			ShapeProps {
-				cull_mode: None,
-				uniforms: vec![(0, color_triangle_mvp.uniform()), (1, triangle_color)],
-				..default()
-			},
-		);
+		let color_triangle_shape = p
+			.shape(triangle_form, color_shade)
+			.with_uniforms(map! {
+				0 => color_triangle_mvp.uniform(),
+				1 => triangle_color,
+			})
+			.with_cull_mode(None)
+			.create();
 
-		let color_triangle_layer = p.layer_create(LayerProps {
-			shapes: vec![color_triangle_shape],
-			width: COLOR_TEX_SIZE_BIG.0,
-			height: COLOR_TEX_SIZE_BIG.1,
-			clear_color: Some(YELLOW),
-			multisampled: false,
-			..default()
-		});
+		let color_triangle_layer = p
+			.layer()
+			.with_shape(color_triangle_shape)
+			.with_size(COLOR_TEX_SIZE_BIG.0, COLOR_TEX_SIZE_BIG.1)
+			.with_clear_color(YELLOW)
+			.create();
 
-		let color_quad_layer = p.layer_create(LayerProps {
-			shapes: vec![color_quad_shape],
-			sampler: p.sampler_linear(),
-			width: COLOR_TEX_SIZE_BIG.0,
-			height: COLOR_TEX_SIZE_BIG.1,
-			clear_color: Some(GREEN),
-			multisampled: true,
-			..default()
-		});
+		let s = p.sampler_linear();
+		let color_quad_layer = p
+			.layer()
+			.with_shape(color_quad_shape)
+			.with_size(COLOR_TEX_SIZE_BIG.0, COLOR_TEX_SIZE_BIG.1)
+			.with_sampler(s)
+			.with_clear_color(GREEN)
+			.with_multisampling()
+			.create();
 
 		let tex_triangle_mvp = p.uniform_mat4();
 		let tex_quad_mvp = p.uniform_mat4();
 
-		let tex_quad_shape = p.shape_create(
-			quad_form,
-			tex_shader,
-			ShapeProps {
-				cull_mode: None,
-				uniforms: vec![(0, tex_quad_mvp.uniform())],
-				layer_uniforms: vec![(0, color_triangle_layer)],
-				..default()
-			},
-		);
+		let tex_quad_shape = p
+			.shape(quad_form, tex_shader)
+			.with_cull_mode(None)
+			.with_uniforms(map! {
+				0 => tex_quad_mvp.uniform(),
+			})
+			.with_layer_uniforms(map! {
+				0 => color_triangle_layer,
+			})
+			.create();
 
-		let tex_triangle_shape = p.shape_create(
-			triangle_form,
-			tex_shader,
-			ShapeProps {
-				cull_mode: None,
-				uniforms: vec![(0, tex_triangle_mvp.uniform())],
-				layer_uniforms: vec![(0, color_quad_layer)],
-				..default()
-			},
-		);
+		let tex_triangle_shape = p
+			.shape(triangle_form, tex_shader)
+			.with_uniforms(map! {
+				0 => tex_triangle_mvp.uniform(),
+			})
+			.with_layer_uniforms(map! {
+				0 => color_quad_layer,
+			})
+			.with_cull_mode(None)
+			.create();
 
-		let canvas = p.layer_create(LayerProps {
-			shapes: vec![tex_quad_shape, tex_triangle_shape],
-			clear_color: Some(wgpu::Color::BLACK),
-			depth_test: true,
-			multisampled: true,
-			..default()
-		});
+		let canvas = p
+			.layer()
+			.with_shapes(vec![tex_quad_shape, tex_triangle_shape])
+			.with_clear_color(wgpu::Color::BLACK)
+			.with_depth_test()
+			.with_multisampling()
+			.create();
 
 		Self {
 			color_cam: PerspectiveCamera::create(CamProps {

@@ -1,4 +1,4 @@
-use trivalibs::{painter::prelude::*, prelude::*};
+use trivalibs::{map, painter::prelude::*, prelude::*};
 
 struct App {
 	time: f32,
@@ -10,27 +10,24 @@ struct App {
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let shade = p.shade_create_effect(ShadeEffectProps {
-			uniforms: &[UNIFORM_BUFFER_FRAG, UNIFORM_BUFFER_FRAG],
-			layers: &[],
-		});
+		let shade = p
+			.shade_effect()
+			.with_uniforms(&[UNIFORM_BUFFER_FRAG, UNIFORM_BUFFER_FRAG])
+			.create();
 		load_fragment_shader!(shade, p, "./shader/main.spv");
 
 		let u_time = p.uniform_f32();
 		let u_size = p.uniform_uvec2();
 
-		let effect = p.effect_create(
-			shade,
-			EffectProps {
-				uniforms: vec![(0, u_size.uniform()), (1, u_time.uniform())],
-				..default()
-			},
-		);
+		let effect = p
+			.effect(shade)
+			.with_uniforms(map! {
+				0 => u_size.uniform(),
+				1 => u_time.uniform()
+			})
+			.create();
 
-		let canvas = p.layer_create(LayerProps {
-			effects: vec![effect],
-			..default()
-		});
+		let canvas = p.layer().with_effect(effect).create();
 
 		Self {
 			time: 0.0,

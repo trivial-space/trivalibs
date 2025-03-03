@@ -30,73 +30,65 @@ const LIGHTS_COUNT: usize = 10;
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let scene_shade = p.shade_create(ShadeProps {
-			attributes: &[Float32x3, Float32x3, Float32x3],
-			uniforms: &[
+		let scene_shade = p
+			.shade(&[Float32x3, Float32x3, Float32x3])
+			.with_uniforms(&[
 				UNIFORM_BUFFER_VERT,
 				UNIFORM_BUFFER_VERT,
 				UNIFORM_BUFFER_VERT,
-			],
-			layers: &[],
-		});
+			])
+			.create();
 		load_vertex_shader!(scene_shade, p, "./shader/scene_vs.spv");
 		load_fragment_shader!(scene_shade, p, "./shader/scene_fs.spv");
 
-		let ball_form = p.form_create(&create_ball_geom(), default());
+		let ball_form = p.form(&create_ball_geom()).create();
 
 		let u_vp_mat = p.uniform_mat4();
 
 		let u_ball_model_mat = p.uniform_mat4();
 		let u_ball_rot = p.uniform_quat();
 
-		let ball_shape = p.shape_create(
-			ball_form,
-			scene_shade,
-			ShapeProps {
-				uniforms: map! {
-					0 => u_ball_model_mat.uniform(),
-					2 => u_ball_rot.uniform(),
-				},
-				..default()
-			},
-		);
+		let ball_shape = p
+			.shape(ball_form, scene_shade)
+			.with_uniforms(map! {
+				0 => u_ball_model_mat.uniform(),
+				2 => u_ball_rot.uniform(),
+			})
+			.create();
 
-		let box_form = p.form_create(&create_box_geom(), default());
+		let box_form = p.form(&create_box_geom()).create();
 
 		let u_box_model_mat = p.uniform_mat4();
 		let u_box_rot = p.uniform_quat();
 
-		let box_shape = p.shape_create(
-			box_form,
-			scene_shade,
-			ShapeProps {
-				uniforms: map! {
-					0 => u_box_model_mat.uniform(),
-					2 => u_box_rot.uniform(),
-				},
-				..default()
-			},
-		);
+		let box_shape = p
+			.shape(box_form, scene_shade)
+			.with_uniforms(map! {
+				0 => u_box_model_mat.uniform(),
+				2 => u_box_rot.uniform(),
+			})
+			.create();
 
-		let scene_layer = p.layer_create(LayerProps {
-			clear_color: Some(wgpu::Color {
+		let scene_layer = p
+			.layer()
+			.with_clear_color(wgpu::Color {
 				r: 0.5,
 				g: 0.6,
 				b: 0.7,
 				a: 1.0,
-			}),
-			shapes: vec![ball_shape, box_shape],
-			uniforms: map! {
+			})
+			.with_shapes(vec![ball_shape, box_shape])
+			.with_formats(vec![Rgba8UnormSrgb, Rgba16Float, Rgba16Float])
+			.with_uniforms(map! {
 				1 => u_vp_mat.uniform(),
-			},
-			formats: vec![Rgba8UnormSrgb, Rgba16Float, Rgba16Float],
-			depth_test: true,
-			multisampled: true,
-			..default()
-		});
+			})
+			.with_multisampling()
+			.with_depth_test()
+			.create();
 
-		let canvas_shade = p.shade_create_effect(ShadeEffectProps {
-			uniforms: &[
+		let canvas_shade = p
+			.shade_effect()
+			.with_uniforms(&[
 				UNIFORM_TEX2D_FRAG,
 				UNIFORM_TEX2D_FRAG,
 				UNIFORM_TEX2D_FRAG,
@@ -104,9 +96,8 @@ impl CanvasApp<()> for App {
 				UNIFORM_BUFFER_FRAG,
 				UNIFORM_BUFFER_FRAG,
 				UNIFORM_BUFFER_FRAG,
-			],
-			layers: &[],
-		});
+			])
+			.create();
 		load_fragment_shader!(canvas_shade, p, "./shader/light_fs.spv");
 
 		let color_target = scene_layer.get_target_uniform(p, 0);
@@ -134,43 +125,42 @@ impl CanvasApp<()> for App {
 		let cam_pos = vec3(0.0, 5.0, 0.0);
 		let cam_pos_u = p.uniform_const_vec3(cam_pos);
 
-		let canvas_effect = p.effect_create(
-			canvas_shade,
-			EffectProps {
-				uniforms: map! {
-					0 => color_target,
-					1 => normal_target,
-					2 => position_target,
-					3 => p.sampler_nearest().uniform(),
-					4 => cam_pos_u,
-				},
-				instances: lights,
-				blend_state: wgpu::BlendState {
-					color: wgpu::BlendComponent {
-						src_factor: wgpu::BlendFactor::One,
-						dst_factor: wgpu::BlendFactor::One,
-						operation: wgpu::BlendOperation::Add,
-					},
-					alpha: wgpu::BlendComponent {
-						src_factor: wgpu::BlendFactor::One,
-						dst_factor: wgpu::BlendFactor::One,
-						operation: wgpu::BlendOperation::Add,
-					},
-				},
-				..default()
-			},
-		);
+		let s = p.sampler_nearest().uniform();
 
-		let canvas = p.layer_create(LayerProps {
-			effects: vec![canvas_effect],
-			clear_color: Some(wgpu::Color {
+		let canvas_effect = p
+			.effect(canvas_shade)
+			.with_uniforms(map! {
+				0 => color_target,
+				1 => normal_target,
+				2 => position_target,
+				3 => s,
+				4 => cam_pos_u,
+			})
+			.with_instances(lights)
+			.with_blend_state(wgpu::BlendState {
+				color: wgpu::BlendComponent {
+					src_factor: wgpu::BlendFactor::One,
+					dst_factor: wgpu::BlendFactor::One,
+					operation: wgpu::BlendOperation::Add,
+				},
+				alpha: wgpu::BlendComponent {
+					src_factor: wgpu::BlendFactor::One,
+					dst_factor: wgpu::BlendFactor::One,
+					operation: wgpu::BlendOperation::Add,
+				},
+			})
+			.create();
+
+		let canvas = p
+			.layer()
+			.with_effect(canvas_effect)
+			.with_clear_color(wgpu::Color {
 				r: 0.0,
 				g: 0.0,
 				b: 0.0,
 				a: 1.0,
-			}),
-			..default()
-		});
+			})
+			.create();
 
 		Self {
 			cam: PerspectiveCamera::create(CamProps {

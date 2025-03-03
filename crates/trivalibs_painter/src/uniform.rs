@@ -1,9 +1,4 @@
-use crate::{
-	layer::Layer,
-	painter::get_padded_size,
-	texture::{Sampler, Texture},
-	Painter,
-};
+use crate::{layer::Layer, painter::get_padded_size, sampler::Sampler, texture::Texture, Painter};
 use trivalibs_core::glam::{Mat3, Mat3A, Vec3, Vec3A};
 use wgpu::{BindingType, ShaderStages};
 

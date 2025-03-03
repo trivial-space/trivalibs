@@ -3,49 +3,17 @@ use trivalibs_core::utils::default;
 
 #[derive(Clone, Copy)]
 pub struct Texture2DProps {
-	pub width: u32,
-	pub height: u32,
 	pub format: wgpu::TextureFormat,
 	pub usage: wgpu::TextureUsages,
 }
 
-#[derive(Clone, Copy)]
-pub struct TextureDepthProps {
-	pub width: u32,
-	pub height: u32,
-}
-
-#[derive(Clone, Copy)]
-pub struct SamplerProps {
-	pub address_mode_u: wgpu::AddressMode,
-	pub address_mode_v: wgpu::AddressMode,
-	pub mag_filter: wgpu::FilterMode,
-	pub min_filter: wgpu::FilterMode,
-	pub sample_depth: bool,
-}
-
-impl Default for SamplerProps {
+impl Default for Texture2DProps {
 	fn default() -> Self {
-		Self::NEAREST
+		Texture2DProps {
+			format: wgpu::TextureFormat::Rgba8UnormSrgb,
+			usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+		}
 	}
-}
-
-impl SamplerProps {
-	pub const NEAREST: SamplerProps = SamplerProps {
-		address_mode_u: wgpu::AddressMode::ClampToEdge,
-		address_mode_v: wgpu::AddressMode::ClampToEdge,
-		mag_filter: wgpu::FilterMode::Nearest,
-		min_filter: wgpu::FilterMode::Nearest,
-		sample_depth: false,
-	};
-
-	pub const LINEAR: SamplerProps = SamplerProps {
-		address_mode_u: wgpu::AddressMode::ClampToEdge,
-		address_mode_v: wgpu::AddressMode::ClampToEdge,
-		mag_filter: wgpu::FilterMode::Linear,
-		min_filter: wgpu::FilterMode::Linear,
-		sample_depth: false,
-	};
 }
 
 pub(crate) struct TextureStorage {
@@ -57,12 +25,18 @@ pub(crate) struct TextureStorage {
 #[derive(Clone, Copy)]
 pub struct Texture(pub(crate) usize);
 
-fn create_2d(painter: &mut Painter, props: Texture2DProps, multi_sampled: bool) -> wgpu::Texture {
+fn create_2d(
+	painter: &mut Painter,
+	width: u32,
+	height: u32,
+	props: Texture2DProps,
+	multi_sampled: bool,
+) -> wgpu::Texture {
 	painter.device.create_texture(&wgpu::TextureDescriptor {
 		label: None,
 		size: wgpu::Extent3d {
-			width: props.width,
-			height: props.height,
+			width,
+			height,
 			depth_or_array_layers: 1,
 		},
 		mip_level_count: 1,
@@ -76,14 +50,15 @@ fn create_2d(painter: &mut Painter, props: Texture2DProps, multi_sampled: bool) 
 
 fn create_depth(
 	painter: &mut Painter,
-	props: TextureDepthProps,
+	width: u32,
+	height: u32,
 	multi_sampled: bool,
 ) -> wgpu::Texture {
 	painter.device.create_texture(&wgpu::TextureDescriptor {
 		label: None,
 		size: wgpu::Extent3d {
-			width: props.width,
-			height: props.height,
+			width,
+			height,
 			depth_or_array_layers: 1,
 		},
 		mip_level_count: 1,
@@ -96,8 +71,14 @@ fn create_depth(
 }
 
 impl Texture {
-	pub fn create_2d(painter: &mut Painter, props: Texture2DProps, multi_sampled: bool) -> Self {
-		let texture = create_2d(painter, props, multi_sampled);
+	pub fn create_2d(
+		painter: &mut Painter,
+		width: u32,
+		height: u32,
+		props: Texture2DProps,
+		multi_sampled: bool,
+	) -> Self {
+		let texture = create_2d(painter, width, height, props, multi_sampled);
 		let view = texture.create_view(&default());
 		let storage = TextureStorage {
 			texture,
@@ -109,8 +90,15 @@ impl Texture {
 		Self(painter.textures.len() - 1)
 	}
 
-	pub fn replace_2d(&self, painter: &mut Painter, props: Texture2DProps, multi_sampled: bool) {
-		let texture = create_2d(painter, props, multi_sampled);
+	pub fn replace_2d(
+		&self,
+		painter: &mut Painter,
+		width: u32,
+		height: u32,
+		props: Texture2DProps,
+		multi_sampled: bool,
+	) {
+		let texture = create_2d(painter, width, height, props, multi_sampled);
 		let view = texture.create_view(&default());
 
 		let old = &mut painter.textures[self.0];
@@ -130,10 +118,11 @@ impl Texture {
 
 	pub fn create_depth(
 		painter: &mut Painter,
-		props: TextureDepthProps,
+		width: u32,
+		height: u32,
 		multi_sampled: bool,
 	) -> Self {
-		let texture = create_depth(painter, props, multi_sampled);
+		let texture = create_depth(painter, width, height, multi_sampled);
 		let view = texture.create_view(&default());
 
 		let storage = TextureStorage {
@@ -150,10 +139,11 @@ impl Texture {
 	pub fn replace_depth(
 		&self,
 		painter: &mut Painter,
-		props: TextureDepthProps,
+		width: u32,
+		height: u32,
 		multi_sampled: bool,
 	) {
-		let texture = create_depth(painter, props, multi_sampled);
+		let texture = create_depth(painter, width, height, multi_sampled);
 		let view = texture.create_view(&default());
 		let old = &mut painter.textures[self.0];
 
@@ -213,28 +203,47 @@ impl Texture {
 	}
 }
 
-#[derive(Clone, Copy)]
-pub struct Sampler(pub(crate) usize);
+/// A builder for creating 2D textures with customizable properties.
+///
+/// # Default Texture2DProps
+/// - Format: `Rgba8UnormSrgb` (8-bit RGBA color in sRGB color space)
+/// - Usage: `TEXTURE_BINDING | COPY_DST` (can be used as texture and receive data)
+///
+/// # Example
+/// ```
+/// let texture = Texture2DBuilder::new(painter, 512, 512)
+///     .width_format(wgpu::TextureFormat::Rgba8Unorm)
+///     .width_usage(wgpu::TextureUsages::STORAGE_BINDING)
+///     .create();
+/// ```
+pub struct Texture2DBuilder<'a> {
+	width: u32,
+	height: u32,
+	painter: &'a mut Painter,
+	props: Texture2DProps,
+}
 
-impl Sampler {
-	pub fn create(painter: &mut Painter, props: SamplerProps) -> Self {
-		let sampler = painter.device.create_sampler(&wgpu::SamplerDescriptor {
-			address_mode_u: props.address_mode_u,
-			address_mode_v: props.address_mode_v,
-			address_mode_w: wgpu::AddressMode::ClampToEdge,
-			mag_filter: props.mag_filter,
-			min_filter: props.min_filter,
-			mipmap_filter: wgpu::FilterMode::Nearest,
-			compare: props.sample_depth.then(|| wgpu::CompareFunction::LessEqual),
-			..Default::default()
-		});
-
-		painter.samplers.push(sampler);
-
-		Self(painter.samplers.len() - 1)
+impl<'a> Texture2DBuilder<'a> {
+	pub fn new(painter: &'a mut Painter, width: u32, height: u32) -> Self {
+		Texture2DBuilder {
+			width,
+			height,
+			painter,
+			props: Texture2DProps::default(),
+		}
 	}
 
-	pub fn uniform(&self) -> Uniform {
-		Uniform::Sampler(*self)
+	pub fn create(self) -> Texture {
+		Texture::create_2d(self.painter, self.width, self.height, self.props, false)
+	}
+
+	pub fn width_format(mut self, format: wgpu::TextureFormat) -> Self {
+		self.props.format = format;
+		self
+	}
+
+	pub fn width_usage(mut self, usage: wgpu::TextureUsages) -> Self {
+		self.props.usage = usage;
+		self
 	}
 }
