@@ -3,7 +3,6 @@ use trivalibs::{
 	gpu_data,
 	macros::apply,
 	painter::prelude::*,
-	utils::default,
 };
 
 const BLUR_DIAMETER: f32 = 400.0;
@@ -61,51 +60,47 @@ impl CanvasApp<()> for App {
 
 		let mut effects = vec![];
 
-		// This does blur in multiple passes
+		// ===  This does blur in multiple passes ===
 		// It cuts the number of texture reads logarithmically, but increases the number of passes
 
-		let mut counter = BLUR_DIAMETER / 9.0; // Fixed diameter in shader is 9.0
-		while counter > 1.0 {
-			let diameter = p.uniform_const_f32(counter);
-			effects.push(
-				p.effect(blur_shade)
-					.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, horiz)])
-					.create(),
-			);
-			effects.push(
-				p.effect(blur_shade)
-					.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, vertical)])
-					.create(),
-			);
-			counter /= 2.0;
-		}
+		// let mut counter = BLUR_DIAMETER / 9.0; // Fixed diameter in shader is 9.0
+		// while counter > 1.0 {
+		// 	let diameter = p.uniform_const_f32(counter);
+		// 	effects.push(
+		// 		p.effect(blur_shade)
+		// 			.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, horiz)])
+		// 			.create(),
+		// 	);
+		// 	effects.push(
+		// 		p.effect(blur_shade)
+		// 			.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, vertical)])
+		// 			.create(),
+		// 	);
+		// 	counter /= 2.0;
+		// }
 
-		println!("effects: {:?}", effects.len());
+		// println!("effects: {:?}", effects.len());
 
-		// This does all blurs in one pass
+		// === This does all blurs in one pass ===
 
-		// let diameter = u_fs_type.const_f32(p, BLUR_DIAMETER);
-		// effects.push(p.effect_create(
-		// 	blur_shade,
-		// 	EffectProps {
-		// 		uniforms: vec![(1, diameter), (2, size.uniform), (3, horiz)],
-		// 		..default()
-		// 	},
-		// ));
-		// effects.push(p.effect_create(
-		// 	blur_shade,
-		// 	EffectProps {
-		// 		uniforms: vec![(1, diameter), (2, size.uniform), (3, vertical)],
-		// 		..default()
-		// 	},
-		// ));
+		let diameter = p.uniform_const_f32(BLUR_DIAMETER);
+		effects.push(
+			p.effect(blur_shade)
+				.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, horiz)])
+				.create(),
+		);
+		effects.push(
+			p.effect(blur_shade)
+				.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, vertical)])
+				.create(),
+		);
 
-		let canvas = p.layer_create(LayerProps {
-			shapes: vec![tri_shape],
-			effects,
-			clear_color: Some(wgpu::Color::BLUE),
-			..default()
-		});
+		let canvas = p
+			.layer()
+			.with_shape(tri_shape)
+			.with_effects(effects)
+			.with_clear_color(wgpu::Color::BLUE)
+			.create();
 
 		Self { canvas, size }
 	}

@@ -105,6 +105,19 @@ impl Shape {
 	}
 }
 
+/// Builder for creating new [`Shape`]s with custom properties.
+///
+/// # Default values for [`ShapeProps`]:
+/// - `cull_mode`: `Some(wgpu::Face::Back)`
+/// - `blend_state`: `wgpu::BlendState::REPLACE`
+///
+/// # Example
+/// ```
+/// let shape = ShapeBuilder::new(painter, form, shade)
+///     .with_uniforms(uniforms)
+///     .with_instances(instances)
+///     .create();
+/// ```
 pub struct ShapeBuilder<'a> {
 	form: Form,
 	shade: Shade,
@@ -122,8 +135,8 @@ impl<'a> ShapeBuilder<'a> {
 		}
 	}
 
-	pub fn create(&mut self) -> Shape {
-		Shape::new(self.painter, self.form, self.shade, self.props.clone())
+	pub fn create(self) -> Shape {
+		Shape::new(self.painter, self.form, self.shade, self.props)
 	}
 
 	pub fn with_uniforms(mut self, uniforms: Vec<(u32, Uniform)>) -> Self {

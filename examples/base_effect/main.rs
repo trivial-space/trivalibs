@@ -27,10 +27,7 @@ impl CanvasApp<()> for App {
 			})
 			.create();
 
-		let canvas = p.layer_create(LayerProps {
-			effects: vec![effect],
-			..default()
-		});
+		let canvas = p.layer().with_effect(effect).create();
 
 		Self {
 			time: 0.0,

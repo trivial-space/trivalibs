@@ -89,11 +89,11 @@ impl CanvasApp<()> for App {
 			.with_blend_state(wgpu::BlendState::ALPHA_BLENDING)
 			.create();
 
-		let canvas = p.layer_create(LayerProps {
-			shapes: vec![shape],
-			clear_color: Some(wgpu::Color::BLACK),
-			..default()
-		});
+		let canvas = p
+			.layer()
+			.with_shape(shape)
+			.with_clear_color(wgpu::Color::BLACK)
+			.create();
 
 		Self {
 			cam: PerspectiveCamera::create(CamProps {

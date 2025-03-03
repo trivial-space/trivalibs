@@ -162,7 +162,7 @@ impl<'a, 'b> FormBuilder<'a, 'b> {
 		self
 	}
 
-	pub fn create(&mut self) -> Form {
+	pub fn create(self) -> Form {
 		Form::new(self.painter, &self.buffer, self.props)
 	}
 }

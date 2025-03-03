@@ -2,13 +2,14 @@ use crate::{
 	binding::{Binding, BindingLayout, BindingStorage},
 	effect::{Effect, EffectBuilder, EffectStorage},
 	form::{Form, FormBuffers, FormBuilder, FormStorage},
-	layer::{Layer, LayerProps, LayerStorage},
+	layer::{Layer, LayerBuilder, LayerStorage},
 	pipeline::PipelineStorage,
 	prelude::UNIFORM_LAYER_FRAG,
+	sampler::{Sampler, SamplerBuilder, SamplerProps},
 	shade::{AttribsFormat, Shade, ShadeBuilder, ShadeEffectBuilder, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
 	shape::{Shape, ShapeBuilder, ShapeStorage},
-	texture::{Sampler, SamplerProps, Texture, Texture2DProps, TextureStorage},
+	texture::{Texture2DBuilder, TextureStorage},
 	uniform::{Mat3U, Uniform, UniformBuffer, Vec3U},
 };
 use std::{collections::BTreeMap, sync::Arc};
@@ -222,12 +223,12 @@ impl Painter {
 
 	// texture helpers
 
-	pub fn texture_2d_create(&mut self, props: Texture2DProps) -> Texture {
-		Texture::create_2d(self, props, false)
+	pub fn texture_2d(&mut self, width: u32, height: u32) -> Texture2DBuilder<'_> {
+		Texture2DBuilder::new(self, width, height)
 	}
 
-	pub fn sampler_create(&mut self, props: SamplerProps) -> Sampler {
-		Sampler::create(self, props)
+	pub fn sampler(&mut self) -> SamplerBuilder<'_> {
+		SamplerBuilder::new(self)
 	}
 
 	pub fn sampler_nearest(&self) -> Sampler {
@@ -250,8 +251,8 @@ impl Painter {
 
 	// layer utils
 
-	pub fn layer_create(&mut self, props: LayerProps) -> Layer {
-		Layer::new(self, props)
+	pub fn layer(&mut self) -> LayerBuilder<'_> {
+		LayerBuilder::new(self)
 	}
 
 	// uniform utils

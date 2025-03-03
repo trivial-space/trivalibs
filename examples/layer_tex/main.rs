@@ -139,24 +139,22 @@ impl CanvasApp<ResizeEvent> for App {
 			.with_cull_mode(None)
 			.create();
 
-		let color_triangle_layer = p.layer_create(LayerProps {
-			shapes: vec![color_triangle_shape],
-			width: COLOR_TEX_SIZE_BIG.0,
-			height: COLOR_TEX_SIZE_BIG.1,
-			clear_color: Some(YELLOW),
-			multisampled: false,
-			..default()
-		});
+		let color_triangle_layer = p
+			.layer()
+			.with_shape(color_triangle_shape)
+			.with_size(COLOR_TEX_SIZE_BIG.0, COLOR_TEX_SIZE_BIG.1)
+			.with_clear_color(YELLOW)
+			.create();
 
-		let color_quad_layer = p.layer_create(LayerProps {
-			shapes: vec![color_quad_shape],
-			sampler: p.sampler_linear(),
-			width: COLOR_TEX_SIZE_BIG.0,
-			height: COLOR_TEX_SIZE_BIG.1,
-			clear_color: Some(GREEN),
-			multisampled: true,
-			..default()
-		});
+		let s = p.sampler_linear();
+		let color_quad_layer = p
+			.layer()
+			.with_shape(color_quad_shape)
+			.with_size(COLOR_TEX_SIZE_BIG.0, COLOR_TEX_SIZE_BIG.1)
+			.with_sampler(s)
+			.with_clear_color(GREEN)
+			.with_multisampling()
+			.create();
 
 		let tex_triangle_mvp = p.uniform_mat4();
 		let tex_quad_mvp = p.uniform_mat4();
@@ -183,13 +181,13 @@ impl CanvasApp<ResizeEvent> for App {
 			.with_cull_mode(None)
 			.create();
 
-		let canvas = p.layer_create(LayerProps {
-			shapes: vec![tex_quad_shape, tex_triangle_shape],
-			clear_color: Some(wgpu::Color::BLACK),
-			depth_test: true,
-			multisampled: true,
-			..default()
-		});
+		let canvas = p
+			.layer()
+			.with_shapes(vec![tex_quad_shape, tex_triangle_shape])
+			.with_clear_color(wgpu::Color::BLACK)
+			.with_depth_test()
+			.with_multisampling()
+			.create();
 
 		Self {
 			color_cam: PerspectiveCamera::create(CamProps {

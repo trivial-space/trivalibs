@@ -69,22 +69,22 @@ impl CanvasApp<()> for App {
 			})
 			.create();
 
-		let scene_layer = p.layer_create(LayerProps {
-			clear_color: Some(wgpu::Color {
+		let scene_layer = p
+			.layer()
+			.with_clear_color(wgpu::Color {
 				r: 0.5,
 				g: 0.6,
 				b: 0.7,
 				a: 1.0,
-			}),
-			shapes: vec![ball_shape, box_shape],
-			uniforms: map! {
+			})
+			.with_shapes(vec![ball_shape, box_shape])
+			.with_formats(vec![Rgba8UnormSrgb, Rgba16Float, Rgba16Float])
+			.with_uniforms(map! {
 				1 => u_vp_mat.uniform(),
-			},
-			formats: vec![Rgba8UnormSrgb, Rgba16Float, Rgba16Float],
-			depth_test: true,
-			multisampled: true,
-			..default()
-		});
+			})
+			.with_multisampling()
+			.with_depth_test()
+			.create();
 
 		let canvas_shade = p
 			.shade_effect()
@@ -151,16 +151,16 @@ impl CanvasApp<()> for App {
 			})
 			.create();
 
-		let canvas = p.layer_create(LayerProps {
-			effects: vec![canvas_effect],
-			clear_color: Some(wgpu::Color {
+		let canvas = p
+			.layer()
+			.with_effect(canvas_effect)
+			.with_clear_color(wgpu::Color {
 				r: 0.0,
 				g: 0.0,
 				b: 0.0,
 				a: 1.0,
-			}),
-			..default()
-		});
+			})
+			.create();
 
 		Self {
 			cam: PerspectiveCamera::create(CamProps {

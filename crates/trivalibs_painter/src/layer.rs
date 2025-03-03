@@ -2,8 +2,9 @@ use crate::{
 	binding::{Binding, BindingLayout},
 	effect::Effect,
 	prelude::UNIFORM_LAYER_FRAG,
+	sampler::Sampler,
 	shape::Shape,
-	texture::{Sampler, Texture, Texture2DProps, TextureDepthProps},
+	texture::{Texture, Texture2DProps},
 	uniform::{LayerLayout, Uniform},
 	Painter,
 };
@@ -185,13 +186,9 @@ impl Layer {
 			props.height
 		};
 
-		let depth_texture = props.depth_test.then(|| {
-			Texture::create_depth(
-				painter,
-				TextureDepthProps { width, height },
-				props.multisampled,
-			)
-		});
+		let depth_texture = props
+			.depth_test
+			.then(|| Texture::create_depth(painter, width, height, props.multisampled));
 
 		let pipeline_key = vec![
 			vec![(props.depth_test as u8)],
@@ -235,9 +232,9 @@ impl Layer {
 			for format in props.formats {
 				let tex = Texture::create_2d(
 					painter,
+					width,
+					height,
 					Texture2DProps {
-						width,
-						height,
 						format,
 						usage: wgpu::TextureUsages::RENDER_ATTACHMENT
 							| wgpu::TextureUsages::TEXTURE_BINDING,
@@ -251,9 +248,9 @@ impl Layer {
 				if props.multisampled {
 					multisampled_textures.push(Texture::create_2d(
 						painter,
+						width,
+						height,
 						Texture2DProps {
-							width,
-							height,
 							format,
 							usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
 						},
@@ -269,9 +266,9 @@ impl Layer {
 			for _ in 0..texture_count {
 				let tex = Texture::create_2d(
 					painter,
+					width,
+					height,
 					Texture2DProps {
-						width,
-						height,
 						format,
 						usage: wgpu::TextureUsages::RENDER_ATTACHMENT
 							| wgpu::TextureUsages::TEXTURE_BINDING,
@@ -287,9 +284,9 @@ impl Layer {
 			if props.multisampled {
 				multisampled_textures.push(Texture::create_2d(
 					painter,
+					width,
+					height,
 					Texture2DProps {
-						width,
-						height,
 						format,
 						usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
 					},
@@ -375,9 +372,9 @@ impl Layer {
 			let format = painter.textures[texture.0].texture.format();
 			texture.replace_2d(
 				painter,
+				width,
+				height,
 				Texture2DProps {
-					width,
-					height,
 					format,
 					usage: wgpu::TextureUsages::RENDER_ATTACHMENT
 						| wgpu::TextureUsages::TEXTURE_BINDING,
@@ -387,25 +384,123 @@ impl Layer {
 		}
 
 		if let Some(depth_texture) = depth_texture {
-			depth_texture.replace_depth(
-				painter,
-				TextureDepthProps { width, height },
-				!multisampled_textures.is_empty(),
-			);
+			depth_texture.replace_depth(painter, width, height, !multisampled_textures.is_empty());
 		}
 
 		for t in multisampled_textures {
 			let format = painter.textures[t.0].texture.format();
 			t.replace_2d(
 				painter,
+				width,
+				height,
 				Texture2DProps {
-					width,
-					height,
 					format,
 					usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
 				},
 				true,
 			);
 		}
+	}
+}
+
+/// A builder for creating a new [`Layer`].
+///
+/// # Default Configuration values:
+/// - `sampler`: Nearest / ClapToEdge
+/// - `layer_layout`: UNIFORM_LAYER_FRAG
+/// - `clear_color`: None
+/// - `depth_test`: false
+/// - `multisampled`: false
+///
+/// # Example
+/// ```
+/// let layer = LayerBuilder::new(painter)
+///     .with_size(800, 600)
+///     .with_shape(rectangle)
+///     .with_clear_color(wgpu::Color::BLACK)
+///     .create();
+/// ```
+///
+pub struct LayerBuilder<'a> {
+	props: LayerProps,
+	painter: &'a mut Painter,
+}
+
+impl<'a> LayerBuilder<'a> {
+	pub fn new(painter: &'a mut Painter) -> Self {
+		LayerBuilder {
+			props: LayerProps::default(),
+			painter,
+		}
+	}
+
+	pub fn create(self) -> Layer {
+		Layer::new(self.painter, self.props)
+	}
+
+	pub fn with_shapes(mut self, shapes: Vec<Shape>) -> Self {
+		self.props.shapes = shapes;
+		self
+	}
+
+	pub fn with_shape(mut self, shape: Shape) -> Self {
+		self.props.shapes.push(shape);
+		self
+	}
+
+	pub fn with_effects(mut self, effects: Vec<Effect>) -> Self {
+		self.props.effects = effects;
+		self
+	}
+
+	pub fn with_effect(mut self, effect: Effect) -> Self {
+		self.props.effects.push(effect);
+		self
+	}
+
+	pub fn with_uniforms(mut self, uniforms: Vec<(u32, Uniform)>) -> Self {
+		self.props.uniforms = uniforms;
+		self
+	}
+
+	pub fn with_layer_uniforms(mut self, layer_uniforms: Vec<(u32, Layer)>) -> Self {
+		self.props.layer_uniforms = layer_uniforms;
+		self
+	}
+
+	pub fn with_size(mut self, width: u32, height: u32) -> Self {
+		self.props.width = width;
+		self.props.height = height;
+		self
+	}
+
+	pub fn with_sampler(mut self, sampler: Sampler) -> Self {
+		self.props.sampler = sampler;
+		self
+	}
+
+	pub fn with_formats(mut self, formats: Vec<wgpu::TextureFormat>) -> Self {
+		self.props.formats = formats;
+		self
+	}
+
+	pub fn with_clear_color(mut self, color: wgpu::Color) -> Self {
+		self.props.clear_color = Some(color);
+		self
+	}
+
+	pub fn with_depth_test(mut self) -> Self {
+		self.props.depth_test = true;
+		self
+	}
+
+	pub fn with_layer_layout(mut self, layout: LayerLayout) -> Self {
+		self.props.layer_layout = layout;
+		self
+	}
+
+	pub fn with_multisampling(mut self) -> Self {
+		self.props.multisampled = true;
+		self
 	}
 }

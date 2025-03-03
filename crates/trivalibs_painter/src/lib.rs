@@ -9,6 +9,7 @@ pub mod effect;
 pub mod form;
 pub mod layer;
 pub(crate) mod pipeline;
+pub mod sampler;
 pub mod shade;
 pub mod shaders;
 pub mod shape;
@@ -25,9 +26,10 @@ pub mod prelude {
 		layer::{Layer, LayerProps},
 		load_fragment_shader, load_vertex_shader,
 		painter::Painter,
+		sampler::{Sampler, SamplerProps},
 		shade::{Shade, ShadeEffectProps, ShadeProps},
 		shape::{Shape, ShapeProps},
-		texture::{SamplerProps, Texture2DProps, TextureDepthProps},
+		texture::Texture2DProps,
 		uniform::{InstanceUniforms, Mat3U, UniformBuffer, Vec3U},
 		uniform_constants::*,
 		wgpu::{self, SurfaceError, TextureFormat::*, VertexFormat::*},

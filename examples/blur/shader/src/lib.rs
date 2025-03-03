@@ -27,6 +27,9 @@ pub fn blur_fs(
 	#[spirv(uniform, descriptor_set = 1, binding = 2)] dir: &Vec2,
 	out: &mut Vec4,
 ) {
-	// *out = gaussian_blur(tex, sampler, *radius, uv, *resolution, *dir);
-	*out = gaussian_blur_9(tex, sampler, uv, *resolution, *dir * *diameter);
+	// for bluring in one pass
+	*out = gaussian_blur(tex, sampler, *diameter, uv, *resolution, *dir);
+
+	// for bluring in multiple passes
+	// *out = gaussian_blur_9(tex, sampler, uv, *resolution, *dir * *diameter);
 }

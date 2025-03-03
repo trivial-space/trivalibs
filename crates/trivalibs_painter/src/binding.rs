@@ -1,11 +1,11 @@
-use std::collections::btree_map;
-
 use crate::{
 	layer::Layer,
-	texture::{Sampler, Texture},
+	sampler::Sampler,
+	texture::Texture,
 	uniform::{InstanceUniforms, LayerLayout, Uniform, UniformLayout},
 	Painter,
 };
+use std::collections::btree_map;
 
 #[derive(Clone, Copy)]
 pub(crate) struct BindingLayout(pub(crate) usize);

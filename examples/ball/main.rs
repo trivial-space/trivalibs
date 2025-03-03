@@ -34,13 +34,7 @@ impl CanvasApp<()> for App {
 		// Grab the bytes of the image.
 		let tex_rgba = &buf[..info.buffer_size()];
 
-		let tex = p.texture_2d_create(Texture2DProps {
-			width: info.width,
-			height: info.height,
-			format: wgpu::TextureFormat::Rgba8UnormSrgb,
-			usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-		});
-
+		let tex = p.texture_2d(info.width, info.height).create();
 		tex.fill_2d(p, tex_rgba);
 
 		let shade = p
@@ -71,17 +65,17 @@ impl CanvasApp<()> for App {
 			})
 			.create();
 
-		let canvas = p.layer_create(LayerProps {
-			clear_color: Some(wgpu::Color {
+		let canvas = p
+			.layer()
+			.with_shape(shape)
+			.with_clear_color(wgpu::Color {
 				r: 0.5,
 				g: 0.6,
 				b: 0.7,
 				a: 1.0,
-			}),
-			shapes: vec![shape],
-			multisampled: true,
-			..default()
-		});
+			})
+			.with_multisampling()
+			.create();
 
 		Self {
 			canvas,
