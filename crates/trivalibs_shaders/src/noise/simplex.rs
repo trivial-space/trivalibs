@@ -1,5 +1,7 @@
 //  MIT License. © Ian McEwan, Stefan Gustavson, Munrocket, Johan Helsing
 
+// Ported from https://github.com/johanhelsing/noisy_bevy from WGSL To Rust-GPU
+
 // #define_import_path noisy_bevy
 
 // fn permute_3_(x: vec3<f32>) -> vec3<f32> {
