@@ -211,14 +211,16 @@
 //     return sum;
 // }
 
-use spirv_std::glam::{Vec2, Vec2Swizzles, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles};
+use spirv_std::glam::{
+	vec2, vec3, vec4, Vec2, Vec2Swizzles, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles,
+};
 
-fn permute_3_(x: Vec3) -> Vec3 {
+fn permute_3(x: Vec3) -> Vec3 {
 	((x * 34.0) + 1.0) * x % Vec3::splat(289.0)
 }
 
 pub fn simplex_noise_2d(v: Vec2) -> f32 {
-	let c = Vec4::new(
+	let c = vec4(
 		0.211324865405187,  // (3.0 - sqrt(3.0)) / 6.0
 		0.366025403784439,  // 0.5 * (sqrt(3.0) - 1.0)
 		-0.577350269189626, // -1.0 + 2.0 * C.x
@@ -231,20 +233,19 @@ pub fn simplex_noise_2d(v: Vec2) -> f32 {
 
 	// other corners
 	let i1 = if x0.x > x0.y {
-		Vec2::new(0.0, 1.0)
+		vec2(1.0, 0.0)
 	} else {
-		Vec2::new(1.0, 0.0)
+		vec2(0.0, 1.0)
 	};
-	let x12 = x0.xyxy() + c.xxzz() - Vec4::new(i1.x, i1.y, 0.0, 0.0);
+	let x12 = x0.xyxy() + c.xxzz() - vec4(i1.x, i1.y, 0.0, 0.0);
 
 	// permutations
 	let i = i % Vec2::splat(289.0);
 
-	let p =
-		permute_3_(permute_3_(i.y + Vec3::new(0.0, i1.y, 1.0)) + i.x + Vec3::new(0.0, i1.x, 1.0));
+	let p = permute_3(permute_3(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
 	let mut m = (Vec3::splat(0.5)
-		- Vec3::new(x0.dot(x0), x12.xy().dot(x12.xy()), x12.zw().dot(x12.zw())))
-	.max(Vec3::splat(0.0));
+		- vec3(x0.dot(x0), x12.xy().dot(x12.xy()), x12.zw().dot(x12.zw())))
+	.max(Vec3::ZERO);
 	m *= m;
 	m *= m;
 
@@ -261,12 +262,12 @@ pub fn simplex_noise_2d(v: Vec2) -> f32 {
 
 	// compute final noise value at P
 	let v = a0.yz() * x12.xz() + h.yz() * x12.yw();
-	let g = Vec3::new(a0.x * x0.x + h.x * x0.y, v.x, v.y);
+	let g = vec3(a0.x * x0.x + h.x * x0.y, v.x, v.y);
 	130.0 * m.dot(g)
 }
 
 pub fn simplex_noise_2d_seeded(v: Vec2, seed: f32) -> f32 {
-	let c = Vec4::new(
+	let c = vec4(
 		0.211324865405187,  // (3.0 - sqrt(3.0)) / 6.0
 		0.366025403784439,  // 0.5 * (sqrt(3.0) - 1.0)
 		-0.577350269189626, // -1.0 + 2.0 * C.x
@@ -279,20 +280,19 @@ pub fn simplex_noise_2d_seeded(v: Vec2, seed: f32) -> f32 {
 
 	// other corners
 	let i1 = if x0.x > x0.y {
-		Vec2::new(0.0, 1.0)
+		vec2(1.0, 0.0)
 	} else {
-		Vec2::new(1.0, 0.0)
+		vec2(0.0, 1.0)
 	};
-	let x12 = x0.xyxy() + c.xxzz() - Vec4::new(i1.x, i1.y, 0.0, 0.0);
+	let x12 = x0.xyxy() + c.xxzz() - vec4(i1.x, i1.y, 0.0, 0.0);
 
 	// permutations
 	let i = i % Vec2::splat(289.0);
 
-	let mut p =
-		permute_3_(permute_3_(i.y + Vec3::new(0.0, i1.y, 1.0)) + i.x + Vec3::new(0.0, i1.x, 1.0));
-	p = permute_3_(p + Vec3::splat(seed));
+	let mut p = permute_3(permute_3(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+	p = permute_3(p + Vec3::splat(seed));
 	let mut m = (Vec3::splat(0.5)
-		- Vec3::new(x0.dot(x0), x12.xy().dot(x12.xy()), x12.zw().dot(x12.zw())))
+		- vec3(x0.dot(x0), x12.xy().dot(x12.xy()), x12.zw().dot(x12.zw())))
 	.max(Vec3::splat(0.0));
 	m *= m;
 	m *= m;
@@ -310,21 +310,21 @@ pub fn simplex_noise_2d_seeded(v: Vec2, seed: f32) -> f32 {
 
 	// compute final noise value at P
 	let v = a0.yz() * x12.xz() + h.yz() * x12.yw();
-	let g = Vec3::new(a0.x * x0.x + h.x * x0.y, v.x, v.y);
+	let g = vec3(a0.x * x0.x + h.x * x0.y, v.x, v.y);
 	130.0 * m.dot(g)
 }
 
-fn permute_4_(x: Vec4) -> Vec4 {
+fn permute_4(x: Vec4) -> Vec4 {
 	((x * 34.0) + 1.0) * x % Vec4::splat(289.0)
 }
 
-fn taylor_inv_sqrt_4_(r: Vec4) -> Vec4 {
+fn taylor_inv_sqrt_4(r: Vec4) -> Vec4 {
 	Vec4::splat(1.79284291400159) - Vec4::splat(0.85373472095314) * r
 }
 
 pub fn simplex_noise_3d(v: Vec3) -> f32 {
-	let c = Vec2::new(1.0 / 6.0, 1.0 / 3.0);
-	let d = Vec4::new(0.0, 0.5, 1.0, 2.0);
+	let c = vec2(1.0 / 6.0, 1.0 / 3.0);
+	let d = vec4(0.0, 0.5, 1.0, 2.0);
 
 	// first corner
 	let i = (v + v.dot(c.yyy())).floor();
@@ -343,11 +343,9 @@ pub fn simplex_noise_3d(v: Vec3) -> f32 {
 
 	// permutations
 	let i = i % Vec3::splat(289.0);
-	let p = permute_4_(
-		permute_4_(
-			permute_4_(i.z + Vec4::new(0.0, i1.z, i2.z, 1.0))
-				+ i.y + Vec4::new(0.0, i1.y, i2.y, 1.0),
-		) + i.x + Vec4::new(0.0, i1.x, i2.x, 1.0),
+	let p = permute_4(
+		permute_4(permute_4(i.z + vec4(0.0, i1.z, i2.z, 1.0)) + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+			+ i.x + vec4(0.0, i1.x, i2.x, 1.0),
 	);
 
 	// gradients (NxN points uniformly over a square, mapped onto an octahedron)
@@ -361,35 +359,36 @@ pub fn simplex_noise_3d(v: Vec3) -> f32 {
 
 	let x = x_ * ns.x + ns.yyyy();
 	let y = y_ * ns.x + ns.yyyy();
-	let h = Vec4::splat(1.0) - x.abs() - y.abs();
+	let h = 1.0 - x.abs() - y.abs();
 
-	let b0 = Vec4::new(x.x, x.y, y.x, y.y);
-	let b1 = Vec4::new(x.z, x.w, y.z, y.w);
+	let b0 = vec4(x.x, x.y, y.x, y.y);
+	let b1 = vec4(x.z, x.w, y.z, y.w);
 
-	let s0 = b0.floor() * 2.0 + Vec4::splat(1.0);
-	let s1 = b1.floor() * 2.0 + Vec4::splat(1.0);
-	let sh = step_v4(Vec4::ZERO, h);
+	let s0 = b0.floor() * 2.0 + 1.0;
+	let s1 = b1.floor() * 2.0 + 1.0;
+	let sh = -step_v4(h, Vec4::ZERO);
 
 	let a0 = b0.xzyw() + s0.xzyw() * sh.xxyy();
 	let a1 = b1.xzyw() + s1.xzyw() * sh.zzww();
 
-	let mut p0 = Vec3::new(a0.x, a0.y, h.x);
-	let mut p1 = Vec3::new(a0.z, a0.w, h.y);
-	let mut p2 = Vec3::new(a1.x, a1.y, h.z);
-	let mut p3 = Vec3::new(a1.z, a1.w, h.w);
+	let mut p0 = vec3(a0.x, a0.y, h.x);
+	let mut p1 = vec3(a0.z, a0.w, h.y);
+	let mut p2 = vec3(a1.x, a1.y, h.z);
+	let mut p3 = vec3(a1.z, a1.w, h.w);
 
 	// normalize gradients
-	let norm = taylor_inv_sqrt_4_(Vec4::new(p0.dot(p0), p1.dot(p1), p2.dot(p2), p3.dot(p3)));
+	let norm = taylor_inv_sqrt_4(vec4(p0.dot(p0), p1.dot(p1), p2.dot(p2), p3.dot(p3)));
 	p0 *= norm.x;
 	p1 *= norm.y;
 	p2 *= norm.z;
 	p3 *= norm.w;
 
 	// mix final noise value
-	let mut m = Vec4::splat(0.6) - Vec4::new(x0.dot(x0), x1.dot(x1), x2.dot(x2), x3.dot(x3));
-	m = m.max(Vec4::splat(0.0));
+	let mut m = 0.6 - vec4(x0.dot(x0), x1.dot(x1), x2.dot(x2), x3.dot(x3));
+	m = m.max(Vec4::ZERO);
 	m *= m;
-	42.0 * m.dot(Vec4::new(p0.dot(x0), p1.dot(x1), p2.dot(x2), p3.dot(x3)))
+	m *= m;
+	42.0 * m.dot(vec4(p0.dot(x0), p1.dot(x1), p2.dot(x2), p3.dot(x3)))
 }
 
 pub fn fbm_simplex_2d(pos: Vec2, octaves: i32, lacunarity: f32, gain: f32) -> f32 {
@@ -441,7 +440,7 @@ pub fn fbm_simplex_3d(pos: Vec3, octaves: i32, lacunarity: f32, gain: f32) -> f3
 }
 
 fn step_v3(x: Vec3, y: Vec3) -> Vec3 {
-	Vec3::new(
+	vec3(
 		if x.x <= y.x { 1.0 } else { 0.0 },
 		if x.y <= y.y { 1.0 } else { 0.0 },
 		if x.z <= y.z { 1.0 } else { 0.0 },
@@ -449,7 +448,7 @@ fn step_v3(x: Vec3, y: Vec3) -> Vec3 {
 }
 
 fn step_v4(x: Vec4, y: Vec4) -> Vec4 {
-	Vec4::new(
+	vec4(
 		if x.x <= y.x { 1.0 } else { 0.0 },
 		if x.y <= y.y { 1.0 } else { 0.0 },
 		if x.z <= y.z { 1.0 } else { 0.0 },
