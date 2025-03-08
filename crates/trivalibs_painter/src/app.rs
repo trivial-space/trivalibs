@@ -2,6 +2,7 @@ use crate::window_dimensions::WindowDimensions;
 use crate::{painter::PainterConfig, Painter};
 #[cfg(debug_assertions)]
 use notify::Watcher;
+use std::collections::BTreeMap;
 use std::{sync::Arc, time::Instant};
 use wgpu::SurfaceError;
 use winit::{
@@ -171,16 +172,30 @@ where
 
 		#[cfg(debug_assertions)]
 		std::thread::spawn(move || {
+			let mut current_shaders = BTreeMap::new();
 			// Block forever, printing out events as they come in
 			for res in rx {
 				match res {
 					Ok(event) => {
 						if event.kind.is_modify() {
+							let current_time = std::time::SystemTime::now();
+
 							event.paths.iter().for_each(|path| {
 								if let Some(ext) = path.extension() {
 									if ext != "spv" {
 										return;
 									}
+
+									if let Some(last_event_time) = current_shaders.get(path) {
+										if current_time
+											.duration_since(*last_event_time)
+											.unwrap()
+											.as_millis() < 500
+										{
+											return;
+										}
+									}
+
 									proxy
 										.send_event(CustomEvent::ReloadShaders(
 											path.display().to_string(),
@@ -188,10 +203,13 @@ where
 										.unwrap_or_else(|_| {
 											panic!("Failed to send shader reload event");
 										});
+
+									current_shaders.insert(path.clone(), current_time);
 								}
 							});
 						}
 					}
+
 					Err(e) => println!("watch error: {:?}", e),
 				}
 			}
