@@ -322,16 +322,29 @@ impl Layer {
 
 		for s in props.shapes {
 			s.prepare_uniforms(painter, layer);
-			let key = painter.get_shape_pipeline_key(s, layer);
-			painter.ensure_shape_pipeline(&key, s, layer);
 		}
 		for e in props.effects {
 			e.prepare_uniforms(painter, layer);
-			let key = painter.get_effect_pipeline_key(e, layer);
-			painter.ensure_effect_pipeline(&key, e, layer);
 		}
 
 		layer
+	}
+
+	/// This function is called by after the CanvasApp::init function automatically.
+	/// If Layers are created dynamically during App runtime, this
+	/// method must to be called manually after all shaders are created.
+	pub fn init_layer_gpu_pipelines(&self, painter: &mut Painter) {
+		let shapes = (&painter.layers[self.0]).shapes.clone();
+		let effects = (&painter.layers[self.0]).effects.clone();
+
+		for s in shapes {
+			let key = painter.get_shape_pipeline_key(s, *self);
+			painter.ensure_shape_pipeline(&key, s, *self);
+		}
+		for e in effects {
+			let key = painter.get_effect_pipeline_key(e, *self);
+			painter.ensure_effect_pipeline(&key, e, *self);
+		}
 	}
 
 	pub fn get_target_uniform(&self, painter: &Painter, index: usize) -> Uniform {
@@ -436,6 +449,18 @@ impl<'a> LayerBuilder<'a> {
 
 	pub fn create(self) -> Layer {
 		Layer::new(self.painter, self.props)
+	}
+
+	/// Creates a layer and initializes the its gpu pipelines.
+	///
+	/// Layers created in the App::init function are automatically initialized.
+	/// They can use `create` method to create the layer.
+	///
+	/// Layers created during runtime must be initialized manually.
+	pub fn create_and_init(self) -> Layer {
+		let layer = Layer::new(self.painter, self.props);
+		layer.init_layer_gpu_pipelines(self.painter);
+		layer
 	}
 
 	pub fn with_shapes(mut self, shapes: Vec<Shape>) -> Self {

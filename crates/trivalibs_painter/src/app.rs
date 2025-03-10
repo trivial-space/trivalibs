@@ -1,3 +1,4 @@
+use crate::layer::Layer;
 use crate::window_dimensions::WindowDimensions;
 use crate::{painter::PainterConfig, Painter};
 #[cfg(debug_assertions)]
@@ -314,6 +315,11 @@ where
 		match event {
 			CustomEvent::StateInitializationEvent(mut painter) => {
 				let mut app = App::init(&mut painter);
+
+				for i in 0..painter.layers.len() {
+					Layer(i).init_layer_gpu_pipelines(&mut painter);
+				}
+
 				let size = painter.canvas_size();
 				app.resize(&mut painter, size.width, size.height);
 				painter.request_next_frame();
