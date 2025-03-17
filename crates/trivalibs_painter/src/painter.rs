@@ -131,7 +131,7 @@ impl Painter {
 		Sampler::create(&mut painter, SamplerProps::NEAREST);
 		Sampler::create(&mut painter, SamplerProps::LINEAR);
 
-		let layer_layout = BindingLayout::layer(&mut painter, UNIFORM_LAYER_FRAG);
+		let layer_layout = BindingLayout::swapping_effect_layer(&mut painter, UNIFORM_LAYER_FRAG);
 
 		let fullscreen_quad_pipeline_layout =
 			painter
@@ -413,14 +413,14 @@ impl Painter {
 		let pipeline = &self.pipelines[&pipeline_key];
 		rpass.set_pipeline(&pipeline.pipeline);
 
-		for (index, layer) in &l.layer_uniforms {
+		for (index, layer) in &l.effect_layer_uniforms {
 			let l = &self.layers[layer.0];
 			let b = l.current_source();
 			rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 		}
 
 		let s = &self.shapes[shape.0];
-		for (index, layer) in &s.layer_uniforms {
+		for (index, layer) in &s.effect_layer_uniforms {
 			let l = &self.layers[layer.0];
 			let b = l.current_source();
 			rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
@@ -477,13 +477,13 @@ impl Painter {
 				rpass.set_bind_group(0, &self.bindings[b.0].binding, &[]);
 			}
 
-			for (index, layer) in &l.layer_uniforms {
+			for (index, layer) in &l.effect_layer_uniforms {
 				let l = &self.layers[layer.0];
 				let b = l.current_source();
 				rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 			}
 
-			for (index, layer) in &e.layer_uniforms {
+			for (index, layer) in &e.effect_layer_uniforms {
 				let l = &self.layers[layer.0];
 				let b = l.current_source();
 				rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);

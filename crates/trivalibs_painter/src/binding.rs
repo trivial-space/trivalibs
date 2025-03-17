@@ -1,6 +1,5 @@
 use crate::{
 	layer::Layer,
-	sampler::Sampler,
 	texture::Texture,
 	uniform::{InstanceUniforms, LayerLayout, Uniform, UniformLayout},
 	Painter,
@@ -11,7 +10,7 @@ use std::collections::btree_map;
 pub(crate) struct BindingLayout(pub(crate) usize);
 
 impl BindingLayout {
-	pub(crate) fn layer(painter: &mut Painter, layer_layout: LayerLayout) -> Self {
+	pub(crate) fn swapping_effect_layer(painter: &mut Painter, layer_layout: LayerLayout) -> Self {
 		let layout = painter
 			.device
 			.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -109,32 +108,27 @@ impl Binding {
 		layer: Layer,
 		layout: BindingLayout,
 		tex: Texture,
-		sampler: Sampler,
 	) -> Self {
-		let uniforms = vec![Uniform::Tex2D(tex), Uniform::Sampler(sampler)];
+		let uniform = tex.uniform();
 
 		let layout = &painter.binding_layouts[layout.0];
 
-		let entries = uniforms
-			.iter()
-			.enumerate()
-			.map(|(i, u)| wgpu::BindGroupEntry {
-				binding: i as u32,
-				resource: uniform_to_resource(u, painter),
-			})
-			.collect::<Vec<_>>();
+		let entry = wgpu::BindGroupEntry {
+			binding: 0,
+			resource: uniform_to_resource(&uniform, painter),
+		};
 
 		let bind_group = painter
 			.device
 			.create_bind_group(&wgpu::BindGroupDescriptor {
 				label: None,
 				layout,
-				entries: &entries,
+				entries: &[entry],
 			});
 
 		let storage = BindingStorage {
 			typ: BindingType::Layer(layer),
-			data: uniforms,
+			data: vec![uniform],
 			binding: bind_group,
 		};
 

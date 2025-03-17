@@ -34,7 +34,7 @@ fn layouts_from_props(
 ) {
 	let layer_layouts = layers
 		.iter()
-		.map(|l| BindingLayout::layer(painter, *l))
+		.map(|l| BindingLayout::swapping_effect_layer(painter, *l))
 		.collect::<Vec<_>>();
 
 	let uniform_layout = BindingLayout::uniforms(painter, uniforms);
@@ -284,8 +284,8 @@ where
 		self
 	}
 
-	pub fn with_layers(mut self, layers: &'a [LayerLayout]) -> Self {
-		self.props.layers = layers;
+	pub fn with_effect_layers(mut self, effect_layers: &'a [LayerLayout]) -> Self {
+		self.props.layers = effect_layers;
 		self
 	}
 }

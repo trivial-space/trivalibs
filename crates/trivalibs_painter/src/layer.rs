@@ -2,7 +2,6 @@ use crate::{
 	binding::{Binding, BindingLayout},
 	effect::Effect,
 	prelude::UNIFORM_LAYER_FRAG,
-	sampler::Sampler,
 	shape::Shape,
 	texture::{Texture, Texture2DProps},
 	uniform::{LayerLayout, Uniform},
@@ -111,7 +110,7 @@ pub(crate) struct LayerStorage {
 	pub texture_count: usize,
 	pub is_multi_target: bool,
 	pub uniforms: Vec<(u32, Uniform)>,
-	pub layer_uniforms: Vec<(u32, Layer)>,
+	pub effect_layer_uniforms: Vec<(u32, Layer)>,
 }
 
 impl LayerStorage {
@@ -139,10 +138,9 @@ pub struct LayerProps {
 	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
 	pub uniforms: Vec<(u32, Uniform)>,
-	pub layer_uniforms: Vec<(u32, Layer)>,
+	pub effect_layer_uniforms: Vec<(u32, Layer)>,
 	pub width: u32,
 	pub height: u32,
-	pub sampler: Sampler,
 	pub formats: Vec<wgpu::TextureFormat>,
 	pub clear_color: Option<wgpu::Color>,
 	pub depth_test: bool,
@@ -156,8 +154,7 @@ impl Default for LayerProps {
 			shapes: Vec::with_capacity(0),
 			effects: Vec::with_capacity(0),
 			uniforms: Vec::with_capacity(0),
-			layer_uniforms: Vec::with_capacity(0),
-			sampler: Sampler(0),
+			effect_layer_uniforms: Vec::with_capacity(0),
 			width: 0,
 			height: 0,
 			formats: Vec::with_capacity(1),
@@ -222,7 +219,7 @@ impl Layer {
 		let mut multisampled_textures =
 			Vec::with_capacity(if props.multisampled { texture_count } else { 0 });
 		let mut formats = Vec::with_capacity(texture_count);
-		let layout = BindingLayout::layer(painter, props.layer_layout);
+		let layout = BindingLayout::swapping_effect_layer(painter, props.layer_layout);
 
 		if is_multi_target {
 			if use_swap_targets {
@@ -243,7 +240,7 @@ impl Layer {
 				);
 				target_textures.push(tex);
 
-				target_bindings.push(Binding::layer(painter, layer, layout, tex, props.sampler));
+				target_bindings.push(Binding::layer(painter, layer, layout, tex));
 
 				if props.multisampled {
 					multisampled_textures.push(Texture::create_2d(
@@ -278,7 +275,7 @@ impl Layer {
 
 				target_textures.push(tex);
 
-				target_bindings.push(Binding::layer(painter, layer, layout, tex, props.sampler));
+				target_bindings.push(Binding::layer(painter, layer, layout, tex));
 			}
 
 			if props.multisampled {
@@ -314,7 +311,7 @@ impl Layer {
 			texture_count,
 			is_multi_target,
 			uniforms: props.uniforms,
-			layer_uniforms: props.layer_uniforms,
+			effect_layer_uniforms: props.effect_layer_uniforms,
 			binding_layout: layout,
 		};
 
@@ -347,7 +344,7 @@ impl Layer {
 		}
 	}
 
-	pub fn get_target_uniform(&self, painter: &Painter, index: usize) -> Uniform {
+	pub fn target_uniform(&self, painter: &Painter, index: usize) -> Uniform {
 		painter.layers[self.0].target_textures[index].uniform()
 	}
 
@@ -488,19 +485,14 @@ impl<'a> LayerBuilder<'a> {
 		self
 	}
 
-	pub fn with_layer_uniforms(mut self, layer_uniforms: Vec<(u32, Layer)>) -> Self {
-		self.props.layer_uniforms = layer_uniforms;
+	pub fn with_effect_layers(mut self, effect_layer_uniforms: Vec<(u32, Layer)>) -> Self {
+		self.props.effect_layer_uniforms = effect_layer_uniforms;
 		self
 	}
 
 	pub fn with_size(mut self, width: u32, height: u32) -> Self {
 		self.props.width = width;
 		self.props.height = height;
-		self
-	}
-
-	pub fn with_sampler(mut self, sampler: Sampler) -> Self {
-		self.props.sampler = sampler;
 		self
 	}
 

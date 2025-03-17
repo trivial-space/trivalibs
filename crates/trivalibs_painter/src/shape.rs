@@ -12,7 +12,7 @@ pub(crate) struct ShapeStorage {
 	pub form: Form,
 	pub shade: Shade,
 	pub uniforms: Vec<(u32, Uniform)>,
-	pub layer_uniforms: Vec<(u32, Layer)>,
+	pub effect_layer_uniforms: Vec<(u32, Layer)>,
 	pub instances: Vec<InstanceUniforms>,
 	pub pipeline_key: Vec<u8>,
 	pub cull_mode: Option<wgpu::Face>,
@@ -24,7 +24,7 @@ pub(crate) struct ShapeStorage {
 #[derive(Clone)]
 pub struct ShapeProps {
 	pub uniforms: Vec<(u32, Uniform)>,
-	pub layer_uniforms: Vec<(u32, Layer)>,
+	pub effect_layer_uniforms: Vec<(u32, Layer)>,
 	pub instances: Vec<InstanceUniforms>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
@@ -34,7 +34,7 @@ impl Default for ShapeProps {
 	fn default() -> Self {
 		ShapeProps {
 			uniforms: Vec::with_capacity(0),
-			layer_uniforms: Vec::with_capacity(0),
+			effect_layer_uniforms: Vec::with_capacity(0),
 			instances: Vec::with_capacity(0),
 			cull_mode: Some(wgpu::Face::Back),
 			blend_state: wgpu::BlendState::REPLACE,
@@ -72,7 +72,7 @@ impl Shape {
 			shade,
 			pipeline_key,
 			uniforms: props.uniforms,
-			layer_uniforms: props.layer_uniforms,
+			effect_layer_uniforms: props.effect_layer_uniforms,
 			instances: props.instances,
 			cull_mode: props.cull_mode,
 			blend_state: props.blend_state,
@@ -144,8 +144,8 @@ impl<'a> ShapeBuilder<'a> {
 		self
 	}
 
-	pub fn with_layer_uniforms(mut self, layer_uniforms: Vec<(u32, Layer)>) -> Self {
-		self.props.layer_uniforms = layer_uniforms;
+	pub fn with_effect_layers(mut self, effect_layers: Vec<(u32, Layer)>) -> Self {
+		self.props.effect_layer_uniforms = effect_layers;
 		self
 	}
 
