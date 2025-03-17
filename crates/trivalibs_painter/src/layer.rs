@@ -348,7 +348,7 @@ impl Layer {
 	}
 
 	pub fn get_target_uniform(&self, painter: &Painter, index: usize) -> Uniform {
-		Uniform::Tex2D(painter.layers[self.0].target_textures[index])
+		painter.layers[self.0].target_textures[index].uniform()
 	}
 
 	pub fn set_clear_color(&mut self, painter: &mut Painter, color: Option<wgpu::Color>) {

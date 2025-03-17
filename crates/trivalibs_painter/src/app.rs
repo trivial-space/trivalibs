@@ -92,6 +92,24 @@ where
 	config: AppConfig,
 }
 
+impl<UserEvent, App> CanvasAppRunner<UserEvent, App>
+where
+	UserEvent: 'static,
+	App: CanvasApp<UserEvent>,
+{
+	pub fn pause(&mut self) {
+		self.is_running = false;
+	}
+
+	pub fn play(&mut self) {
+		self.is_running = true;
+		self.now = Instant::now();
+		if let WindowState::Initialized(painter, _) = &mut self.state {
+			painter.request_next_frame();
+		}
+	}
+}
+
 pub struct CanvasHandle<UserEvent>
 where
 	UserEvent: 'static,
@@ -447,10 +465,10 @@ where
 							},
 						..
 					} => {
-						self.is_running = !self.is_running;
 						if self.is_running {
-							self.now = Instant::now();
-							painter.request_next_frame();
+							self.pause();
+						} else {
+							self.play();
 						}
 					}
 
