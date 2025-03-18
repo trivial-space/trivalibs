@@ -60,7 +60,7 @@ impl CanvasApp<()> for App {
 		let size = p.uniform_vec2();
 		let horiz = p.uniform_const_vec2(vec2(1.0, 0.0));
 		let vertical = p.uniform_const_vec2(vec2(0.0, 1.0));
-		let s = p.sampler_nearest().uniform();
+		let s = p.sampler_linear().uniform();
 
 		let mut effects = vec![];
 
