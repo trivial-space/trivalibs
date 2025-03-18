@@ -105,14 +105,14 @@ impl UniformBuffer<Vec3U> {
 #[derive(Clone)]
 pub struct InstanceUniforms {
 	pub uniforms: Vec<(u32, Uniform)>,
-	pub layers: Vec<(u32, Layer)>,
+	pub effect_layers: Vec<(u32, Layer)>,
 }
 
 impl Default for InstanceUniforms {
 	fn default() -> Self {
 		Self {
 			uniforms: Vec::with_capacity(0),
-			layers: Vec::with_capacity(0),
+			effect_layers: Vec::with_capacity(0),
 		}
 	}
 }

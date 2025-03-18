@@ -20,16 +20,16 @@ pub fn triangle_fs(uv: Vec2, out: &mut Vec4) {
 #[spirv(fragment)]
 pub fn blur_fs(
 	uv: Vec2,
-	#[spirv(descriptor_set = 0, binding = 0)] tex: &Image!(2D, type=f32, sampled),
-	#[spirv(descriptor_set = 0, binding = 1)] sampler: &Sampler,
-	#[spirv(uniform, descriptor_set = 1, binding = 0)] diameter: &f32,
-	#[spirv(uniform, descriptor_set = 1, binding = 1)] resolution: &Vec2,
-	#[spirv(uniform, descriptor_set = 1, binding = 2)] dir: &Vec2,
+	#[spirv(uniform, descriptor_set = 0, binding = 0)] diameter: &f32,
+	#[spirv(uniform, descriptor_set = 0, binding = 1)] resolution: &Vec2,
+	#[spirv(uniform, descriptor_set = 0, binding = 2)] dir: &Vec2,
+	#[spirv(descriptor_set = 0, binding = 3)] sampler: &Sampler,
+	#[spirv(descriptor_set = 1, binding = 0)] tex: &Image!(2D, type=f32, sampled),
 	out: &mut Vec4,
 ) {
 	// for bluring in one pass
-	*out = gaussian_blur(tex, sampler, *diameter, uv, *resolution, *dir);
+	// *out = gaussian_blur(tex, sampler, *diameter, uv, *resolution, *dir);
 
 	// for bluring in multiple passes
-	// *out = gaussian_blur_9(tex, sampler, uv, *resolution, *dir * *diameter);
+	*out = gaussian_blur_9(tex, sampler, uv, *resolution, *dir * *diameter);
 }

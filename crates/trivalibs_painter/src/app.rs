@@ -345,7 +345,9 @@ where
 			}
 			CustomEvent::UserEvent(user_event) => {
 				if let WindowState::Initialized(painter, app) = &mut self.state {
-					app.event(Event::UserEvent(user_event), painter);
+					if self.is_running {
+						app.event(Event::UserEvent(user_event), painter);
+					}
 				}
 			}
 			CustomEvent::ReloadShaders(path) => {
@@ -473,7 +475,9 @@ where
 					}
 
 					rest => {
-						app.event(Event::WindowEvent(rest), painter);
+						if self.is_running {
+							app.event(Event::WindowEvent(rest), painter);
+						}
 					}
 				};
 			}
@@ -488,7 +492,9 @@ where
 		event: DeviceEvent,
 	) {
 		if let WindowState::Initialized(painter, app) = &mut self.state {
-			app.event(Event::DeviceEvent(event), painter);
+			if self.is_running {
+				app.event(Event::DeviceEvent(event), painter);
+			}
 		}
 	}
 }

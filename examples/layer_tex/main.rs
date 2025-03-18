@@ -106,8 +106,11 @@ impl CanvasApp<ResizeEvent> for App {
 
 		let tex_shader = p
 			.shade(&[Float32x3, Float32x2])
-			.with_uniforms(&[UNIFORM_BUFFER_VERT])
-			.with_layers(&[UNIFORM_LAYER_FRAG])
+			.with_uniforms(&[
+				UNIFORM_BUFFER_VERT,
+				UNIFORM_TEX2D_FRAG,
+				UNIFORM_SAMPLER_FRAG,
+			])
 			.create();
 		load_vertex_shader!(tex_shader, p, "./shader/texture_vs.spv");
 		load_fragment_shader!(tex_shader, p, "./shader/texture_fs.spv");
@@ -146,12 +149,13 @@ impl CanvasApp<ResizeEvent> for App {
 			.with_clear_color(YELLOW)
 			.create();
 
-		let s = p.sampler_linear();
+		let sl = p.sampler_linear();
+		let sn = p.sampler_nearest();
+
 		let color_quad_layer = p
 			.layer()
 			.with_shape(color_quad_shape)
 			.with_size(COLOR_TEX_SIZE_BIG.0, COLOR_TEX_SIZE_BIG.1)
-			.with_sampler(s)
 			.with_clear_color(GREEN)
 			.with_multisampling()
 			.create();
@@ -159,24 +163,24 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_triangle_mvp = p.uniform_mat4();
 		let tex_quad_mvp = p.uniform_mat4();
 
+		let tex = color_triangle_layer.uniform(p);
 		let tex_quad_shape = p
 			.shape(quad_form, tex_shader)
 			.with_cull_mode(None)
 			.with_uniforms(map! {
 				0 => tex_quad_mvp.uniform(),
-			})
-			.with_layer_uniforms(map! {
-				0 => color_triangle_layer,
+				1 => tex,
+				2 => sn.uniform(),
 			})
 			.create();
 
+		let tex = color_quad_layer.uniform(p);
 		let tex_triangle_shape = p
 			.shape(triangle_form, tex_shader)
 			.with_uniforms(map! {
 				0 => tex_triangle_mvp.uniform(),
-			})
-			.with_layer_uniforms(map! {
-				0 => color_quad_layer,
+				1 => tex,
+				2 => sl.uniform(),
 			})
 			.with_cull_mode(None)
 			.create();
