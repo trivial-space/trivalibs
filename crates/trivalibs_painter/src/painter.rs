@@ -406,9 +406,13 @@ impl Painter {
 		let f = &self.forms[s.form.0];
 		let l = &self.layers[layer.0];
 
+		let has_effect_layers = !s.effect_layers.is_empty() || !l.effect_layers.is_empty();
+
 		let draw = |rpass: &mut wgpu::RenderPass, binding: Option<Binding>| {
 			if let Some(binding) = binding {
 				rpass.set_bind_group(0, &self.bindings[binding.0].binding, &[]);
+			} else if has_effect_layers {
+				rpass.set_bind_group(0, &self.bindings[0].binding, &[]);
 			}
 
 			rpass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
@@ -424,14 +428,14 @@ impl Painter {
 		let pipeline = &self.pipelines[&pipeline_key];
 		rpass.set_pipeline(&pipeline.pipeline);
 
-		for (index, layer) in &l.effect_layer_uniforms {
+		for (index, layer) in &l.effect_layers {
 			let l = &self.layers[layer.0];
 			let b = l.current_source();
 			rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 		}
 
 		let s = &self.shapes[shape.0];
-		for (index, layer) in &s.effect_layer_uniforms {
+		for (index, layer) in &s.effect_layers {
 			let l = &self.layers[layer.0];
 			let b = l.current_source();
 			rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
@@ -455,8 +459,7 @@ impl Painter {
 		let e = &self.effects[effect.0];
 		let l = &self.layers[layer.0];
 
-		let has_effect_layers =
-			!e.effect_layer_uniforms.is_empty() || !l.effect_layer_uniforms.is_empty();
+		let has_effect_layers = !e.effect_layers.is_empty() || !l.effect_layers.is_empty();
 
 		let view = &self.textures[l.current_target().0].view;
 
@@ -491,13 +494,13 @@ impl Painter {
 				rpass.set_bind_group(1, &self.bindings[b.0].binding, &[]);
 			}
 
-			for (index, layer) in &l.effect_layer_uniforms {
+			for (index, layer) in &l.effect_layers {
 				let l = &self.layers[layer.0];
 				let b = l.current_source();
 				rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 			}
 
-			for (index, layer) in &e.effect_layer_uniforms {
+			for (index, layer) in &e.effect_layers {
 				let l = &self.layers[layer.0];
 				let b = l.current_source();
 				rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);

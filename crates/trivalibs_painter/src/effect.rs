@@ -9,7 +9,7 @@ use crate::{
 pub(crate) struct EffectStorage {
 	pub shade: Shade,
 	pub uniforms: Vec<(u32, Uniform)>,
-	pub effect_layer_uniforms: Vec<(u32, Layer)>,
+	pub effect_layers: Vec<(u32, Layer)>,
 	pub instances: Vec<InstanceUniforms>,
 	pub pipeline_key: Vec<u8>,
 	pub blend_state: wgpu::BlendState,
@@ -19,7 +19,7 @@ pub(crate) struct EffectStorage {
 #[derive(Clone)]
 pub struct EffectProps {
 	pub uniforms: Vec<(u32, Uniform)>,
-	pub effect_layer_uniforms: Vec<(u32, Layer)>,
+	pub effect_layers: Vec<(u32, Layer)>,
 	pub instances: Vec<InstanceUniforms>,
 	pub blend_state: wgpu::BlendState,
 }
@@ -28,7 +28,7 @@ impl Default for EffectProps {
 	fn default() -> Self {
 		EffectProps {
 			uniforms: Vec::with_capacity(0),
-			effect_layer_uniforms: Vec::with_capacity(0),
+			effect_layers: Vec::with_capacity(0),
 			instances: Vec::with_capacity(0),
 			blend_state: wgpu::BlendState::REPLACE,
 		}
@@ -57,7 +57,7 @@ impl Effect {
 
 		let effect = EffectStorage {
 			uniforms: props.uniforms,
-			effect_layer_uniforms: props.effect_layer_uniforms,
+			effect_layers: props.effect_layers,
 			instances: props.instances,
 			shade,
 			pipeline_key,
@@ -116,7 +116,7 @@ impl<'a> EffectBuilder<'a> {
 	}
 
 	pub fn with_effect_layers(mut self, effect_layers: Vec<(u32, Layer)>) -> Self {
-		self.props.effect_layer_uniforms = effect_layers;
+		self.props.effect_layers = effect_layers;
 		self
 	}
 

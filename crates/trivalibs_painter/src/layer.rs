@@ -110,7 +110,7 @@ pub(crate) struct LayerStorage {
 	pub texture_count: usize,
 	pub is_multi_target: bool,
 	pub uniforms: Vec<(u32, Uniform)>,
-	pub effect_layer_uniforms: Vec<(u32, Layer)>,
+	pub effect_layers: Vec<(u32, Layer)>,
 }
 
 impl LayerStorage {
@@ -138,7 +138,7 @@ pub struct LayerProps {
 	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
 	pub uniforms: Vec<(u32, Uniform)>,
-	pub effect_layer_uniforms: Vec<(u32, Layer)>,
+	pub effect_layers: Vec<(u32, Layer)>,
 	pub width: u32,
 	pub height: u32,
 	pub formats: Vec<wgpu::TextureFormat>,
@@ -154,7 +154,7 @@ impl Default for LayerProps {
 			shapes: Vec::with_capacity(0),
 			effects: Vec::with_capacity(0),
 			uniforms: Vec::with_capacity(0),
-			effect_layer_uniforms: Vec::with_capacity(0),
+			effect_layers: Vec::with_capacity(0),
 			width: 0,
 			height: 0,
 			formats: Vec::with_capacity(1),
@@ -311,7 +311,7 @@ impl Layer {
 			texture_count,
 			is_multi_target,
 			uniforms: props.uniforms,
-			effect_layer_uniforms: props.effect_layer_uniforms,
+			effect_layers: props.effect_layers,
 			binding_layout: layout,
 		};
 
@@ -501,8 +501,8 @@ impl<'a> LayerBuilder<'a> {
 		self
 	}
 
-	pub fn with_effect_layers(mut self, effect_layer_uniforms: Vec<(u32, Layer)>) -> Self {
-		self.props.effect_layer_uniforms = effect_layer_uniforms;
+	pub fn with_effect_layers(mut self, effect_layers: Vec<(u32, Layer)>) -> Self {
+		self.props.effect_layers = effect_layers;
 		self
 	}
 
