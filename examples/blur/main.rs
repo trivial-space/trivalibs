@@ -2,6 +2,7 @@ use trivalibs::{
 	glam::{vec2, Vec2},
 	gpu_data,
 	macros::apply,
+	map,
 	painter::prelude::*,
 	utils::default,
 };
@@ -46,8 +47,9 @@ impl CanvasApp<()> for App {
 				UNIFORM_BUFFER_FRAG,
 				UNIFORM_BUFFER_FRAG,
 				UNIFORM_BUFFER_FRAG,
+				UNIFORM_SAMPLER_FRAG,
 			])
-			.with_layers(&[UNIFORM_LAYER_FRAG])
+			.with_effect_layer()
 			.create();
 		load_fragment_shader!(blur_shade, p, "./shader/blur_fs.spv");
 
@@ -58,43 +60,64 @@ impl CanvasApp<()> for App {
 		let size = p.uniform_vec2();
 		let horiz = p.uniform_const_vec2(vec2(1.0, 0.0));
 		let vertical = p.uniform_const_vec2(vec2(0.0, 1.0));
+		let s = p.sampler_nearest().uniform();
 
 		let mut effects = vec![];
 
 		// ===  This does blur in multiple passes ===
 		// It cuts the number of texture reads logarithmically, but increases the number of passes
 
-		// let mut counter = BLUR_DIAMETER / 9.0; // Fixed diameter in shader is 9.0
-		// while counter > 1.0 {
-		// 	let diameter = p.uniform_const_f32(counter);
-		// 	effects.push(
-		// 		p.effect(blur_shade)
-		// 			.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, horiz)])
-		// 			.create(),
-		// 	);
-		// 	effects.push(
-		// 		p.effect(blur_shade)
-		// 			.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, vertical)])
-		// 			.create(),
-		// 	);
-		// 	counter /= 2.0;
-		// }
+		let mut counter = BLUR_DIAMETER / 9.0; // Fixed diameter in shader is 9.0
+		while counter > 1.0 {
+			let diameter = p.uniform_const_f32(counter);
+			effects.push(
+				p.effect(blur_shade)
+					.with_uniforms(map! {
+						0 => diameter,
+						1 => size.uniform(),
+						2 => horiz,
+						3 => s
+					})
+					.create(),
+			);
+			effects.push(
+				p.effect(blur_shade)
+					.with_uniforms(map! {
+						0 => diameter,
+						1 => size.uniform(),
+						2 => vertical,
+						3 => s
+					})
+					.create(),
+			);
+			counter /= 2.0;
+		}
 
-		// println!("effects: {:?}", effects.len());
+		println!("effects: {:?}", effects.len());
 
 		// === This does all blurs in one pass ===
 
-		let diameter = p.uniform_const_f32(BLUR_DIAMETER);
-		effects.push(
-			p.effect(blur_shade)
-				.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, horiz)])
-				.create(),
-		);
-		effects.push(
-			p.effect(blur_shade)
-				.with_uniforms(vec![(0, diameter), (1, size.uniform()), (2, vertical)])
-				.create(),
-		);
+		// let diameter = p.uniform_const_f32(BLUR_DIAMETER);
+		// effects.push(
+		// 	p.effect(blur_shade)
+		// 		.with_uniforms(map! {
+		// 			0 => diameter,
+		// 			1 => size.uniform(),
+		// 			2 => horiz,
+		// 			3 => s
+		// 		})
+		// 		.create(),
+		// );
+		// effects.push(
+		// 	p.effect(blur_shade)
+		// 		.with_uniforms(map! {
+		// 			0 => diameter,
+		// 			1 => size.uniform(),
+		// 			2 => vertical,
+		// 			3 => s
+		// 		})
+		// 		.create(),
+		// );
 
 		let canvas = p
 			.layer()

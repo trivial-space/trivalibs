@@ -14,24 +14,16 @@ impl BindingLayout {
 		let layout = painter
 			.device
 			.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-				entries: &[
-					wgpu::BindGroupLayoutEntry {
-						binding: 0,
-						visibility: layer_layout.visibility,
-						ty: wgpu::BindingType::Texture {
-							multisampled: false,
-							view_dimension: wgpu::TextureViewDimension::D2,
-							sample_type: wgpu::TextureSampleType::Float { filterable: true },
-						},
-						count: None,
+				entries: &[wgpu::BindGroupLayoutEntry {
+					binding: 0,
+					visibility: layer_layout.visibility,
+					ty: wgpu::BindingType::Texture {
+						multisampled: false,
+						view_dimension: wgpu::TextureViewDimension::D2,
+						sample_type: wgpu::TextureSampleType::Float { filterable: true },
 					},
-					wgpu::BindGroupLayoutEntry {
-						binding: 1,
-						visibility: layer_layout.visibility,
-						ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-						count: None,
-					},
-				],
+					count: None,
+				}],
 				label: None,
 			});
 

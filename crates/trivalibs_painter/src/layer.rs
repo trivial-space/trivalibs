@@ -344,8 +344,24 @@ impl Layer {
 		}
 	}
 
-	pub fn target_uniform(&self, painter: &Painter, index: usize) -> Uniform {
+	pub fn uniform(&self, painter: &Painter) -> Uniform {
+		let l = &painter.layers[self.0];
+		if l.target_textures.len() > 1 {
+			panic!("This layer has more than one target textures. Please use effect layer uniforms in a separate bind group if this layer uses swapping effect buffers or `uniform_at` to get a specific target texture uniform.");
+		}
+		self.uniform_at(painter, 0)
+	}
+
+	pub fn uniform_at(&self, painter: &Painter, index: usize) -> Uniform {
 		painter.layers[self.0].target_textures[index].uniform()
+	}
+
+	pub fn depth_uniform(&self, painter: &Painter) -> Uniform {
+		painter.layers[self.0]
+			.depth_texture
+			.as_ref()
+			.unwrap()
+			.uniform()
 	}
 
 	pub fn set_clear_color(&mut self, painter: &mut Painter, color: Option<wgpu::Color>) {

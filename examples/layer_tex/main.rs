@@ -163,24 +163,24 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_triangle_mvp = p.uniform_mat4();
 		let tex_quad_mvp = p.uniform_mat4();
 
+		let tex = color_triangle_layer.uniform(p);
 		let tex_quad_shape = p
 			.shape(quad_form, tex_shader)
 			.with_cull_mode(None)
 			.with_uniforms(map! {
 				0 => tex_quad_mvp.uniform(),
-			})
-			.with_effect_layers(map! {
-				0 => color_triangle_layer,
+				1 => tex,
+				2 => sn.uniform(),
 			})
 			.create();
 
+		let tex = color_quad_layer.uniform(p);
 		let tex_triangle_shape = p
 			.shape(triangle_form, tex_shader)
 			.with_uniforms(map! {
 				0 => tex_triangle_mvp.uniform(),
-			})
-			.with_effect_layers(map! {
-				0 => color_quad_layer,
+				1 => tex,
+				2 => sl.uniform(),
 			})
 			.with_cull_mode(None)
 			.create();

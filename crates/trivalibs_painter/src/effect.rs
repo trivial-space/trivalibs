@@ -13,7 +13,6 @@ pub(crate) struct EffectStorage {
 	pub instances: Vec<InstanceUniforms>,
 	pub pipeline_key: Vec<u8>,
 	pub blend_state: wgpu::BlendState,
-	pub uniform_binding_index: u32,
 	pub uniform_bindings: Vec<Binding>,
 }
 
@@ -56,8 +55,6 @@ impl Effect {
 		.flatten()
 		.collect();
 
-		let s = &painter.shades[shade.0];
-
 		let effect = EffectStorage {
 			uniforms: props.uniforms,
 			effect_layer_uniforms: props.effect_layer_uniforms,
@@ -65,7 +62,6 @@ impl Effect {
 			shade,
 			pipeline_key,
 			blend_state: props.blend_state,
-			uniform_binding_index: s.layer_layouts.len() as u32,
 			uniform_bindings: Vec::with_capacity(0),
 		};
 

@@ -100,9 +100,9 @@ impl CanvasApp<()> for App {
 			.create();
 		load_fragment_shader!(canvas_shade, p, "./shader/light_fs.spv");
 
-		let color_target = scene_layer.target_uniform(p, 0);
-		let normal_target = scene_layer.target_uniform(p, 1);
-		let position_target = scene_layer.target_uniform(p, 2);
+		let color_target = scene_layer.uniform_at(p, 0);
+		let normal_target = scene_layer.uniform_at(p, 1);
+		let position_target = scene_layer.uniform_at(p, 2);
 
 		let lights = (0..LIGHTS_COUNT)
 			.map(|_| {

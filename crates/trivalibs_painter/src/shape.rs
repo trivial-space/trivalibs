@@ -17,7 +17,6 @@ pub(crate) struct ShapeStorage {
 	pub pipeline_key: Vec<u8>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
-	pub uniform_binding_index: u32,
 	pub uniform_bindings: Vec<Binding>,
 }
 
@@ -48,7 +47,6 @@ pub struct Shape(pub(crate) usize);
 impl Shape {
 	pub fn new(painter: &mut Painter, form: Form, shade: Shade, props: ShapeProps) -> Self {
 		let f = &painter.forms[form.0];
-		let s = &painter.shades[shade.0];
 
 		let pipeline_key = vec![
 			(shade.0 as u16).to_le_bytes().to_vec(),
@@ -67,7 +65,7 @@ impl Shape {
 		.flatten()
 		.collect();
 
-		let sketch = ShapeStorage {
+		let shape = ShapeStorage {
 			form,
 			shade,
 			pipeline_key,
@@ -76,11 +74,10 @@ impl Shape {
 			instances: props.instances,
 			cull_mode: props.cull_mode,
 			blend_state: props.blend_state,
-			uniform_binding_index: s.layer_layouts.len() as u32,
 			uniform_bindings: Vec::with_capacity(0),
 		};
 
-		painter.shapes.push(sketch);
+		painter.shapes.push(shape);
 
 		Shape(painter.shapes.len() - 1)
 	}

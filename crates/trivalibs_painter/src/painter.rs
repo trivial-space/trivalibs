@@ -4,7 +4,7 @@ use crate::{
 	form::{Form, FormBuffers, FormBuilder, FormStorage},
 	layer::{Layer, LayerBuilder, LayerStorage},
 	pipeline::PipelineStorage,
-	prelude::UNIFORM_LAYER_FRAG,
+	prelude::{UNIFORM_LAYER_FRAG, UNIFORM_SAMPLER_FRAG},
 	sampler::{Sampler, SamplerBuilder, SamplerProps},
 	shade::{AttribsFormat, Shade, ShadeBuilder, ShadeEffectBuilder, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
@@ -131,14 +131,29 @@ impl Painter {
 		Sampler::create(&mut painter, SamplerProps::NEAREST);
 		Sampler::create(&mut painter, SamplerProps::LINEAR);
 
-		let layer_layout = BindingLayout::swapping_effect_layer(&mut painter, UNIFORM_LAYER_FRAG);
+		let layer_sampler_layout =
+			BindingLayout::uniforms(&mut painter, &[UNIFORM_SAMPLER_FRAG]).unwrap();
+		let layer_texture_layout =
+			BindingLayout::swapping_effect_layer(&mut painter, UNIFORM_LAYER_FRAG);
+
+		Binding::uniforms(
+			&mut painter,
+			1,
+			Some(layer_sampler_layout),
+			&Vec::with_capacity(0),
+			&Vec::with_capacity(0),
+			&vec![(0, Sampler(0).uniform())],
+		);
 
 		let fullscreen_quad_pipeline_layout =
 			painter
 				.device
 				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 					label: None,
-					bind_group_layouts: &[&painter.binding_layouts[layer_layout.0]],
+					bind_group_layouts: &[
+						&painter.binding_layouts[layer_sampler_layout.0],
+						&painter.binding_layouts[layer_texture_layout.0],
+					],
 					push_constant_ranges: &[],
 				});
 
@@ -393,11 +408,7 @@ impl Painter {
 
 		let draw = |rpass: &mut wgpu::RenderPass, binding: Option<Binding>| {
 			if let Some(binding) = binding {
-				rpass.set_bind_group(
-					s.uniform_binding_index,
-					&self.bindings[binding.0].binding,
-					&[],
-				);
+				rpass.set_bind_group(0, &self.bindings[binding.0].binding, &[]);
 			}
 
 			rpass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
@@ -474,7 +485,7 @@ impl Painter {
 
 			if !skip_source {
 				let b = l.current_source();
-				rpass.set_bind_group(0, &self.bindings[b.0].binding, &[]);
+				rpass.set_bind_group(1, &self.bindings[b.0].binding, &[]);
 			}
 
 			for (index, layer) in &l.effect_layer_uniforms {
@@ -493,7 +504,7 @@ impl Painter {
 				rpass.draw(0..3, 0..1);
 			} else {
 				for b in &e.uniform_bindings {
-					rpass.set_bind_group(e.uniform_binding_index, &self.bindings[b.0].binding, &[]);
+					rpass.set_bind_group(0, &self.bindings[b.0].binding, &[]);
 					rpass.draw(0..3, 0..1);
 				}
 			}
@@ -642,7 +653,8 @@ impl Painter {
 				occlusion_query_set: None,
 			});
 			rpass.set_pipeline(&pipeline.pipeline);
-			rpass.set_bind_group(0, &self.bindings[layer_binding.0].binding, &[]);
+			rpass.set_bind_group(0, &self.bindings[0].binding, &[]);
+			rpass.set_bind_group(1, &self.bindings[layer_binding.0].binding, &[]);
 			rpass.draw(0..3, 0..1);
 		}
 

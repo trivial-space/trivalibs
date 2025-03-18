@@ -1,5 +1,6 @@
 use crate::{
 	binding::BindingLayout,
+	prelude::UNIFORM_LAYER_FRAG,
 	uniform::{LayerLayout, UniformLayout},
 	Painter,
 };
@@ -13,26 +14,21 @@ pub(crate) struct ShadeStorage {
 	pub attribs: AttribsFormat,
 	pub pipeline_layout: wgpu::PipelineLayout,
 	pub uniform_layout: Option<BindingLayout>,
-	pub layer_layouts: Vec<BindingLayout>,
 	pub uniforms_length: usize,
 }
 
 pub struct ShadeProps<'a, Format: Into<AttribsFormat>> {
 	pub attributes: Format,
 	pub uniforms: &'a [UniformLayout],
-	pub layers: &'a [LayerLayout],
+	pub effect_layers: &'a [LayerLayout],
 }
 
 fn layouts_from_props(
 	painter: &mut Painter,
 	uniforms: &[UniformLayout],
-	layers: &[LayerLayout],
-) -> (
-	wgpu::PipelineLayout,
-	Vec<BindingLayout>,
-	Option<BindingLayout>,
-) {
-	let layer_layouts = layers
+	effect_layers: &[LayerLayout],
+) -> (wgpu::PipelineLayout, Option<BindingLayout>) {
+	let effect_layer_layouts = effect_layers
 		.iter()
 		.map(|l| BindingLayout::swapping_effect_layer(painter, *l))
 		.collect::<Vec<_>>();
@@ -41,12 +37,12 @@ fn layouts_from_props(
 
 	let mut layouts = vec![];
 
-	for l in layer_layouts.iter() {
-		layouts.push(&painter.binding_layouts[l.0]);
-	}
-
 	if let Some(u) = &uniform_layout {
 		layouts.push(&painter.binding_layouts[u.0]);
+	}
+
+	for l in effect_layer_layouts.iter() {
+		layouts.push(&painter.binding_layouts[l.0]);
 	}
 
 	let pipeline_layout = painter
@@ -57,7 +53,7 @@ fn layouts_from_props(
 			push_constant_ranges: &[],
 		});
 
-	(pipeline_layout, layer_layouts, uniform_layout)
+	(pipeline_layout, uniform_layout)
 }
 
 impl Default for ShadeProps<'_, AttribsFormat> {
@@ -68,21 +64,21 @@ impl Default for ShadeProps<'_, AttribsFormat> {
 				stride: 0,
 			},
 			uniforms: &[],
-			layers: &[],
+			effect_layers: &[],
 		}
 	}
 }
 
 pub struct ShadeEffectProps<'a> {
 	pub uniforms: &'a [UniformLayout],
-	pub layers: &'a [LayerLayout],
+	pub effect_layers: &'a [LayerLayout],
 }
 
 impl Default for ShadeEffectProps<'_> {
 	fn default() -> Self {
 		Self {
 			uniforms: &[],
-			layers: &[],
+			effect_layers: &[],
 		}
 	}
 }
@@ -170,8 +166,8 @@ impl Shade {
 	) -> Self {
 		let format = props.attributes.into();
 
-		let (pipeline_layout, layer_layouts, uniform_layout) =
-			layouts_from_props(painter, props.uniforms, props.layers);
+		let (pipeline_layout, uniform_layout) =
+			layouts_from_props(painter, props.uniforms, props.effect_layers);
 
 		let s = ShadeStorage {
 			vertex_path: None,
@@ -181,7 +177,6 @@ impl Shade {
 			attribs: format,
 			pipeline_layout,
 			uniform_layout,
-			layer_layouts,
 			uniforms_length: props.uniforms.len(),
 		};
 
@@ -192,8 +187,8 @@ impl Shade {
 	}
 
 	pub fn new_effect(painter: &mut Painter, props: ShadeEffectProps) -> Self {
-		let (pipeline_layout, layer_layouts, uniform_layout) =
-			layouts_from_props(painter, props.uniforms, props.layers);
+		let (pipeline_layout, uniform_layout) =
+			layouts_from_props(painter, props.uniforms, props.effect_layers);
 
 		let format = vec![].into();
 
@@ -205,7 +200,6 @@ impl Shade {
 			attribs: format,
 			pipeline_layout,
 			uniform_layout,
-			layer_layouts,
 			uniforms_length: props.uniforms.len(),
 		};
 
@@ -269,7 +263,7 @@ where
 			props: ShadeProps {
 				attributes,
 				uniforms: &[],
-				layers: &[],
+				effect_layers: &[],
 			},
 			painter,
 		}
@@ -285,7 +279,7 @@ where
 	}
 
 	pub fn with_effect_layers(mut self, effect_layers: &'a [LayerLayout]) -> Self {
-		self.props.layers = effect_layers;
+		self.props.effect_layers = effect_layers;
 		self
 	}
 }
@@ -300,7 +294,7 @@ impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
 		ShadeEffectBuilder {
 			props: ShadeEffectProps {
 				uniforms: &[],
-				layers: &[],
+				effect_layers: &[],
 			},
 			painter,
 		}
@@ -315,8 +309,13 @@ impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
 		self
 	}
 
-	pub fn with_layers(mut self, layers: &'a [LayerLayout]) -> Self {
-		self.props.layers = layers;
+	pub fn with_effect_layers(mut self, layers: &'a [LayerLayout]) -> Self {
+		self.props.effect_layers = layers;
+		self
+	}
+
+	pub fn with_effect_layer(mut self) -> Self {
+		self.props.effect_layers = &[UNIFORM_LAYER_FRAG];
 		self
 	}
 }
