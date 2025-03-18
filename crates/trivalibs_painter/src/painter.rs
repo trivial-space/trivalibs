@@ -455,6 +455,9 @@ impl Painter {
 		let e = &self.effects[effect.0];
 		let l = &self.layers[layer.0];
 
+		let has_effect_layers =
+			!e.effect_layer_uniforms.is_empty() || !l.effect_layer_uniforms.is_empty();
+
 		let view = &self.textures[l.current_target().0].view;
 
 		let mut encoder = self
@@ -501,6 +504,9 @@ impl Painter {
 			}
 
 			if e.uniform_bindings.is_empty() {
+				if has_effect_layers {
+					rpass.set_bind_group(0, &self.bindings[0].binding, &[]);
+				}
 				rpass.draw(0..3, 0..1);
 			} else {
 				for b in &e.uniform_bindings {
