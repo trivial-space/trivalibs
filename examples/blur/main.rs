@@ -68,7 +68,7 @@ impl CanvasApp<()> for App {
 		// It cuts the number of texture reads logarithmically, but increases the number of passes
 
 		let mut counter = BLUR_DIAMETER / 9.0; // Fixed diameter in shader is 9.0
-		while counter > 1.0 {
+		while counter > 2.0 {
 			let diameter = p.uniform_const_f32(counter);
 			effects.push(
 				p.effect(blur_shade)
@@ -93,7 +93,7 @@ impl CanvasApp<()> for App {
 			counter /= 2.0;
 		}
 
-		println!("effects: {:?}", effects.len());
+		// println!("effects: {:?}", effects.len());
 
 		// === This does all blurs in one pass ===
 
