@@ -406,13 +406,9 @@ impl Painter {
 		let f = &self.forms[s.form.0];
 		let l = &self.layers[layer.0];
 
-		let has_effect_layers = !s.effect_layers.is_empty() || !l.effect_layers.is_empty();
-
 		let draw = |rpass: &mut wgpu::RenderPass, binding: Option<Binding>| {
 			if let Some(binding) = binding {
 				rpass.set_bind_group(0, &self.bindings[binding.0].binding, &[]);
-			} else if has_effect_layers {
-				rpass.set_bind_group(0, &self.bindings[0].binding, &[]);
 			}
 
 			rpass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
@@ -458,8 +454,6 @@ impl Painter {
 	) -> Result<(), wgpu::SurfaceError> {
 		let e = &self.effects[effect.0];
 		let l = &self.layers[layer.0];
-
-		let has_effect_layers = !e.effect_layers.is_empty() || !l.effect_layers.is_empty();
 
 		let view = &self.textures[l.current_target().0].view;
 
@@ -507,9 +501,6 @@ impl Painter {
 			}
 
 			if e.uniform_bindings.is_empty() {
-				if has_effect_layers {
-					rpass.set_bind_group(0, &self.bindings[0].binding, &[]);
-				}
 				rpass.draw(0..3, 0..1);
 			} else {
 				for b in &e.uniform_bindings {

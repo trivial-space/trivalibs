@@ -39,8 +39,6 @@ fn layouts_from_props(
 
 	if let Some(u) = &uniform_layout {
 		layouts.push(&painter.binding_layouts[u.0]);
-	} else if !effect_layers.is_empty() {
-		layouts.push(&painter.binding_layouts[0]);
 	}
 
 	for l in effect_layer_layouts.iter() {
