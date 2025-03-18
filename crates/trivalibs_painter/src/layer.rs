@@ -1,7 +1,7 @@
 use crate::{
 	binding::{Binding, BindingLayout},
 	effect::Effect,
-	prelude::UNIFORM_LAYER_FRAG,
+	prelude::{UNIFORM_LAYER_BOTH, UNIFORM_LAYER_FRAG, UNIFORM_LAYER_VERT},
 	shape::Shape,
 	texture::{Texture, Texture2DProps},
 	uniform::{LayerLayout, Uniform},
@@ -527,8 +527,13 @@ impl<'a> LayerBuilder<'a> {
 		self
 	}
 
-	pub fn with_layer_layout(mut self, layout: LayerLayout) -> Self {
-		self.props.layer_layout = layout;
+	pub fn with_layer_layout_vert(mut self) -> Self {
+		self.props.layer_layout = UNIFORM_LAYER_VERT;
+		self
+	}
+
+	pub fn with_layer_layout_both(mut self) -> Self {
+		self.props.layer_layout = UNIFORM_LAYER_BOTH;
 		self
 	}
 

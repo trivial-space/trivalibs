@@ -28,12 +28,12 @@ fn layouts_from_props(
 	uniforms: &[UniformLayout],
 	effect_layers: &[LayerLayout],
 ) -> (wgpu::PipelineLayout, Option<BindingLayout>) {
+	let uniform_layout = BindingLayout::uniforms(painter, uniforms);
+
 	let effect_layer_layouts = effect_layers
 		.iter()
 		.map(|l| BindingLayout::swapping_effect_layer(painter, *l))
 		.collect::<Vec<_>>();
-
-	let uniform_layout = BindingLayout::uniforms(painter, uniforms);
 
 	let mut layouts = vec![];
 
