@@ -1,7 +1,12 @@
-#![allow(unused_imports)]
+use core::f32::consts::PI;
 
-use crate::{smoothstep::Smoothen, step::Step};
+use crate::{
+	fit::Fit,
+	smoothstep::{Smoothen, SmoothenMore},
+	step::Step,
+};
 use spirv_std::glam::{vec3, vec4, Vec3};
+#[allow(unused_imports)]
 use spirv_std::num_traits::Float;
 
 pub fn rgb2hsl(c: Vec3) -> Vec3 {
@@ -28,5 +33,22 @@ pub fn hsv2rgb(c: Vec3) -> Vec3 {
 
 pub fn hsv2rgb_smooth(c: Vec3) -> Vec3 {
 	let rgb = ((((c.x * 6.0 + vec3(0.0, 4.0, 2.0)) % 6.0) - 3.0).abs() - 1.0).smoothen();
+	c.z * Vec3::ONE.lerp(rgb, c.y)
+}
+
+pub fn hsv2rgb_smoother(c: Vec3) -> Vec3 {
+	let rgb = ((((c.x * 6.0 + vec3(0.0, 4.0, 2.0)) % 6.0) - 3.0).abs() - 1.0).smoothen_more();
+	c.z * Vec3::ONE.lerp(rgb, c.y)
+}
+
+/// blend rgb color using trigonometry. This is an experiment. hsv2rgb_smooth looks almost the same, but is much cheeper.
+pub fn hsv2rgb_smoothest(c: Vec3) -> Vec3 {
+	let mut rgb = ((((c.x * 6.0 + vec3(0.0, 4.0, 2.0)) % 6.0) - 3.0).abs() - 1.0)
+		.clamp(Vec3::ZERO, Vec3::ONE);
+
+	rgb.x = ((rgb.x + 1.0) * PI).cos().fit1101();
+	rgb.y = ((rgb.y + 1.0) * PI).cos().fit1101();
+	rgb.z = ((rgb.z + 1.0) * PI).cos().fit1101();
+
 	c.z * Vec3::ONE.lerp(rgb, c.y)
 }
