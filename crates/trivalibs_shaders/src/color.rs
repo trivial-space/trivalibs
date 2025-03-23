@@ -13,9 +13,9 @@
 //                 q.x);
 // }
 
-use spirv_std::glam::{vec3, vec4, Vec3};
-
 use crate::{smoothstep::Smoothen, step::Step};
+use spirv_std::glam::{vec3, vec4, Vec3};
+use spirv_std::num_traits::Float;
 
 pub fn rgb2hsl(c: Vec3) -> Vec3 {
 	let k = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
