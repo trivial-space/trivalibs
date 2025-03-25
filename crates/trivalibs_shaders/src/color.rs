@@ -3,7 +3,7 @@ use core::f32::consts::PI;
 use crate::{
 	fit::Fit,
 	smoothstep::{Smoothen, SmoothenMore},
-	step::Step,
+	step::step,
 };
 use spirv_std::glam::{vec3, vec4, Vec3};
 #[allow(unused_imports)]
@@ -11,8 +11,8 @@ use spirv_std::num_traits::Float;
 
 pub fn rgb2hsl(c: Vec3) -> Vec3 {
 	let k = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-	let p = vec4(c.z, c.y, k.w, k.z).lerp(vec4(c.y, c.z, k.x, k.y), c.z.step(c.y));
-	let q = vec4(p.x, p.y, p.w, c.x).lerp(vec4(c.x, p.y, p.z, p.x), p.x.step(c.x));
+	let p = vec4(c.z, c.y, k.w, k.z).lerp(vec4(c.y, c.z, k.x, k.y), step(c.z, c.y));
+	let q = vec4(p.x, p.y, p.w, c.x).lerp(vec4(c.x, p.y, p.z, p.x), step(p.x, c.x));
 	let d = q.x - q.w.min(q.y);
 	let e = 1.0e-10;
 	vec3(

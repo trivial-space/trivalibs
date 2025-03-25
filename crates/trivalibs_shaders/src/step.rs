@@ -9,17 +9,24 @@ pub fn step(edge: f32, x: f32) -> f32 {
 }
 
 pub trait Step {
-	fn step(self, x: Self) -> Self;
+	fn step(self, edge: Self) -> Self;
+	fn step_f32(self, edge: f32) -> Self;
 }
 
 impl Step for f32 {
-	fn step(self, x: f32) -> f32 {
-		step(self, x)
+	fn step(self, edge: f32) -> f32 {
+		step(edge, self)
+	}
+	fn step_f32(self, edge: f32) -> Self {
+		step(edge, self)
 	}
 }
 
 impl Step for Vec2 {
-	fn step(self, x: Vec2) -> Vec2 {
-		vec2(self.x.step(x.x), self.y.step(x.y))
+	fn step(self, edge: Vec2) -> Vec2 {
+		vec2(self.x.step(edge.x), self.y.step(edge.y))
+	}
+	fn step_f32(self, edge: f32) -> Vec2 {
+		vec2(self.x.step(edge), self.y.step(edge))
 	}
 }
