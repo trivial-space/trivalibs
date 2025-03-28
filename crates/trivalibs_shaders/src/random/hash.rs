@@ -1,26 +1,8 @@
 // Imported and ported from https://www.shadertoy.com/view/WttXWX
 
 // // --- from Chris Wellons https://nullprogram.com/blog/2018/07/31/
-// // Note that it might not be costlier than the infamous fract(big*sin(big*x)) ;-)
+// https://github.com/skeeto/hash-prospector
 
-//         // --- choose one:
-// //#define hashi(x)   lowbias32(x)
-//   #define hashi(x)   triple32(x)
-
-//   #define hash(x)  ( float( hashi(x) ) / float( 0xffffffffU ) )
-
-// //bias: 0.17353355999581582 ( very probably the best of its kind )
-// uint lowbias32(uint x)
-// {
-//     x ^= x >> 16;
-//     x *= 0x7feb352dU;
-//     x ^= x >> 15;
-//     x *= 0x846ca68bU;
-//     x ^= x >> 16;
-//     return x;
-// }
-
-// // bias: 0.020888578919738908 = minimal theoretic limit
 // uint triple32(uint x)
 // {
 //     x ^= x >> 17;
@@ -33,19 +15,20 @@
 //     return x;
 // }
 
+// bias: 0.10760229515479501
 use spirv_std::glam::UVec2;
-
 pub fn hashi_lowbias(x: u32) -> u32 {
 	let mut x = x;
 	x ^= x >> 16;
-	x = x.wrapping_mul(0x7feb352d);
+	x = x.wrapping_mul(0x21f0aaad);
 	x ^= x >> 15;
-	x = x.wrapping_mul(0x846ca68b);
-	x ^= x >> 16;
+	x = x.wrapping_mul(0xd35a2d97);
+	x ^= x >> 15;
 	x
 }
 
-pub fn hashi(x: u32) -> u32 {
+// // bias: 0.020888578919738908 = minimal theoretic limit
+pub fn hashi_triple32(x: u32) -> u32 {
 	let mut x = x;
 	x ^= x >> 17;
 	x = x.wrapping_mul(0xed5ad4bb);
@@ -62,7 +45,7 @@ fn u32_to_f32(x: u32) -> f32 {
 }
 
 pub fn hash(x: u32) -> f32 {
-	u32_to_f32(hashi(x))
+	u32_to_f32(hashi_lowbias(x))
 }
 
 // // The MIT License
