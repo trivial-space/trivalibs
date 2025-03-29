@@ -1,33 +1,27 @@
+use spirv_std::glam::UVec2;
+
+fn u32_to_f32(x: u32) -> f32 {
+	x as f32 / 0xffffffffu32 as f32
+}
+
 // Imported and ported from https://www.shadertoy.com/view/WttXWX
 
 // // --- from Chris Wellons https://nullprogram.com/blog/2018/07/31/
 // https://github.com/skeeto/hash-prospector
 
-// uint triple32(uint x)
-// {
-//     x ^= x >> 17;
-//     x *= 0xed5ad4bbU;
-//     x ^= x >> 11;
-//     x *= 0xac4c1b51U;
-//     x ^= x >> 15;
-//     x *= 0x31848babU;
-//     x ^= x >> 14;
-//     return x;
-// }
-
 // bias: 0.10760229515479501
-use spirv_std::glam::UVec2;
-pub fn hashi_lowbias(x: u32) -> u32 {
+// has excellent results if tested here: https://www.shadertoy.com/view/XlGcRh
+pub fn hashi(x: u32) -> u32 {
 	let mut x = x;
 	x ^= x >> 16;
 	x = x.wrapping_mul(0x21f0aaad);
 	x ^= x >> 15;
 	x = x.wrapping_mul(0xd35a2d97);
-	x ^= x >> 15;
-	x
+	x ^ (x >> 15)
 }
 
-// // bias: 0.020888578919738908 = minimal theoretic limit
+// bias: 0.020888578919738908 = minimal theoretic limit
+// probably hashi is good enough for most cases
 pub fn hashi_triple32(x: u32) -> u32 {
 	let mut x = x;
 	x ^= x >> 17;
@@ -36,16 +30,11 @@ pub fn hashi_triple32(x: u32) -> u32 {
 	x = x.wrapping_mul(0xac4c1b51);
 	x ^= x >> 15;
 	x = x.wrapping_mul(0x31848bab);
-	x ^= x >> 14;
-	x
-}
-
-fn u32_to_f32(x: u32) -> f32 {
-	x as f32 / 0xffffffffu32 as f32
+	x ^ (x >> 14)
 }
 
 pub fn hash(x: u32) -> f32 {
-	u32_to_f32(hashi_lowbias(x))
+	u32_to_f32(hashi(x))
 }
 
 // // The MIT License
