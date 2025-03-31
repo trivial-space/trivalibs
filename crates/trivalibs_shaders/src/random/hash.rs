@@ -55,25 +55,11 @@ pub fn hash21(p: UVec2) -> f32 {
 	u32_to_f32(hash21i(p))
 }
 
-// // https://www.pcg-random.org/
+// https://www.pcg-random.org/
+// http://www.jcgt.org/published/0009/03/02/
+
 // see https://www.shadertoy.com/view/XlGcRh
 
-// uvec2 pcg2d(uvec2 v)
-// {
-//     v = v * 1664525u + 1013904223u;
-
-//     v.x += v.y * 1664525u;
-//     v.y += v.x * 1664525u;
-
-//     v = v ^ (v>>16u);
-
-//     v.x += v.y * 1664525u;
-//     v.y += v.x * 1664525u;
-
-//     v = v ^ (v>>16u);
-
-//     return v;
-// }
 pub fn hash2di(v: UVec2) -> UVec2 {
 	let mut v = v;
 	v = v * UVec2::new(1664525, 1013904223);
@@ -95,24 +81,6 @@ pub fn hash2d(v: UVec2) -> Vec2 {
 	vec2(u32_to_f32(hash.x), u32_to_f32(hash.y))
 }
 
-// // http://www.jcgt.org/published/0009/03/02/
-// uvec3 pcg3d(uvec3 v) {
-
-//     v = v * 1664525u + 1013904223u;
-
-//     v.x += v.y*v.z;
-//     v.y += v.z*v.x;
-//     v.z += v.x*v.y;
-
-//     v ^= v >> 16u;
-
-//     v.x += v.y*v.z;
-//     v.y += v.z*v.x;
-//     v.z += v.x*v.y;
-
-//     return v;
-// }
-
 pub fn hash3di(v: UVec3) -> UVec3 {
 	let mut v = v;
 	v = v * UVec3::new(1664525, 1013904223, 1013904223);
@@ -133,26 +101,6 @@ pub fn hash3d(v: UVec3) -> Vec3 {
 	let hash = hash3di(v);
 	vec3(u32_to_f32(hash.x), u32_to_f32(hash.y), u32_to_f32(hash.z))
 }
-
-// // http://www.jcgt.org/published/0009/03/02/
-// uvec4 pcg4d(uvec4 v)
-// {
-//     v = v * 1664525u + 1013904223u;
-
-//     v.x += v.y*v.w;
-//     v.y += v.z*v.x;
-//     v.z += v.x*v.y;
-//     v.w += v.y*v.z;
-
-//     v ^= v >> 16u;
-
-//     v.x += v.y*v.w;
-//     v.y += v.z*v.x;
-//     v.z += v.x*v.y;
-//     v.w += v.y*v.z;
-
-//     return v;
-// }
 
 pub fn hash4di(v: UVec4) -> UVec4 {
 	let mut v = v;
