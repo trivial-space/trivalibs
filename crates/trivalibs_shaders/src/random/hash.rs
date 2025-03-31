@@ -1,4 +1,4 @@
-use spirv_std::glam::UVec2;
+use spirv_std::glam::{vec2, vec3, vec4, UVec2, UVec3, UVec4, Vec2, Vec3, Vec4};
 
 fn u32_to_f32(x: u32) -> f32 {
 	x as f32 / 0xffffffffu32 as f32
@@ -53,4 +53,131 @@ pub fn hash21i(p: UVec2) -> u32 {
 
 pub fn hash21(p: UVec2) -> f32 {
 	u32_to_f32(hash21i(p))
+}
+
+// // https://www.pcg-random.org/
+// see https://www.shadertoy.com/view/XlGcRh
+
+// uvec2 pcg2d(uvec2 v)
+// {
+//     v = v * 1664525u + 1013904223u;
+
+//     v.x += v.y * 1664525u;
+//     v.y += v.x * 1664525u;
+
+//     v = v ^ (v>>16u);
+
+//     v.x += v.y * 1664525u;
+//     v.y += v.x * 1664525u;
+
+//     v = v ^ (v>>16u);
+
+//     return v;
+// }
+pub fn hash2di(v: UVec2) -> UVec2 {
+	let mut v = v;
+	v = v * UVec2::new(1664525, 1013904223);
+	v.x += v.y * 1664525;
+	v.y += v.x * 1664525;
+
+	v = v ^ (v >> 16);
+
+	v.x += v.y * 1664525;
+	v.y += v.x * 1664525;
+
+	v = v ^ (v >> 16);
+
+	v
+}
+
+pub fn hash2d(v: UVec2) -> Vec2 {
+	let hash = hash2di(v);
+	vec2(u32_to_f32(hash.x), u32_to_f32(hash.y))
+}
+
+// // http://www.jcgt.org/published/0009/03/02/
+// uvec3 pcg3d(uvec3 v) {
+
+//     v = v * 1664525u + 1013904223u;
+
+//     v.x += v.y*v.z;
+//     v.y += v.z*v.x;
+//     v.z += v.x*v.y;
+
+//     v ^= v >> 16u;
+
+//     v.x += v.y*v.z;
+//     v.y += v.z*v.x;
+//     v.z += v.x*v.y;
+
+//     return v;
+// }
+
+pub fn hash3di(v: UVec3) -> UVec3 {
+	let mut v = v;
+	v = v * UVec3::new(1664525, 1013904223, 1013904223);
+	v.x += v.y * v.z;
+	v.y += v.z * v.x;
+	v.z += v.x * v.y;
+
+	v = v ^ (v >> 16);
+
+	v.x += v.y * v.z;
+	v.y += v.z * v.x;
+	v.z += v.x * v.y;
+
+	v
+}
+
+pub fn hash3d(v: UVec3) -> Vec3 {
+	let hash = hash3di(v);
+	vec3(u32_to_f32(hash.x), u32_to_f32(hash.y), u32_to_f32(hash.z))
+}
+
+// // http://www.jcgt.org/published/0009/03/02/
+// uvec4 pcg4d(uvec4 v)
+// {
+//     v = v * 1664525u + 1013904223u;
+
+//     v.x += v.y*v.w;
+//     v.y += v.z*v.x;
+//     v.z += v.x*v.y;
+//     v.w += v.y*v.z;
+
+//     v ^= v >> 16u;
+
+//     v.x += v.y*v.w;
+//     v.y += v.z*v.x;
+//     v.z += v.x*v.y;
+//     v.w += v.y*v.z;
+
+//     return v;
+// }
+
+pub fn hash4di(v: UVec4) -> UVec4 {
+	let mut v = v;
+	v = v * UVec4::new(1664525, 1013904223, 1013904223, 1013904223);
+	v.x += v.y * v.w;
+	v.y += v.z * v.x;
+	v.z += v.x * v.y;
+	v.w += v.y * v.z;
+
+	v = v ^ (v >> 16);
+
+	v.x += v.y * v.w;
+	v.y += v.z * v.x;
+	v.z += v.x * v.y;
+	v.w += v.y * v.z;
+
+	v
+}
+
+pub fn hash4d(v: UVec4) -> Vec4 {
+	let hash = hash4di(v);
+	vec4(
+		u32_to_f32(hash.x),
+		u32_to_f32(hash.y),
+		u32_to_f32(hash.z),
+		u32_to_f32(hash.w),
+	)
 }
