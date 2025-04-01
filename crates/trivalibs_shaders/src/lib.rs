@@ -5,6 +5,7 @@ pub mod blur;
 pub mod color;
 pub mod coords;
 pub mod fit;
+pub mod lerp;
 pub mod random;
 pub mod smoothstep;
 pub mod step;
