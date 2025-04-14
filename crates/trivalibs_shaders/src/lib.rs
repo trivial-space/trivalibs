@@ -1,4 +1,6 @@
 #![no_std]
+#![allow(stable_features)]
+#![feature(const_fn_floating_point_arithmetic)]
 
 pub mod bits;
 pub mod blur;
