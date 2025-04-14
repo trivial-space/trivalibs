@@ -3,28 +3,13 @@
 // Ported from https://github.com/johanhelsing/noisy_bevy from WGSL To Rust-GPU
 // Original code at https://github.com/stegu/webgl-noise by Stefan Gustavson
 
+use crate::step::Step;
 use core::f32::consts::TAU;
-
 use spirv_std::glam::{
 	vec2, vec3, vec4, Vec2, Vec2Swizzles, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles,
 };
-
-fn step_3(edge: Vec3, x: Vec3) -> Vec3 {
-	vec3(
-		if edge.x <= x.x { 1.0 } else { 0.0 },
-		if edge.y <= x.y { 1.0 } else { 0.0 },
-		if edge.z <= x.z { 1.0 } else { 0.0 },
-	)
-}
-
-fn step_4(edge: Vec4, x: Vec4) -> Vec4 {
-	vec4(
-		if edge.x <= x.x { 1.0 } else { 0.0 },
-		if edge.y <= x.y { 1.0 } else { 0.0 },
-		if edge.z <= x.z { 1.0 } else { 0.0 },
-		if edge.w <= x.w { 1.0 } else { 0.0 },
-	)
-}
+#[allow(unused_imports)]
+use spirv_std::num_traits::Float;
 
 fn permute_1(x: f32) -> f32 {
 	((x * 34.0) + 10.0) * x % 289.0
@@ -46,13 +31,23 @@ fn taylor_inv_sqrt_4(r: Vec4) -> Vec4 {
 	1.79284291400159 - 0.85373472095314 * r
 }
 
+// vec4 grad4(float j, vec4 ip)
+//   {
+//   const vec4 ones = vec4(1.0, 1.0, 1.0, -1.0);
+//   vec4 p,s;
+
+//   p.xyz = floor( fract (vec3(j) * ip.xyz) * 7.0) * ip.z - 1.0;
+//   p.w = 1.5 - dot(abs(p.xyz), ones.xyz);
+//   s = vec4(lessThan(p, vec4(0.0)));
+//   p.xyz = p.xyz + (s.xyz*2.0 - 1.0) * s.www;
+
+//   return p;
+//   }
 fn grad_4(j: f32, ip: Vec4) -> Vec4 {
-	const ONES: Vec4 = vec4(1.0, 1.0, 1.0, -1.0);
+	let tmp = ((j * ip.xyz()).fract() * 7.0).floor() * ip.z - 1.0;
+	let mut p = vec4(tmp.x, tmp.y, tmp.z, 1.5 - tmp.abs().dot(Vec3::ONE));
 
-	let tmp = (j * ip.xyz()).fract().floor() * 7.0 * ip.z - 1.0;
-	let mut p = vec4(tmp.x, tmp.y, tmp.z, 1.5 - tmp.abs().dot(ONES.xyz()));
-
-	let s = step_4(p, Vec4::ZERO);
+	let s = Vec4::ZERO.step(p);
 
 	let tmp = (s.xyz() * 2.0 - 1.0) * s.www();
 	p.x += tmp.x;
@@ -82,13 +77,13 @@ fn grad_2_r(p: Vec2, rot: f32) -> Vec2 {
 	let u = permute_1(permute_1(p.x) + p.y) * 0.024390243902439 + rot; // 1/41, Rotate by shift
 
 	// Map from a line to a diamond such that a shift maps to a rotation.
-	// let u = 4.0 * u.fract() - 2.0;
+	let u = 4.0 * u.fract() - 2.0;
 	// (This vector could be normalized, exactly or approximately.)
-	// vec2(u.abs() - 1.0, ((u + 1.0).abs() - 2.0).abs() - 1.0)
+	vec2(u.abs() - 1.0, ((u + 1.0).abs() - 2.0).abs() - 1.0)
 
 	// For more isotropic gradients, sin/cos can be used instead.
-	let u = TAU * u.fract();
-	vec2(u.cos(), u.sin())
+	// let u = TAU * u.fract();
+	// vec2(u.cos(), u.sin())
 }
 
 pub fn simplex_noise_2d(v: Vec2) -> f32 {
@@ -147,7 +142,7 @@ pub fn simplex_noise_3d(v: Vec3) -> f32 {
 	let x0 = v - i + i.dot(c.xxx());
 
 	// other corners
-	let g = step_3(x0.yzx(), x0.xyz());
+	let g = x0.xyz().step(x0.yzx());
 	let l = Vec3::splat(1.0) - g;
 	let i1 = g.min(l.zxy());
 	let i2 = g.max(l.zxy());
@@ -182,7 +177,7 @@ pub fn simplex_noise_3d(v: Vec3) -> f32 {
 
 	let s0 = b0.floor() * 2.0 + 1.0;
 	let s1 = b1.floor() * 2.0 + 1.0;
-	let sh = -step_4(h, Vec4::ZERO);
+	let sh = -Vec4::ZERO.step(h);
 
 	let a0 = b0.xzyw() + s0.xzyw() * sh.xxyy();
 	let a1 = b1.xzyw() + s1.xzyw() * sh.zzww();
@@ -234,19 +229,6 @@ pub fn fbm_simplex_3d(pos: Vec3, octaves: i32, lacunarity: f32, gain: f32) -> f3
 
 	sum
 }
-
-// vec4 grad4(float j, vec4 ip)
-//   {
-//   const vec4 ones = vec4(1.0, 1.0, 1.0, -1.0);
-//   vec4 p,s;
-
-//   p.xyz = floor( fract (vec3(j) * ip.xyz) * 7.0) * ip.z - 1.0;
-//   p.w = 1.5 - dot(abs(p.xyz), ones.xyz);
-//   s = vec4(lessThan(p, vec4(0.0)));
-//   p.xyz = p.xyz + (s.xyz*2.0 - 1.0) * s.www;
-
-//   return p;
-//   }
 
 // // (sqrt(5) - 1)/4 = F4, used once below
 // #define F4 0.309016994374947451
@@ -333,12 +315,12 @@ pub fn simplex_noise_4d(v: Vec4) -> f32 {
 	);
 
 	// First corner
-	let i = (v + v.dot(Vec4::splat(0.309016994374947451))).floor();
+	let i = (v + v.dot(Vec4::splat(0.309016994374947451))).floor(); // (sqrt(5) - 1)/4
 	let x0 = v - i + i.dot(c.xxxx());
 
 	// Other corners
-	let is_x = step_3(x0.yzw(), x0.xxx());
-	let is_yz = step_3(x0.zww(), x0.yyz());
+	let is_x = x0.xxx().step(x0.yzw());
+	let is_yz = x0.yyz().step(x0.zww());
 
 	// Rank sorting originally contributed by Bill Licea-Kane, AMD (formerly ATI)
 	let tmp = Vec3::ONE - is_x;
