@@ -1,9 +1,8 @@
 use core::f32::consts::PI;
 
 use crate::{
-	fit::Fit,
-	smoothstep::{Smoothen, SmoothenMore},
-	step::step,
+	float_ext::{step, FloatExt},
+	vec_ext::VecExt,
 };
 use spirv_std::glam::{vec3, vec4, Vec3};
 #[allow(unused_imports)]
