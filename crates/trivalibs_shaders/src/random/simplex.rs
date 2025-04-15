@@ -57,35 +57,6 @@ fn grad_4(j: f32, ip: Vec4) -> Vec4 {
 	p
 }
 
-// Hashed 2-D gradients with an extra rotation.
-// (The constant 0.0243902439 is 1/41)
-// vec2 rgrad2(vec2 p, float rot) {
-// #if 0
-// // Map from a line to a diamond such that a shift maps to a rotation.
-//   float u = permute(permute(p.x) + p.y) * 0.0243902439 + rot; // Rotate by shift
-//   u = 4.0 * fract(u) - 2.0;
-//   // (This vector could be normalized, exactly or approximately.)
-//   return vec2(abs(u)-1.0, abs(abs(u+1.0)-2.0)-1.0);
-// #else
-// // For more isotropic gradients, sin/cos can be used instead.
-//   float u = permute(permute(p.x) + p.y) * 0.0243902439 + rot; // Rotate by shift
-//   u = fract(u) * 6.28318530718; // 2*pi
-//   return vec2(cos(u), sin(u));
-// #endif
-// }
-fn grad_2_r(p: Vec2, rot: f32) -> Vec2 {
-	let u = permute_1(permute_1(p.x) + p.y) * 0.024390243902439 + rot; // 1/41, Rotate by shift
-
-	// Map from a line to a diamond such that a shift maps to a rotation.
-	let u = 4.0 * u.fract() - 2.0;
-	// (This vector could be normalized, exactly or approximately.)
-	vec2(u.abs() - 1.0, ((u + 1.0).abs() - 2.0).abs() - 1.0)
-
-	// For more isotropic gradients, sin/cos can be used instead.
-	// let u = TAU * u.fract();
-	// vec2(u.cos(), u.sin())
-}
-
 pub fn simplex_noise_2d(v: Vec2) -> f32 {
 	let c = vec4(
 		0.211324865405187,  // (3.0 - sqrt(3.0)) / 6.0
@@ -395,134 +366,99 @@ pub fn tiling_simplex_noise_2d(uv: Vec2, scale: f32) -> f32 {
 	simplex_noise_4d(vec4(nx, ny, nz, nw))
 }
 
+// psrdnoise (c) Stefan Gustavson and Ian McEwan,
+// ver. 2021-12-02, published under the MIT license:
+// https://github.com/stegu/psrdnoise/
 //
-// 2-D tiling simplex noise with rotating gradients,
-// but without the analytical derivative.
+// 2-D tiling simplex noise with rotating gradients and analytical derivative.
+// "vec2 x" is the point (x,y) to evaluate,
+// "vec2 period" is the desired periods along x and y, and
+// "float alpha" is the rotation (in radians) for the swirling gradients.
+// The "float" return value is the noise value, and
+// the "out vec2 gradient" argument returns the x,y partial derivatives.
 //
-
-// float psrnoise(vec2 pos, vec2 per, float rot) {
-//   // Offset y slightly to hide some rare artifacts
-//   pos.y += 0.001;
-//   // Skew to hexagonal grid
-//   vec2 uv = vec2(pos.x + pos.y*0.5, pos.y);
-
-//   vec2 i0 = floor(uv);
-//   vec2 f0 = fract(uv);
-//   // Traversal order
-//   vec2 i1 = (f0.x > f0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-
-//   // Unskewed grid points in (x,y) space
-//   vec2 p0 = vec2(i0.x - i0.y * 0.5, i0.y);
-//   vec2 p1 = vec2(p0.x + i1.x - i1.y * 0.5, p0.y + i1.y);
-//   vec2 p2 = vec2(p0.x + 0.5, p0.y + 1.0);
-
-//   // Integer grid point indices in (u,v) space
-//   i1 = i0 + i1;
-//   vec2 i2 = i0 + vec2(1.0, 1.0);
-
-//   // Vectors in unskewed (x,y) coordinates from
-//   // each of the simplex corners to the evaluation point
-//   vec2 d0 = pos - p0;
-//   vec2 d1 = pos - p1;
-//   vec2 d2 = pos - p2;
-
-//   // Wrap i0, i1 and i2 to the desired period before gradient hashing:
-//   // wrap points in (x,y), map to (u,v)
-//   vec3 xw = mod(vec3(p0.x, p1.x, p2.x), per.x);
-//   vec3 yw = mod(vec3(p0.y, p1.y, p2.y), per.y);
-//   vec3 iuw = xw + 0.5 * yw;
-//   vec3 ivw = yw;
-
-//   // Create gradients from indices
-//   vec2 g0 = rgrad2(vec2(iuw.x, ivw.x), rot);
-//   vec2 g1 = rgrad2(vec2(iuw.y, ivw.y), rot);
-//   vec2 g2 = rgrad2(vec2(iuw.z, ivw.z), rot);
-
-//   // Gradients dot vectors to corresponding corners
-//   // (The derivatives of this are simply the gradients)
-//   vec3 w = vec3(dot(g0, d0), dot(g1, d1), dot(g2, d2));
-
-//   // Radial weights from corners
-//   // 0.8 is the square of 2/sqrt(5), the distance from
-//   // a grid point to the nearest simplex boundary
-//   vec3 t = 0.8 - vec3(dot(d0, d0), dot(d1, d1), dot(d2, d2));
-
-//   // Set influence of each surflet to zero outside radius sqrt(0.8)
-//   t = max(t, 0.0);
-
-//   // Fourth power of t
-//   vec3 t2 = t * t;
-//   vec3 t4 = t2 * t2;
-
-//   // Final noise value is:
-//   // sum of ((radial weights) times (gradient dot vector from corner))
-//   float n = dot(t4, w);
-
-//   // Rescale to cover the range [-1,1] reasonably well
-//   return 11.0*n;
-// }
-
-pub fn tiling_noise_2d_r(pos: Vec2, period: Vec2, rot: f32) -> f32 {
-	// Offset y slightly to hide some rare artifacts
-	let pos = vec2(pos.x, pos.y + 0.001);
-
-	// Skew to hexagonal grid
+// Setting either period to 0.0 or a negative value will skip the wrapping
+// along that dimension. Setting both periods to 0.0 makes the function
+// execute about 15% faster.
+//
+// Not using the return value for the gradient will make the compiler
+// eliminate the code for computing it. This speeds up the function
+// by 10-15%.
+//
+// The rotation by alpha uses one single addition. Unlike the 3-D version
+// of psrdnoise(), setting alpha == 0.0 gives no speedup.
+//
+pub fn tiling_noise_2d_r(pos: Vec2, period: Vec2, rot: f32) -> (f32, Vec2) {
+	// Transform to simplex space (axis-aligned hexagonal grid)
 	let uv = vec2(pos.x + pos.y * 0.5, pos.y);
 
+	// Determine which simplex we're in, with i0 being the "base"
 	let i0 = uv.floor();
 	let f0 = uv.fract();
+	// o1 is the offset in simplex space to the second corner
+	let cmp = f0.x.step(f0.y);
+	let o1 = vec2(cmp, 1.0 - cmp);
 
-	// Traversal order
-	let i1 = if f0.x > f0.y {
-		vec2(1.0, 0.0)
+	// Enumerate the remaining simplex corners
+	let i1 = i0 + o1;
+	let i2 = i0 + vec2(1.0, 1.0);
+
+	// Transform corners back to texture space
+	let v0 = vec2(i0.x - i0.y * 0.5, i0.y);
+	let v1 = vec2(v0.x + o1.x - o1.y * 0.5, v0.y + o1.y);
+	let v2 = vec2(v0.x + 0.5, v0.y + 1.0);
+
+	// Compute vectors from v to each of the simplex corners
+	let x0 = pos - v0;
+	let x1 = pos - v1;
+	let x2 = pos - v2;
+
+	// Wrap to periods, if desired
+	let (iu, iv) = if period.x > 0.0 || period.y > 0.0 {
+		let xw = vec3(v0.x, v1.x, v2.x);
+		let yw = vec3(v0.y, v1.y, v2.y);
+		let xw = if period.x > 0.0 { xw % period.x } else { xw };
+		let yw = if period.y > 0.0 { yw % period.y } else { yw };
+		((xw + 0.5 * yw + 0.5).floor(), (yw + 0.5).floor())
 	} else {
-		vec2(0.0, 1.0)
+		(vec3(i0.x, i1.x, i2.x), vec3(i0.y, i1.y, i2.y))
 	};
 
-	// Unskewed grid points in (x, y) space
-	let p0 = vec2(i0.x - i0.y * 0.5, i0.y);
-	let p1 = vec2(p0.x + i1.x - i1.y * 0.5, p0.y + i1.y);
-	let p2 = vec2(p0.x + 0.5, p0.y + 1.0);
+	// Compute one pseudo-random hash value for each corner
+	let hash = iu % Vec3::splat(289.);
+	let hash = ((hash * 51.0 + 2.0) * hash + iv) % Vec3::splat(289.);
+	let hash = ((hash * 34.0 + 10.0) * hash) % Vec3::splat(289.);
 
-	// Integer grid point indices in (u, v) space
-	// let i1 = i0 + i1;
-	// let i2 = i0 + vec2(1.0, 1.0);
+	// Pick a pseudo-random angle and add the desired rotation
+	let psi = hash * 0.07482 + rot;
+	let gx = vec3(psi.x.cos(), psi.y.cos(), psi.z.cos());
+	let gy = vec3(psi.x.sin(), psi.y.sin(), psi.z.sin());
 
-	// Vectors in unskewed (x, y) coordinates from each of the simplex corners to the evaluation point
-	let d0 = pos - p0;
-	let d1 = pos - p1;
-	let d2 = pos - p2;
+	// Reorganize for dot products below
+	let g0 = vec2(gx.x, gy.x);
+	let g1 = vec2(gx.y, gy.y);
+	let g2 = vec2(gx.z, gy.z);
 
-	// Wrap i0, i1, and i2 to the desired period before gradient hashing
-	let xw = vec3(p0.x, p1.x, p2.x) % period.x;
-	let yw = vec3(p0.y, p1.y, p2.y) % period.y;
-	let iuw = xw + 0.5 * yw;
-	let ivw = yw;
+	// Radial decay with distance from each simplex corner
+	let w = vec3(0.8 - x0.dot(x0), 0.8 - x1.dot(x1), 0.8 - x2.dot(x2)).max(Vec3::ZERO);
+	let w2 = w * w;
+	let w4 = w2 * w2;
 
-	// Create gradients from indices
-	let g0 = grad_2_r(vec2(iuw.x, ivw.x), rot);
-	let g1 = grad_2_r(vec2(iuw.y, ivw.y), rot);
-	let g2 = grad_2_r(vec2(iuw.z, ivw.z), rot);
+	// The value of the linear ramp from each of the corners
+	let gdotx = vec3(g0.dot(x0), g1.dot(x1), g2.dot(x2));
 
-	// Gradients dot vectors to corresponding corners
-	// (The derivatives of this are simply the gradients)
-	let w = vec3(g0.dot(d0), g1.dot(d1), g2.dot(d2));
+	// Multiply by the radial decay and sum up the noise value
+	let n = w4.dot(gdotx);
 
-	// Radial weights from corners
-	// 0.8 is the square of 2/sqrt(5), the distance from
-	// a grid point to the nearest simplex boundary
-	let t = vec3(0.8 - d0.dot(d0), 0.8 - d1.dot(d1), 0.8 - d2.dot(d2)).max(Vec3::ZERO);
+	// Compute the first order partial derivatives
+	let w3 = w2 * w;
+	let dw = -8.0 * w3 * gdotx;
+	let dn0 = w4.x * g0 + dw.x * x0;
+	let dn1 = w4.y * g1 + dw.y * x1;
+	let dn2 = w4.z * g2 + dw.z * x2;
 
-	// Fourth power of t
-	let t2 = t * t;
-	let t4 = t2 * t2;
-
-	// Final noise value
-	// sum of ((radial weights) times (gradient dot vector from corner))
-	let n = t4.dot(w);
-
-	// Rescale to cover the range [-1, 1] reasonably well
-	11.0 * n
+	// Scale the return value to fit nicely into the range [-1, 1]
+	(10.9 * n, 10.9 * (dn0 + dn1 + dn2))
 }
 
 //
@@ -532,5 +468,5 @@ pub fn tiling_noise_2d_r(pos: Vec2, period: Vec2, rot: f32) -> f32 {
 // at the minimal cost of three extra additions.
 //
 pub fn tiling_noise_2d(pos: Vec2, per: Vec2) -> f32 {
-	tiling_noise_2d_r(pos, per, 0.0)
+	tiling_noise_2d_r(pos, per, 0.0).0
 }
