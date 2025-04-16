@@ -6,7 +6,7 @@
 use crate::{float_ext::FloatExt, vec_ext::VecExt};
 use core::f32::consts::TAU;
 use spirv_std::glam::{
-	vec2, vec3, vec4, Vec2, Vec2Swizzles, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles,
+	mat3, vec2, vec3, vec4, Mat3, Vec2, Vec2Swizzles, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles,
 };
 #[allow(unused_imports)]
 use spirv_std::num_traits::Float;
@@ -735,33 +735,44 @@ pub fn tiling_noise_2d(pos: Vec2, per: Vec2) -> f32 {
 // }
 
 pub fn tiling_noise_3d_r(pos: Vec3, period: Vec3, rot: f32) -> (f32, Vec3) {
-	let uvw = pos + pos.dot(Vec3::splat(1.0 / 3.0)); // Transform to simplex space
+	const M: Mat3 = mat3(
+		vec3(0.0, 1.0, 1.0),
+		vec3(1.0, 0.0, 1.0),
+		vec3(1.0, 1.0, 0.0),
+	);
+	const MI: Mat3 = mat3(
+		vec3(-0.5, 0.5, 0.5),
+		vec3(0.5, -0.5, 0.5),
+		vec3(0.5, 0.5, -0.5),
+	);
 
-	// Determine which simplex we're in, with i0 being the "base"
+	let uvw = M * pos; // Transform to simplex space
+
+	// Determine which simplex we're in, with i0 being the "base corner"
 	let mut i0 = uvw.floor();
-	let f0 = uvw.fract();
+	let f0 = uvw.fract(); // coords within "skewed cube"
 
 	// To determine which simplex corners are closest, rank order the
 	// magnitudes of u,v,w, resolving ties in priority order u,v,w,
 	// and traverse the four corners from largest to smallest magnitude.
 	// o1, o2 are offsets in simplex space to the 2nd and 3rd corners.
-	let g = f0.yzz().step(f0.xyx()); // Makes comparison "less-than"
-	let l = 1.0 - g; // complement is "greater-or-equal"
-	let g = vec3(l.z, g.x, g.y);
-	let l = vec3(l.x, l.y, g.z);
+	let g_ = f0.yzz().step(f0.xyx()); // Makes comparison "less-than"
+	let l_ = 1.0 - g_; // complement is "greater-or-equal"
+	let g = vec3(l_.z, g_.x, g_.y);
+	let l = vec3(l_.x, l_.y, g_.z);
 	let o1 = g.min(l);
 	let o2 = g.max(l);
 
 	// Enumerate the remaining simplex corners
 	let mut i1 = i0 + o1;
 	let mut i2 = i0 + o2;
-	let mut i3 = i0 + Vec3::ONE;
+	let mut i3 = i0 + 1.0;
 
 	// Transform corners back to texture space
-	let v0 = i0 - i0.dot(Vec3::splat(1.0 / 6.0));
-	let v1 = i1 - i1.dot(Vec3::splat(1.0 / 6.0));
-	let v2 = i2 - i2.dot(Vec3::splat(1.0 / 6.0));
-	let v3 = i3 - i3.dot(Vec3::splat(1.0 / 6.0));
+	let v0 = MI * i0;
+	let v1 = MI * i1;
+	let v2 = MI * i2;
+	let v3 = MI * i3;
 
 	// Compute vectors from v to each of the simplex corners
 	let x0 = pos - v0;
@@ -780,17 +791,11 @@ pub fn tiling_noise_3d_r(pos: Vec3, period: Vec3, rot: f32) -> (f32, Vec3) {
 		let vy = if period.y > 0.0 { vy % period.y } else { vy };
 		let vz = if period.z > 0.0 { vz % period.z } else { vz };
 
-		// Transform back
-		let v0 = vec3(vx.x, vy.x, vz.x);
-		let v1 = vec3(vx.y, vy.y, vz.y);
-		let v2 = vec3(vx.z, vy.z, vz.z);
-		let v3 = vec3(vx.w, vy.w, vz.w);
-
 		// Transform wrapped coordinates back to uvw
-		i0 = v0 + v0.dot(Vec3::splat(1.0 / 3.0));
-		i1 = v1 + v1.dot(Vec3::splat(1.0 / 3.0));
-		i2 = v2 + v2.dot(Vec3::splat(1.0 / 3.0));
-		i3 = v3 + v3.dot(Vec3::splat(1.0 / 3.0));
+		i0 = M * vec3(vx.x, vy.x, vz.x);
+		i1 = M * vec3(vx.y, vy.y, vz.y);
+		i2 = M * vec3(vx.z, vy.z, vz.z);
+		i3 = M * vec3(vx.w, vy.w, vz.w);
 
 		// Fix rounding errors
 		i0 = (i0 + 0.5).floor();
@@ -824,8 +829,8 @@ pub fn tiling_noise_3d_r(pos: Vec3, period: Vec3, rot: f32) -> (f32, Vec3) {
 		let pz = sz;
 
 		let ctp = st * sp - ct * cp; // q = (rotate( cross(s,n), dot(s,n))(q')
-		let qx = (ctp * st).lerp_self(sp, sz);
-		let qy = (-ctp * ct).lerp_self(cp, sz);
+		let qx = (ctp * st).lerp_vec(sp, sz);
+		let qy = (-ctp * ct).lerp_vec(cp, sz);
 		let qz = -(py * cp + px * sp);
 
 		let sa = rot.sin(); // psi and alpha in different planes
@@ -843,7 +848,13 @@ pub fn tiling_noise_3d_r(pos: Vec3, period: Vec3, rot: f32) -> (f32, Vec3) {
 	let g3 = vec3(gx.w, gy.w, gz.w);
 
 	// Radial decay with distance from each simplex corner
-	let w = 0.5 - vec4(x0.dot(x0), x1.dot(x1), x2.dot(x2), x3.dot(x3)).max(Vec4::ZERO);
+	let w = vec4(
+		0.5 - x0.dot(x0),
+		0.5 - x1.dot(x1),
+		0.5 - x2.dot(x2),
+		0.5 - x3.dot(x3),
+	)
+	.max(Vec4::ZERO);
 	let w2 = w * w;
 	let w3 = w2 * w;
 

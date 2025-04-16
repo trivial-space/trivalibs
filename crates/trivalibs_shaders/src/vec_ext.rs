@@ -18,7 +18,7 @@ pub trait VecExt {
 	fn step(self, edge: Self) -> Self;
 	fn step_f32(self, edge: f32) -> Self;
 
-	fn lerp_self(self, other: Self, t: Self) -> Self;
+	fn lerp_vec(self, other: Self, t: Self) -> Self;
 }
 
 impl VecExt for Vec2 {
@@ -59,7 +59,7 @@ impl VecExt for Vec2 {
 		vec2(self.x.step(edge), self.y.step(edge))
 	}
 
-	fn lerp_self(self, other: Self, t: Self) -> Self {
+	fn lerp_vec(self, other: Self, t: Self) -> Self {
 		vec2(self.x.lerp(other.x, t.x), self.y.lerp(other.y, t.y))
 	}
 }
@@ -111,7 +111,7 @@ impl VecExt for Vec3 {
 		vec3(self.x.step(edge), self.y.step(edge), self.z.step(edge))
 	}
 
-	fn lerp_self(self, other: Self, t: Self) -> Self {
+	fn lerp_vec(self, other: Self, t: Self) -> Self {
 		vec3(
 			self.x.lerp(other.x, t.x),
 			self.y.lerp(other.y, t.y),
@@ -190,7 +190,7 @@ impl VecExt for Vec4 {
 		)
 	}
 
-	fn lerp_self(self, other: Self, t: Self) -> Self {
+	fn lerp_vec(self, other: Self, t: Self) -> Self {
 		vec4(
 			self.x.lerp(other.x, t.x),
 			self.y.lerp(other.y, t.y),
