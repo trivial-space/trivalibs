@@ -1,0 +1,37 @@
+[
+  {
+    "source_path": "hash_shader.spv",
+    "entry_point": "hash_shader",
+    "wgsl_entry_point": "hash_shader"
+  },
+  {
+    "source_path": "simplex_2d_shader.spv",
+    "entry_point": "simplex_2d_shader",
+    "wgsl_entry_point": "simplex_2d_shader"
+  },
+  {
+    "source_path": "simplex_3d_shader.spv",
+    "entry_point": "simplex_3d_shader",
+    "wgsl_entry_point": "simplex_3d_shader"
+  },
+  {
+    "source_path": "simplex_4d_shader.spv",
+    "entry_point": "simplex_4d_shader",
+    "wgsl_entry_point": "simplex_4d_shader"
+  },
+  {
+    "source_path": "tiling_noise_2d_shader.spv",
+    "entry_point": "tiling_noise_2d_shader",
+    "wgsl_entry_point": "tiling_noise_2d_shader"
+  },
+  {
+    "source_path": "tiling_noise_3d_shader.spv",
+    "entry_point": "tiling_noise_3d_shader",
+    "wgsl_entry_point": "tiling_noise_3d_shader"
+  },
+  {
+    "source_path": "tiling_simplex_shader.spv",
+    "entry_point": "tiling_simplex_shader",
+    "wgsl_entry_point": "tiling_simplex_shader"
+  }
+]
