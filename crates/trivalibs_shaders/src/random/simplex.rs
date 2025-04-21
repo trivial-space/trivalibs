@@ -57,7 +57,7 @@ fn grad_4(j: f32, ip: Vec4) -> Vec4 {
 	p
 }
 
-pub fn simplex_noise_2d(v: Vec2) -> f32 {
+pub fn simplex_noise_2d(pos: Vec2) -> f32 {
 	let c = vec4(
 		0.211324865405187,  // (3.0 - sqrt(3.0)) / 6.0
 		0.366025403784439,  // 0.5 * (sqrt(3.0) - 1.0)
@@ -66,8 +66,8 @@ pub fn simplex_noise_2d(v: Vec2) -> f32 {
 	);
 
 	// first corner
-	let i = (v + v.dot(c.yy())).floor();
-	let x0 = v - i + i.dot(c.xx());
+	let i = (pos + pos.dot(c.yy())).floor();
+	let x0 = pos - i + i.dot(c.xx());
 
 	// other corners
 	let i1 = if x0.x > x0.y {
@@ -104,13 +104,13 @@ pub fn simplex_noise_2d(v: Vec2) -> f32 {
 	130.0 * m.dot(g)
 }
 
-pub fn simplex_noise_3d(v: Vec3) -> f32 {
+pub fn simplex_noise_3d(pos: Vec3) -> f32 {
 	let c = vec2(1.0 / 6.0, 1.0 / 3.0);
 	let d = vec4(0.0, 0.5, 1.0, 2.0);
 
 	// first corner
-	let i = (v + v.dot(c.yyy())).floor();
-	let x0 = v - i + i.dot(c.xxx());
+	let i = (pos + pos.dot(c.yyy())).floor();
+	let x0 = pos - i + i.dot(c.xxx());
 
 	// other corners
 	let g = x0.xyz().step(x0.yzx());
@@ -201,83 +201,7 @@ pub fn fbm_simplex_3d(pos: Vec3, octaves: i32, lacunarity: f32, gain: f32) -> f3
 	sum
 }
 
-// // (sqrt(5) - 1)/4 = F4, used once below
-// #define F4 0.309016994374947451
-
-// float snoise(vec4 v)
-//   {
-//   const vec4  C = vec4( 0.138196601125011,  // (5 - sqrt(5))/20  G4
-//                         0.276393202250021,  // 2 * G4
-//                         0.414589803375032,  // 3 * G4
-//                        -0.447213595499958); // -1 + 4 * G4
-
-// // First corner
-//   vec4 i  = floor(v + dot(v, vec4(F4)) );
-//   vec4 x0 = v -   i + dot(i, C.xxxx);
-
-// // Other corners
-
-// // Rank sorting originally contributed by Bill Licea-Kane, AMD (formerly ATI)
-//   vec4 i0;
-//   vec3 isX = step( x0.yzw, x0.xxx );
-//   vec3 isYZ = step( x0.zww, x0.yyz );
-
-//   i0.x = isX.x + isX.y + isX.z;
-//   i0.yzw = 1.0 - isX;
-
-//   i0.y += isYZ.x + isYZ.y;
-//   i0.zw += 1.0 - isYZ.xy;
-//   i0.z += isYZ.z;
-//   i0.w += 1.0 - isYZ.z;
-
-//   // i0 now contains the unique values 0,1,2,3 in each channel
-//   vec4 i3 = clamp( i0, 0.0, 1.0 );
-//   vec4 i2 = clamp( i0-1.0, 0.0, 1.0 );
-//   vec4 i1 = clamp( i0-2.0, 0.0, 1.0 );
-
-//   vec4 x1 = x0 - i1 + C.xxxx;
-//   vec4 x2 = x0 - i2 + C.yyyy;
-//   vec4 x3 = x0 - i3 + C.zzzz;
-//   vec4 x4 = x0 + C.wwww;
-
-// // Permutations
-//   i = mod289(i);
-//   float j0 = permute( permute( permute( permute(i.w) + i.z) + i.y) + i.x);
-//   vec4 j1 = permute( permute( permute( permute (
-//              i.w + vec4(i1.w, i2.w, i3.w, 1.0 ))
-//            + i.z + vec4(i1.z, i2.z, i3.z, 1.0 ))
-//            + i.y + vec4(i1.y, i2.y, i3.y, 1.0) ))
-//            + i.x + vec4(i1.x, i2.x, i3.x, 1.0 ));
-
-// // Gradients: 7x7x6 points over a cube, mapped onto a 4-cross polytope
-// // 7*7*6 = 294, which is close to the ring size 17*17 = 289.
-//   vec4 ip = vec4(1.0/294.0, 1.0/49.0, 1.0/7.0, 0.0) ;
-
-//   vec4 p0 = grad4(j0,   ip);
-//   vec4 p1 = grad4(j1.x, ip);
-//   vec4 p2 = grad4(j1.y, ip);
-//   vec4 p3 = grad4(j1.z, ip);
-//   vec4 p4 = grad4(j1.w, ip);
-
-// // Normalise gradients
-//   vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-//   p0 *= norm.x;
-//   p1 *= norm.y;
-//   p2 *= norm.z;
-//   p3 *= norm.w;
-//   p4 *= taylorInvSqrt(dot(p4,p4));
-
-// // Mix contributions from the five corners
-//   vec3 m0 = max(0.6 - vec3(dot(x0,x0), dot(x1,x1), dot(x2,x2)), 0.0);
-//   vec2 m1 = max(0.6 - vec2(dot(x3,x3), dot(x4,x4)            ), 0.0);
-//   m0 = m0 * m0;
-//   m1 = m1 * m1;
-//   return 49.0 * ( dot(m0*m0, vec3( dot( p0, x0 ), dot( p1, x1 ), dot( p2, x2 )))
-//                + dot(m1*m1, vec2( dot( p3, x3 ), dot( p4, x4 ) ) ) ) ;
-
-//   }
-
-pub fn simplex_noise_4d(v: Vec4) -> f32 {
+pub fn simplex_noise_4d(pos: Vec4) -> f32 {
 	let c = vec4(
 		0.138196601125011,  // (5 - sqrt(5))/20  G4
 		0.276393202250021,  // 2 * G4
@@ -286,8 +210,8 @@ pub fn simplex_noise_4d(v: Vec4) -> f32 {
 	);
 
 	// First corner
-	let i = (v + v.dot(Vec4::splat(0.309016994374947451))).floor(); // (sqrt(5) - 1)/4
-	let x0 = v - i + i.dot(c.xxxx());
+	let i = (pos + pos.dot(Vec4::splat(0.309016994374947451))).floor(); // (sqrt(5) - 1)/4
+	let x0 = pos - i + i.dot(c.xxxx());
 
 	// Other corners
 	let is_x = x0.xxx().step(x0.yzw());
@@ -352,10 +276,10 @@ pub fn simplex_noise_4d(v: Vec4) -> f32 {
 		+ m1.dot(m1 * vec2(p3.dot(x3), p4.dot(x4))))
 }
 
-pub fn tiling_simplex_noise_2d(uv: Vec2, scale: f32) -> f32 {
+pub fn tiling_simplex_noise_2d(pos: Vec2, scale: f32) -> f32 {
 	// Map coordinates to circle for seamless wrapping
-	let angle_x = uv.x * TAU;
-	let angle_y = uv.y * TAU;
+	let angle_x = pos.x * TAU;
+	let angle_y = pos.y * TAU;
 
 	let nx = angle_x.cos() * scale;
 	let ny = angle_x.sin() * scale;
@@ -374,6 +298,7 @@ pub fn tiling_simplex_noise_2d(uv: Vec2, scale: f32) -> f32 {
 // "vec2 x" is the point (x,y) to evaluate,
 // "vec2 period" is the desired periods along x and y, and
 // "float alpha" is the rotation (in radians) for the swirling gradients.
+// "float norm_rot" is the normalized rotation for the swirling gradients, where 1.0 is TAU.
 // The "float" return value is the noise value, and
 // the "out vec2 gradient" argument returns the x,y partial derivatives.
 //
@@ -388,7 +313,7 @@ pub fn tiling_simplex_noise_2d(uv: Vec2, scale: f32) -> f32 {
 // The rotation by alpha uses one single addition. Unlike the 3-D version
 // of psrdnoise(), setting alpha == 0.0 gives no speedup. (Hopefully, this was the case in GLSL, maybe not in RUST.)
 //
-pub fn tiling_noise_2d_r(pos: Vec2, period: Vec2, rot: f32) -> (f32, Vec2) {
+pub fn tiling_rot_noise_2d(pos: Vec2, period: Vec2, norm_rot: f32) -> (f32, Vec2) {
 	// Transform to simplex space (axis-aligned hexagonal grid)
 	let uv = vec2(pos.x + pos.y * 0.5, pos.y);
 
@@ -430,7 +355,7 @@ pub fn tiling_noise_2d_r(pos: Vec2, period: Vec2, rot: f32) -> (f32, Vec2) {
 	let hash = ((hash * 34.0 + 10.0) * hash) % Vec3::splat(289.);
 
 	// Pick a pseudo-random angle and add the desired rotation
-	let psi = hash * 0.07482 + rot;
+	let psi = hash * 0.07482 + (norm_rot * TAU);
 	let gx = psi.cos();
 	let gy = psi.sin();
 
@@ -467,8 +392,12 @@ pub fn tiling_noise_2d_r(pos: Vec2, period: Vec2, rot: f32) -> (f32, Vec2) {
 // This function is implemented as a wrapper to "psrnoise",
 // at the minimal cost of three extra additions.
 //
-pub fn tiling_noise_2d(pos: Vec2, per: Vec2) -> f32 {
-	tiling_noise_2d_r(pos, per, 0.0).0
+pub fn tiling_noise_2d(pos: Vec2, period: Vec2) -> (f32, Vec2) {
+	tiling_rot_noise_2d(pos, period, 0.0)
+}
+
+pub fn rot_noise_2d(pos: Vec2, norm_rot: f32) -> (f32, Vec2) {
+	tiling_rot_noise_2d(pos, Vec2::ZERO, norm_rot)
 }
 
 // psrdnoise (c) Stefan Gustavson and Ian McEwan,
@@ -501,6 +430,7 @@ pub fn tiling_noise_2d(pos: Vec2, per: Vec2) -> f32 {
 // "vec3 period" is the desired periods along x,y,z, up to 289.
 // (If Perlin's grid is used, multiples of 3 up to 288 are allowed.)
 // "float alpha" is the rotation (in radians) for the swirling gradients.
+// "float norm_rot" is the normalized rotation for the swirling gradients, where 1.0 is TAU.
 // The "float" return value is the noise value, and
 // the "out vec3 gradient" argument returns the x,y,z partial derivatives.
 //
@@ -515,7 +445,8 @@ pub fn tiling_noise_2d(pos: Vec2, per: Vec2) -> f32 {
 // eliminate the code for computing it. This speeds up the function by
 // around 10%. (Hopefully, this is the case in GLSL, but maybe not here)
 //
-pub fn tiling_noise_3d_r(pos: Vec3, period: Vec3, rot: f32) -> (f32, Vec3) {
+
+pub fn tiling_rot_noise_3d(pos: Vec3, period: Vec3, norm_rot: f32) -> (f32, Vec3) {
 	const M: Mat3 = mat3(
 		vec3(0.0, 1.0, 1.0),
 		vec3(1.0, 0.0, 1.0),
@@ -601,7 +532,11 @@ pub fn tiling_noise_3d_r(pos: Vec3, period: Vec3, rot: f32) -> (f32, Vec3) {
 	let sz_prime = (1.0 - sz * sz).sqrt(); // s is a point on a unit fib-sphere
 
 	// Rotate gradients by angle alpha around a pseudo-random ortogonal axis
-	let (gx, gy, gz) = if rot != 0.0 {
+	let (gx, gy, gz) = if norm_rot != 0.0 {
+		let alpha = norm_rot * TAU;
+		let sa = alpha.sin(); // psi and alpha in different planes
+		let ca = alpha.cos();
+
 		let sp = psi.sin(); // q' from psi on equator
 		let cp = psi.cos();
 
@@ -613,9 +548,6 @@ pub fn tiling_noise_3d_r(pos: Vec3, period: Vec3, rot: f32) -> (f32, Vec3) {
 		let qx = (ctp * st).lerp_vec(sp, sz);
 		let qy = (-ctp * ct).lerp_vec(cp, sz);
 		let qz = -(py * cp + px * sp);
-
-		let sa = rot.sin(); // psi and alpha in different planes
-		let ca = rot.cos();
 
 		(ca * px + sa * qx, ca * py + sa * qy, ca * pz + sa * qz)
 	} else {
@@ -655,4 +587,12 @@ pub fn tiling_noise_3d_r(pos: Vec3, period: Vec3, rot: f32) -> (f32, Vec3) {
 
 	// Scale the return value to fit nicely into the range [-1, 1]
 	(39.5 * n, gradient)
+}
+
+pub fn tiling_noise_3d(pos: Vec3, period: Vec3) -> (f32, Vec3) {
+	tiling_rot_noise_3d(pos, period, 0.0)
+}
+
+pub fn rot_noise_3d(pos: Vec3, norm_rot: f32) -> (f32, Vec3) {
+	tiling_rot_noise_3d(pos, Vec3::ZERO, norm_rot)
 }
