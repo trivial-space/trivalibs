@@ -71,45 +71,42 @@ pub fn create_box_geom() -> BufferedGeometry {
 	let bottom = box_shape.bottom_face();
 
 	geom.add_face4_data(
-		vert(front[0]),
-		vert(front[1]),
-		vert(front[2]),
-		vert(front[3]),
+		[
+			vert(front[0]),
+			vert(front[1]),
+			vert(front[2]),
+			vert(front[3]),
+		],
 		face_data(color_vert(vec3(1.0, 0.0, 0.0))),
 	);
 	geom.add_face4_data(
-		vert(back[0]),
-		vert(back[1]),
-		vert(back[2]),
-		vert(back[3]),
+		[vert(back[0]), vert(back[1]), vert(back[2]), vert(back[3])],
 		face_data(color_vert(vec3(0.0, 1.0, 0.0))),
 	);
 	geom.add_face4_data(
-		vert(left[0]),
-		vert(left[1]),
-		vert(left[2]),
-		vert(left[3]),
+		[vert(left[0]), vert(left[1]), vert(left[2]), vert(left[3])],
 		face_data(color_vert(vec3(0.0, 0.0, 1.0))),
 	);
 	geom.add_face4_data(
-		vert(right[0]),
-		vert(right[1]),
-		vert(right[2]),
-		vert(right[3]),
+		[
+			vert(right[0]),
+			vert(right[1]),
+			vert(right[2]),
+			vert(right[3]),
+		],
 		face_data(color_vert(vec3(1.0, 1.0, 0.0))),
 	);
 	geom.add_face4_data(
-		vert(top[0]),
-		vert(top[1]),
-		vert(top[2]),
-		vert(top[3]),
+		[vert(top[0]), vert(top[1]), vert(top[2]), vert(top[3])],
 		face_data(color_vert(vec3(0.0, 1.0, 1.0))),
 	);
 	geom.add_face4_data(
-		vert(bottom[0]),
-		vert(bottom[1]),
-		vert(bottom[2]),
-		vert(bottom[3]),
+		[
+			vert(bottom[0]),
+			vert(bottom[1]),
+			vert(bottom[2]),
+			vert(bottom[3]),
+		],
 		face_data(color_vert(vec3(1.0, 0.0, 1.0))),
 	);
 

@@ -16,6 +16,8 @@ use crate::{
 use glam::Vec3;
 use std::collections::{BTreeMap, HashMap};
 
+pub mod utils;
+
 #[derive(Debug)]
 pub struct Face<V> {
 	pub vertices: Vec<usize>,
@@ -216,7 +218,8 @@ where
 		}
 	}
 
-	pub fn add_face3_data(&mut self, v1: V, v2: V, v3: V, data: FaceDataProps<V>) {
+	pub fn add_face3_data(&mut self, verts: [V; 3], data: FaceDataProps<V>) {
+		let [v1, v2, v3] = verts;
 		let v1_idx = self.get_vertex_index(v1.position());
 		let v2_idx = self.get_vertex_index(v2.position());
 		let v3_idx = self.get_vertex_index(v3.position());
@@ -243,7 +246,8 @@ where
 		self.add_vertex(v3_idx, face_idx, v3);
 	}
 
-	pub fn add_face4_data(&mut self, v1: V, v2: V, v3: V, v4: V, data: FaceDataProps<V>) {
+	pub fn add_face4_data(&mut self, verts: [V; 4], data: FaceDataProps<V>) {
+		let [v1, v2, v3, v4] = verts;
 		let v1_idx = self.get_vertex_index(v1.position());
 		let v2_idx = self.get_vertex_index(v2.position());
 		let v3_idx = self.get_vertex_index(v3.position());
@@ -272,12 +276,12 @@ where
 		self.add_vertex(v4_idx, face_idx, v4);
 	}
 
-	pub fn add_face3(&mut self, v1: V, v2: V, v3: V) {
-		self.add_face3_data(v1, v2, v3, default())
+	pub fn add_face3(&mut self, verts: [V; 3]) {
+		self.add_face3_data(verts, default())
 	}
 
-	pub fn add_face4(&mut self, v1: V, v2: V, v3: V, v4: V) {
-		self.add_face4_data(v1, v2, v3, v4, default())
+	pub fn add_face4(&mut self, verts: [V; 4]) {
+		self.add_face4_data(verts, default())
 	}
 
 	pub fn add_grid_ccw_quads_data<A: CoordOpsFn>(
@@ -286,13 +290,7 @@ where
 		data: FaceDataProps<V>,
 	) {
 		for quad in grid.to_ccw_quads() {
-			self.add_face4_data(
-				quad[0].clone(),
-				quad[1].clone(),
-				quad[2].clone(),
-				quad[3].clone(),
-				data.clone(),
-			);
+			self.add_face4_data(quad, data.clone());
 		}
 	}
 
@@ -306,13 +304,7 @@ where
 		data: FaceDataProps<V>,
 	) {
 		for quad in grid.to_cw_quads() {
-			self.add_face4_data(
-				quad[0].clone(),
-				quad[1].clone(),
-				quad[2].clone(),
-				quad[3].clone(),
-				data.clone(),
-			);
+			self.add_face4_data(quad, data.clone());
 		}
 	}
 

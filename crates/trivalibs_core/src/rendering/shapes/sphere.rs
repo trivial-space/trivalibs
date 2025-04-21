@@ -22,16 +22,16 @@ pub fn create_sphere_mesh<V: Overridable + Position3D + Clone>(
 				let v3 = col1[i].clone();
 				let v4 = col1[i + 1].clone();
 
-				geom.add_face4(v1, v2, v4, v3);
+				geom.add_face4([v1, v2, v4, v3]);
 			}
 
-			geom.add_face3(first_vert, col2[0].clone(), col1[0].clone());
+			geom.add_face3([first_vert, col2[0].clone(), col1[0].clone()]);
 
-			geom.add_face3(
+			geom.add_face3([
 				col2[col2.len() - 1].clone(),
 				last_vert,
 				col1[col1.len() - 1].clone(),
-			);
+			]);
 		};
 
 	for j in 0..=horizontal_segments {
