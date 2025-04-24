@@ -1,149 +1,324 @@
-use crate::{
-	data::Position3D,
-	rendering::mesh_geometry::utils::{vert_pos_uv, Vert3dUv},
-};
-use glam::{vec3, Vec2, Vec3};
+use crate::data::Position3D;
+use glam::{vec2, Vec2, Vec3};
 use lerp::Lerp;
 
-pub struct Quad<P>
+pub struct Quad3D<P>
 where
 	P: Position3D,
 {
 	pub top_left: P,
+	pub bottom_left: P,
 	pub bottom_right: P,
+	pub top_right: P,
+
+	// cached values
+	pub width: f32,
+	pub height: f32,
+	pub u_vec: Vec3,
+	pub v_vec: Vec3,
+	pub normal: Vec3,
 }
 
-pub trait QuadVertices<P>
+impl<P> Quad3D<P>
 where
 	P: Position3D,
 {
-	fn to_cw_verts(&self) -> [P; 4];
-	fn to_ccw_verts(&self) -> [P; 4];
-}
+	pub fn from_dimensions_at_pos_f<F: Fn(Vec3, Vec2) -> P>(
+		width: f32,
+		height: f32,
+		normal: Vec3,
+		pos: Vec3,
+		uv: Vec2,
+		f: F,
+	) -> Self {
+		let normal = normal.normalize();
+		let up = if normal.y.abs() > 0.999 {
+			-Vec3::Z
+		} else {
+			Vec3::Y
+		};
+		let u_dir = up.cross(normal);
+		let u_vec = u_dir * width;
+		let v_vec = -normal.cross(u_dir) * height;
 
-impl<P> Quad<P>
-where
-	P: Position3D + Lerp<f32> + Clone,
-{
-	pub fn new(top_left: P, bottom_right: P) -> Self {
+		let top_left = pos + -u_vec * uv.x - v_vec * uv.y;
+		let top_right = top_left + u_vec;
+		let bottom_left = top_left + v_vec;
+		let bottom_right = bottom_left + u_vec;
+
+		Self {
+			top_left: f(top_left, vec2(0.0, 0.0)),
+			bottom_left: f(bottom_left, vec2(0.0, 1.0)),
+			bottom_right: f(bottom_right, vec2(1.0, 1.0)),
+			top_right: f(top_right, vec2(1.0, 0.0)),
+
+			normal,
+			width,
+			height,
+			u_vec,
+			v_vec,
+		}
+	}
+
+	pub fn from_dimensions_center_f<F: Fn(Vec3, Vec2) -> P>(
+		width: f32,
+		height: f32,
+		normal: Vec3,
+		center: Vec3,
+		f: F,
+	) -> Self {
+		Self::from_dimensions_at_pos_f(width, height, normal, center, vec2(0.5, 0.5), f)
+	}
+
+	pub fn from_dimensions_tl_f<F: Fn(Vec3, Vec2) -> P>(
+		width: f32,
+		height: f32,
+		normal: Vec3,
+		top_left: Vec3,
+		f: F,
+	) -> Self {
+		Self::from_dimensions_at_pos_f(width, height, normal, top_left, vec2(0.0, 0.0), f)
+	}
+
+	pub fn from_verts_f<F: Fn(Vec3, Vec2) -> P>(
+		top_left: Vec3,
+		bottom_left: Vec3,
+		bottom_right: Vec3,
+		top_right: Vec3,
+		f: F,
+	) -> Self {
+		let u_vec = top_right - top_left;
+		let v_vec = bottom_left - top_left;
+
+		assert!(
+			top_left + u_vec + v_vec == bottom_right,
+			"bottom_right is not equal to top_left + u_vec + v_vec"
+		);
+
+		let width = u_vec.length();
+		let height = v_vec.length();
+
+		assert!(width > 0.0, "width is zero");
+		assert!(height > 0.0, "height is zero");
+
+		let normal = u_vec.cross(v_vec).normalize();
+
+		Self {
+			top_left: f(top_left, vec2(0.0, 0.0)),
+			bottom_left: f(bottom_left, vec2(0.0, 1.0)),
+			bottom_right: f(bottom_right, vec2(1.0, 1.0)),
+			top_right: f(top_right, vec2(1.0, 0.0)),
+
+			u_vec,
+			v_vec,
+			width,
+			height,
+			normal,
+		}
+	}
+
+	pub fn from_tl_bl_tr_f<F: Fn(Vec3, Vec2) -> P>(
+		top_left: Vec3,
+		bottom_left: Vec3,
+		top_right: Vec3,
+		f: F,
+	) -> Self {
+		let u_vec = top_right - top_left;
+		let bottom_right = bottom_left + u_vec;
+
+		Self::from_verts_f(top_left, bottom_left, bottom_right, top_right, f)
+	}
+
+	pub fn from_tl_bl_br_f<F: Fn(Vec3, Vec2) -> P>(
+		top_left: Vec3,
+		bottom_left: Vec3,
+		bottom_right: Vec3,
+		f: F,
+	) -> Self {
+		let u_vec = bottom_right - bottom_left;
+		let top_right = top_left + u_vec;
+
+		Self::from_verts_f(top_left, bottom_left, bottom_right, top_right, f)
+	}
+
+	pub fn from_tl_br_tr_f<F: Fn(Vec3, Vec2) -> P>(
+		top_left: Vec3,
+		bottom_right: Vec3,
+		top_right: Vec3,
+		f: F,
+	) -> Self {
+		let v_vec = bottom_right - top_right;
+		let bottom_left = top_left + v_vec;
+
+		Self::from_verts_f(top_left, bottom_left, bottom_right, top_right, f)
+	}
+
+	pub fn from_br_bl_tr_f<F: Fn(Vec3, Vec2) -> P>(
+		bottom_right: Vec3,
+		bottom_left: Vec3,
+		top_right: Vec3,
+		f: F,
+	) -> Self {
+		let u_vec = bottom_right - bottom_left;
+		let top_left = top_right - u_vec;
+
+		Self::from_verts_f(top_left, bottom_left, bottom_right, top_right, f)
+	}
+
+	pub fn from_verts(top_left: P, bottom_left: P, bottom_right: P, top_right: P) -> Self {
+		let u_vec = top_right.position() - top_left.position();
+		let v_vec = bottom_left.position() - top_left.position();
+
+		assert!(
+			top_left.position() + u_vec + v_vec == bottom_right.position(),
+			"bottom_right is not equal to top_left + u_vec + v_vec"
+		);
+
+		let width = u_vec.length();
+		let height = v_vec.length();
+
+		assert!(width > 0.0, "width is zero");
+		assert!(height > 0.0, "height is zero");
+
+		let normal = u_vec.cross(v_vec).normalize();
+
 		Self {
 			top_left,
+			bottom_left,
 			bottom_right,
-		}
-	}
+			top_right,
 
-	pub fn to_vec3(&self) -> Quad<Vec3> {
-		Quad {
-			top_left: self.top_left.position(),
-			bottom_right: self.bottom_right.position(),
-		}
-	}
-}
-
-impl Quad<Vec3> {
-	pub fn from_dimensions(center: Vec3, size: Vec2, normal: Vec3) -> Self {
-		let half_size = size / 2.0;
-		let mut top = Vec3::Y;
-		if normal.y > 0.999 {
-			top = -Vec3::Z;
-		}
-		let top_left = center + normal.cross(top) * half_size.x + top * half_size.y;
-		let bottom_right = center - normal.cross(top) * half_size.x - top * half_size.y;
-
-		Quad::new(top_left, bottom_right)
-	}
-}
-
-impl QuadVertices<Vec3> for Quad<Vec3> {
-	fn to_cw_verts(&self) -> [Vec3; 4] {
-		[
-			self.top_left,
-			vec3(self.bottom_right.x, self.top_left.y, self.top_left.z),
-			self.bottom_right,
-			vec3(self.top_left.x, self.bottom_right.y, self.bottom_right.z),
-		]
-	}
-
-	fn to_ccw_verts(&self) -> [Vec3; 4] {
-		[
-			self.top_left,
-			vec3(self.top_left.x, self.bottom_right.y, self.bottom_right.z),
-			self.bottom_right,
-			vec3(self.bottom_right.x, self.top_left.y, self.top_left.z),
-		]
-	}
-}
-
-impl From<Quad<Vec3>> for Quad<Vert3dUv> {
-	fn from(quad: Quad<Vec3>) -> Self {
-		Self {
-			top_left: vert_pos_uv(quad.top_left, Vec2::new(0.0, 0.0)),
-			bottom_right: vert_pos_uv(quad.bottom_right, Vec2::new(1.0, 1.0)),
+			u_vec,
+			v_vec,
+			width,
+			height,
+			normal,
 		}
 	}
 }
 
-impl QuadVertices<Vert3dUv> for Quad<Vert3dUv> {
-	fn to_cw_verts(&self) -> [Vert3dUv; 4] {
-		let verts = self.to_vec3().to_cw_verts();
+impl<P> Quad3D<P>
+where
+	P: Position3D + Clone,
+{
+	pub fn to_ccw_verts(&self) -> [P; 4] {
 		[
-			vert_pos_uv(verts[0], self.top_left.uv),
-			vert_pos_uv(
-				verts[1],
-				Vec2::new(self.bottom_right.uv.x, self.top_left.uv.y),
-			),
-			vert_pos_uv(verts[2], self.bottom_right.uv),
-			vert_pos_uv(
-				verts[3],
-				Vec2::new(self.top_left.uv.x, self.bottom_right.uv.y),
-			),
+			self.top_left.clone(),
+			self.bottom_left.clone(),
+			self.bottom_right.clone(),
+			self.top_right.clone(),
 		]
 	}
 
-	fn to_ccw_verts(&self) -> [Vert3dUv; 4] {
-		let verts = self.to_vec3().to_ccw_verts();
+	pub fn to_cw_verts(&self) -> [P; 4] {
 		[
-			vert_pos_uv(verts[0], self.top_left.uv),
-			vert_pos_uv(
-				verts[1],
-				Vec2::new(self.top_left.uv.x, self.bottom_right.uv.y),
-			),
-			vert_pos_uv(verts[2], self.bottom_right.uv),
-			vert_pos_uv(
-				verts[3],
-				Vec2::new(self.bottom_right.uv.x, self.top_left.uv.y),
-			),
+			self.top_left.clone(),
+			self.top_right.clone(),
+			self.bottom_right.clone(),
+			self.bottom_left.clone(),
 		]
+	}
+}
+
+impl<P> Quad3D<P>
+where
+	P: Position3D + Clone + Lerp<f32>,
+{
+	pub fn subdivide_at_v(&self, v: f32) -> (Quad3D<P>, Quad3D<P>) {
+		let mid_left = self.top_left.clone().lerp(self.bottom_left.clone(), v);
+		let mid_right = self.top_right.clone().lerp(self.bottom_right.clone(), v);
+
+		let quad_top = Quad3D::from_verts(
+			self.top_left.clone(),
+			mid_left.clone(),
+			mid_right.clone(),
+			self.top_right.clone(),
+		);
+
+		let quad_bottom = Quad3D::from_verts(
+			mid_left,
+			self.bottom_left.clone(),
+			self.bottom_right.clone(),
+			mid_right,
+		);
+
+		(quad_top, quad_bottom)
+	}
+
+	pub fn subdivide_at_u(&self, u: f32) -> (Quad3D<P>, Quad3D<P>) {
+		let mid_top = self.top_left.clone().lerp(self.top_right.clone(), u);
+		let mid_bottom = self.bottom_left.clone().lerp(self.bottom_right.clone(), u);
+
+		let quad_left = Quad3D::from_verts(
+			self.top_left.clone(),
+			self.bottom_left.clone(),
+			mid_bottom.clone(),
+			mid_top.clone(),
+		);
+
+		let quad_right = Quad3D::from_verts(
+			mid_top,
+			mid_bottom,
+			self.bottom_right.clone(),
+			self.top_right.clone(),
+		);
+
+		(quad_left, quad_right)
 	}
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::rendering::mesh_geometry::utils::vert_pos_uv;
 	use glam::{vec2, vec3};
 
 	#[test]
-	fn test_quad_vertices() {
-		let quad = Quad::from_dimensions(Vec3::ONE, vec2(4.0, 5.0), Vec3::Z);
+	fn test_quad() {
+		let quad =
+			Quad3D::from_dimensions_center_f(4.0, 2.0, Vec3::Z, vec3(0.0, 3.0, 0.0), vert_pos_uv);
 
-		assert_eq!(quad.top_left, vec3(-1.0, 3.5, 1.0));
-		assert_eq!(quad.bottom_right, vec3(3.0, -1.5, 1.0));
+		assert_eq!(quad.width, 4.0);
+		assert_eq!(quad.height, 2.0);
+		assert_eq!(quad.normal, vec3(0.0, 0.0, 1.0));
 
-		let verts = quad.to_ccw_verts();
-		assert_eq!(verts[0], vec3(-1.0, 3.5, 1.0));
-		assert_eq!(verts[1], vec3(-1.0, -1.5, 1.0));
-		assert_eq!(verts[2], vec3(3.0, -1.5, 1.0));
-		assert_eq!(verts[3], vec3(3.0, 3.5, 1.0));
+		assert_eq!(quad.top_left.pos, vec3(-2.0, 4.0, 0.0));
+		assert_eq!(quad.bottom_right.pos, vec3(2.0, 2.0, 0.0));
+		assert_eq!(quad.top_right.pos, vec3(2.0, 4.0, 0.0));
+		assert_eq!(quad.bottom_left.pos, vec3(-2.0, 2.0, 0.0));
 
-		let quad = Quad::from_dimensions(Vec3::ONE, vec2(2.0, 3.0), Vec3::Y);
+		assert_eq!(quad.top_left.uv, vec2(0.0, 0.0,));
+		assert_eq!(quad.bottom_right.uv, vec2(1.0, 1.0,));
+		assert_eq!(quad.top_right.uv, vec2(1.0, 0.0,));
+		assert_eq!(quad.bottom_left.uv, vec2(0.0, 1.0,));
 
-		assert_eq!(quad.top_left, vec3(0.0, 1.0, -0.5));
-		assert_eq!(quad.bottom_right, vec3(2.0, 1.0, 2.5));
+		assert_eq!(quad.u_vec, vec3(4.0, 0.0, 0.0));
+		assert_eq!(quad.v_vec, vec3(0.0, -2.0, 0.0));
 
-		let verts = quad.to_cw_verts();
-		assert_eq!(verts[0], vec3(0.0, 1.0, -0.5));
-		assert_eq!(verts[1], vec3(2.0, 1.0, -0.5));
-		assert_eq!(verts[2], vec3(2.0, 1.0, 2.5));
-		assert_eq!(verts[3], vec3(0.0, 1.0, 2.5));
+		let quad = Quad3D::from_dimensions_at_pos_f(
+			1.0,
+			1.0,
+			vec3(0.0, 3.3, 0.0),
+			vec3(0.0, 0.0, 0.0),
+			vec2(1.0, 1.0),
+			vert_pos_uv,
+		);
+
+		assert_eq!(quad.width, 1.0);
+		assert_eq!(quad.height, 1.0);
+		assert_eq!(quad.normal, vec3(0.0, 1.0, 0.0));
+
+		assert_eq!(quad.top_left.pos, vec3(-1.0, 0.0, -1.0));
+		assert_eq!(quad.bottom_right.pos, vec3(0.0, 0.0, 0.0));
+		assert_eq!(quad.top_right.pos, vec3(0.0, 0.0, -1.0));
+		assert_eq!(quad.bottom_left.pos, vec3(-1.0, 0.0, 0.0));
+
+		assert_eq!(quad.top_left.uv, vec2(0.0, 0.0,));
+		assert_eq!(quad.bottom_right.uv, vec2(1.0, 1.0,));
+		assert_eq!(quad.top_right.uv, vec2(1.0, 0.0,));
+		assert_eq!(quad.bottom_left.uv, vec2(0.0, 1.0,));
+
+		assert_eq!(quad.u_vec, vec3(1.0, 0.0, 0.0));
+		assert_eq!(quad.v_vec, vec3(0.0, 0.0, 1.0));
 	}
 }

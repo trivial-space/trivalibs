@@ -474,6 +474,7 @@ where
 						}
 					}
 
+					// TODO: make this configurable
 					#[cfg(not(target_arch = "wasm32"))]
 					WindowEvent::KeyboardInput {
 						event:

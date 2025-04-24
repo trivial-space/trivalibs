@@ -20,16 +20,22 @@ impl Cuboid {
 		}
 	}
 
-	pub fn front_face(&self) -> [Vec3; 4] {
+	pub fn front_face_ccw(&self) -> [Vec3; 4] {
 		let Vec3 { x, y, z } = self.center;
 		let Vec3 { x: w, y: h, z: d } = self.size * 0.5;
 
 		[
+			vec3(x - w, y + h, z + d),
 			vec3(x - w, y - h, z + d),
 			vec3(x + w, y - h, z + d),
 			vec3(x + w, y + h, z + d),
-			vec3(x - w, y + h, z + d),
 		]
+	}
+
+	pub fn front_face_cw(&self) -> [Vec3; 4] {
+		let mut ret = self.front_face_ccw();
+		ret.reverse();
+		ret
 	}
 
 	pub fn back_face(&self) -> [Vec3; 4] {
