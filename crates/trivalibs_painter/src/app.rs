@@ -474,6 +474,19 @@ where
 						}
 					}
 
+					#[cfg(not(target_arch = "wasm32"))]
+					WindowEvent::KeyboardInput {
+						event:
+							KeyEvent {
+								state: ElementState::Released,
+								physical_key: PhysicalKey::Code(KeyCode::Escape),
+								..
+							},
+						..
+					} => {
+						event_loop.exit();
+					}
+
 					rest => {
 						if self.is_running {
 							app.event(Event::WindowEvent(rest), painter);
