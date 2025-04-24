@@ -11,9 +11,6 @@ where
 	pub bottom_right: P,
 	pub top_right: P,
 
-	// cached values
-	pub width: f32,
-	pub height: f32,
 	pub u_vec: Vec3,
 	pub v_vec: Vec3,
 	pub normal: Vec3,
@@ -53,8 +50,6 @@ where
 			top_right: f(top_right, vec2(1.0, 0.0)),
 
 			normal,
-			width,
-			height,
 			u_vec,
 			v_vec,
 		}
@@ -111,8 +106,6 @@ where
 
 			u_vec,
 			v_vec,
-			width,
-			height,
 			normal,
 		}
 	}
@@ -190,8 +183,6 @@ where
 
 			u_vec,
 			v_vec,
-			width,
-			height,
 			normal,
 		}
 	}
@@ -278,8 +269,6 @@ mod tests {
 		let quad =
 			Quad3D::from_dimensions_center_f(4.0, 2.0, Vec3::Z, vec3(0.0, 3.0, 0.0), vert_pos_uv);
 
-		assert_eq!(quad.width, 4.0);
-		assert_eq!(quad.height, 2.0);
 		assert_eq!(quad.normal, vec3(0.0, 0.0, 1.0));
 
 		assert_eq!(quad.top_left.pos, vec3(-2.0, 4.0, 0.0));
@@ -304,8 +293,6 @@ mod tests {
 			vert_pos_uv,
 		);
 
-		assert_eq!(quad.width, 1.0);
-		assert_eq!(quad.height, 1.0);
 		assert_eq!(quad.normal, vec3(0.0, 1.0, 0.0));
 
 		assert_eq!(quad.top_left.pos, vec3(-1.0, 0.0, -1.0));
