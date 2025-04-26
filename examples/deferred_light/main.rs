@@ -106,8 +106,7 @@ impl CanvasApp<()> for App {
 
 		let lights = (0..LIGHTS_COUNT)
 			.map(|_| {
-				let light_pos =
-					rand_in_unit_sphere() * rand_range(10.0, 30.0) + vec3(0.0, 0.0, -20.0);
+				let light_pos = rand_vec3_unit() * rand_range(10.0, 30.0);
 				let light_pos_u = p.uniform_const_vec3(light_pos);
 
 				let light_color_u = p.uniform_const_vec3(rand_vec3());

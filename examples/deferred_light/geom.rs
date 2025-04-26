@@ -63,50 +63,31 @@ pub fn create_ball_geom() -> BufferedGeometry {
 pub fn create_box_geom() -> BufferedGeometry {
 	let box_shape = Cuboid::unit_cube();
 	let mut geom = MeshGeometry::new();
-	let front = box_shape.front_face_ccw();
-	let back = box_shape.back_face();
-	let left = box_shape.left_face();
-	let right = box_shape.right_face();
-	let top = box_shape.top_face();
-	let bottom = box_shape.bottom_face();
+
+	let v = |pos, _| vert(pos);
 
 	geom.add_face4_data(
-		[
-			vert(front[0]),
-			vert(front[1]),
-			vert(front[2]),
-			vert(front[3]),
-		],
+		box_shape.front_face_f(v).to_ccw_verts(),
 		face_data(color_vert(vec3(1.0, 0.0, 0.0))),
 	);
 	geom.add_face4_data(
-		[vert(back[0]), vert(back[1]), vert(back[2]), vert(back[3])],
+		box_shape.back_face_f(v).to_ccw_verts(),
 		face_data(color_vert(vec3(0.0, 1.0, 0.0))),
 	);
 	geom.add_face4_data(
-		[vert(left[0]), vert(left[1]), vert(left[2]), vert(left[3])],
+		box_shape.left_face_f(v).to_ccw_verts(),
 		face_data(color_vert(vec3(0.0, 0.0, 1.0))),
 	);
 	geom.add_face4_data(
-		[
-			vert(right[0]),
-			vert(right[1]),
-			vert(right[2]),
-			vert(right[3]),
-		],
+		box_shape.right_face_f(v).to_ccw_verts(),
 		face_data(color_vert(vec3(1.0, 1.0, 0.0))),
 	);
 	geom.add_face4_data(
-		[vert(top[0]), vert(top[1]), vert(top[2]), vert(top[3])],
+		box_shape.top_face_f(v).to_ccw_verts(),
 		face_data(color_vert(vec3(0.0, 1.0, 1.0))),
 	);
 	geom.add_face4_data(
-		[
-			vert(bottom[0]),
-			vert(bottom[1]),
-			vert(bottom[2]),
-			vert(bottom[3]),
-		],
+		box_shape.bottom_face_f(v).to_ccw_verts(),
 		face_data(color_vert(vec3(1.0, 0.0, 1.0))),
 	);
 

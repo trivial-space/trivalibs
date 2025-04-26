@@ -11,8 +11,6 @@ where
 	pub bottom_right: P,
 	pub top_right: P,
 
-	pub u_vec: Vec3,
-	pub v_vec: Vec3,
 	pub normal: Vec3,
 }
 
@@ -50,8 +48,6 @@ where
 			top_right: f(top_right, vec2(1.0, 0.0)),
 
 			normal,
-			u_vec,
-			v_vec,
 		}
 	}
 
@@ -104,8 +100,6 @@ where
 			bottom_right: f(bottom_right, vec2(1.0, 1.0)),
 			top_right: f(top_right, vec2(1.0, 0.0)),
 
-			u_vec,
-			v_vec,
 			normal,
 		}
 	}
@@ -181,8 +175,6 @@ where
 			bottom_right,
 			top_right,
 
-			u_vec,
-			v_vec,
 			normal,
 		}
 	}
@@ -281,9 +273,6 @@ mod tests {
 		assert_eq!(quad.top_right.uv, vec2(1.0, 0.0,));
 		assert_eq!(quad.bottom_left.uv, vec2(0.0, 1.0,));
 
-		assert_eq!(quad.u_vec, vec3(4.0, 0.0, 0.0));
-		assert_eq!(quad.v_vec, vec3(0.0, -2.0, 0.0));
-
 		let quad = Quad3D::from_dimensions_at_pos_f(
 			1.0,
 			1.0,
@@ -304,8 +293,5 @@ mod tests {
 		assert_eq!(quad.bottom_right.uv, vec2(1.0, 1.0,));
 		assert_eq!(quad.top_right.uv, vec2(1.0, 0.0,));
 		assert_eq!(quad.bottom_left.uv, vec2(0.0, 1.0,));
-
-		assert_eq!(quad.u_vec, vec3(1.0, 0.0, 0.0));
-		assert_eq!(quad.v_vec, vec3(0.0, 0.0, 1.0));
 	}
 }

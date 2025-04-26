@@ -69,10 +69,11 @@ pub fn light_fs(
 
 	// Specular (Blinn-Phong)
 	let n_dot_h = normal.dot(half_dir).max(0.0);
-	let specular = *light_color * n_dot_h.powf(30.0);
+	let specular = *light_color * n_dot_h.powf(30.0) * 1.8;
 
 	// let final_color = (color.xyz() * (1.0 - (pos.w / 25.0))).extend(1.0);
-	let final_color = color * diffuse + specular + color * 0.01;
+	let mut final_color = color * diffuse + specular + color * 0.01;
+	final_color *= 0.4;
 	// let final_color = Vec3::splat(1.0) * diffuse + specular;
 	*frag_color = final_color.extend(1.0);
 }

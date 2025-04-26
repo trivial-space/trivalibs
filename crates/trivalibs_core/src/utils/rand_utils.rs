@@ -41,10 +41,6 @@ pub fn rand_vec3_range(min: f32, max: f32) -> Vec3 {
 	)
 }
 
-pub fn rand_vec3_unit() -> Vec3 {
-	rand_in_unit_sphere().normalize()
-}
-
 pub fn rand_in_unit_sphere() -> Vec3 {
 	loop {
 		let p = vec3(
@@ -58,6 +54,10 @@ pub fn rand_in_unit_sphere() -> Vec3 {
 			return p;
 		}
 	}
+}
+
+pub fn rand_vec3_unit() -> Vec3 {
+	rand_in_unit_sphere().normalize()
 }
 
 pub fn rand_vec4() -> Vec4 {
