@@ -63,7 +63,7 @@ pub fn create_ball_geom() -> BufferedGeometry {
 pub fn create_box_geom() -> BufferedGeometry {
 	let box_shape = Cuboid::unit_cube();
 	let mut geom = MeshGeometry::new();
-	let front = box_shape.front_face();
+	let front = box_shape.front_face_ccw();
 	let back = box_shape.back_face();
 	let left = box_shape.left_face();
 	let right = box_shape.right_face();

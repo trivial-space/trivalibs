@@ -1,0 +1,12 @@
+[
+  {
+    "source_path": "ground_frag.spv",
+    "entry_point": "ground_frag",
+    "wgsl_entry_point": "ground_frag"
+  },
+  {
+    "source_path": "ground_vert.spv",
+    "entry_point": "ground_vert",
+    "wgsl_entry_point": "ground_vert"
+  }
+]
