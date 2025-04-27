@@ -23,6 +23,7 @@ pub struct Face<V> {
 	pub vertices: Vec<usize>,
 	pub face_normal: Option<Vec3>,
 	pub data: Option<V>,
+	pub section: usize,
 }
 
 impl<V> Face<V> {
@@ -32,6 +33,7 @@ impl<V> Face<V> {
 		v3_idx: usize,
 		normal: Option<Vec3>,
 		data: Option<V>,
+		section: usize,
 	) -> Face<V> {
 		if v1_idx == v2_idx || v1_idx == v3_idx || v2_idx == v3_idx {
 			panic!("Face must have 3 unique vertices");
@@ -45,6 +47,7 @@ impl<V> Face<V> {
 			face_normal: normal,
 			vertices,
 			data,
+			section,
 		}
 	}
 
@@ -55,6 +58,7 @@ impl<V> Face<V> {
 		v4_idx: usize,
 		normal: Option<Vec3>,
 		data: Option<V>,
+		section: usize,
 	) -> Face<V> {
 		if v1_idx == v2_idx
 			|| v1_idx == v3_idx
@@ -75,6 +79,7 @@ impl<V> Face<V> {
 			face_normal: normal,
 			vertices,
 			data,
+			section,
 		}
 	}
 }
@@ -87,48 +92,13 @@ pub enum MeshBufferType {
 	FaceNormals,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct SectionIndex {
-	pub section: usize,
-	pub index: usize,
-}
-
-impl From<usize> for SectionIndex {
-	fn from(index: usize) -> Self {
-		Self { section: 0, index }
-	}
-}
-
 pub struct MeshVertex<V>
 where
 	V: Overridable + Position3D,
 {
 	pub data: V,
-	pub faces: Vec<SectionIndex>,
+	pub faces: Vec<usize>,
 	pub vertex_normal: Option<Vec3>,
-}
-
-impl<V> MeshVertex<V>
-where
-	V: Overridable + Position3D,
-{
-	fn section_faces(&self, section: usize) -> Vec<usize> {
-		self.faces
-			.iter()
-			.filter(|section_index| section_index.section == section)
-			.map(|section_index| section_index.index)
-			.collect()
-	}
-}
-
-pub struct MeshGeometry<V>
-where
-	V: Overridable + Position3D,
-{
-	pub vertices: Vec<MeshVertex<V>>,
-	faces: Vec<Vec<Face<V>>>,
-	next_index: usize,
-	vertex_indices: HashMap<VertIdx3f, usize>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -205,17 +175,67 @@ where
 	}
 }
 
-impl<V> MeshGeometry<V>
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct SectionIndex {
+	pub section: usize,
+	pub index: usize,
+}
+
+impl From<usize> for SectionIndex {
+	fn from(index: usize) -> Self {
+		Self { section: 0, index }
+	}
+}
+
+pub struct MeshSection<V>
+where
+	V: Overridable + Position3D,
+{
+	pub vertices: Vec<MeshVertex<V>>,
+	faces: Vec<Face<V>>,
+	next_index: usize,
+	vertex_indices: HashMap<VertIdx3f, usize>,
+	section_index: usize,
+}
+
+impl<V> MeshSection<V>
 where
 	V: Overridable + Position3D + Clone,
 {
-	pub fn new() -> Self {
+	pub fn new(section_index: usize) -> Self {
 		Self {
 			vertices: vec![],
-			faces: Vec::with_capacity(1),
+			faces: vec![],
 			next_index: 0,
 			vertex_indices: HashMap::new(),
+			section_index,
 		}
+	}
+
+	pub fn get_vertex_index(&mut self, pos: Vec3) -> usize {
+		if let Some(idx) = self.vertex_indices.get(&pos.into()) {
+			*idx
+		} else {
+			let idx = self.next_index;
+			self.vertex_indices.insert(pos.into(), idx);
+			self.next_index = idx + 1;
+			idx
+		}
+	}
+
+	fn add_vertex(&mut self, vertex_idx: usize, face_idx: usize, data: V) {
+		let vertices = &mut self.vertices;
+		if let Some(v) = vertices.get_mut(vertex_idx) {
+			v.data = data;
+		} else {
+			vertices.push(MeshVertex {
+				data,
+				faces: Vec::with_capacity(8),
+				vertex_normal: None,
+			});
+		}
+		let v = &mut vertices[vertex_idx];
+		v.faces.push(face_idx);
 	}
 
 	pub fn add_face3_data(&mut self, verts: [V; 3], data: FaceDataProps<V>) {
@@ -224,22 +244,17 @@ where
 		let v2_idx = self.get_vertex_index(v2.position());
 		let v3_idx = self.get_vertex_index(v3.position());
 
-		let section = data.section.unwrap_or(0);
-		let faces = if let Some(faces) = self.faces.get_mut(section) {
-			faces
-		} else {
-			let faces = Vec::new();
-			self.faces.push(faces);
-			self.faces.last_mut().unwrap()
-		};
+		let face_idx = self.faces.len();
 
-		let face_idx = SectionIndex {
-			index: faces.len(),
-			section,
-		};
-
-		let face = Face::face3(v1_idx, v2_idx, v3_idx, data.normal, data.data);
-		faces.push(face);
+		let face = Face::face3(
+			v1_idx,
+			v2_idx,
+			v3_idx,
+			data.normal,
+			data.data,
+			self.section_index,
+		);
+		self.faces.push(face);
 
 		self.add_vertex(v1_idx, face_idx, v1);
 		self.add_vertex(v2_idx, face_idx, v2);
@@ -253,27 +268,93 @@ where
 		let v3_idx = self.get_vertex_index(v3.position());
 		let v4_idx = self.get_vertex_index(v4.position());
 
-		let section = data.section.unwrap_or(0);
-		let faces = if let Some(faces) = self.faces.get_mut(section) {
-			faces
-		} else {
-			let faces = Vec::new();
-			self.faces.push(faces);
-			self.faces.last_mut().unwrap()
-		};
+		let face_idx = self.faces.len();
 
-		let face_idx = SectionIndex {
-			index: faces.len(),
-			section,
-		};
-
-		let face = Face::face4(v1_idx, v2_idx, v3_idx, v4_idx, data.normal, data.data);
-		faces.push(face);
+		let face = Face::face4(
+			v1_idx,
+			v2_idx,
+			v3_idx,
+			v4_idx,
+			data.normal,
+			data.data,
+			self.section_index,
+		);
+		self.faces.push(face);
 
 		self.add_vertex(v1_idx, face_idx, v1);
 		self.add_vertex(v2_idx, face_idx, v2);
 		self.add_vertex(v3_idx, face_idx, v3);
 		self.add_vertex(v4_idx, face_idx, v4);
+	}
+
+	pub fn face_vertices(&self, face: &Face<V>) -> Vec<V> {
+		face.vertices
+			.iter()
+			.map(|i| self.vertices[*i].data.clone())
+			.collect::<Vec<_>>()
+	}
+
+	pub fn remove_face(&mut self, face_idx: usize) {
+		let vertices: &mut Vec<MeshVertex<V>> = &mut self.vertices;
+
+		let face = self.faces.swap_remove(face_idx);
+
+		face.vertices.into_iter().for_each(|i| {
+			let vert = &mut vertices[i];
+			let new_faces = vert
+				.faces
+				.iter()
+				.map(|j| *j)
+				.filter(|j| *j != face_idx)
+				.collect();
+			vert.faces = new_faces;
+		});
+
+		let len = self.faces.len();
+		if face_idx != len {
+			let new_face = &self.faces[face_idx];
+			for v in &new_face.vertices {
+				let vert = &mut vertices[*v];
+				let v_f_idx = vert.faces.iter().position(|i| *i == len).unwrap();
+				vert.faces[v_f_idx] = face_idx;
+			}
+		}
+	}
+}
+
+pub struct MeshGeometry<V>
+where
+	V: Overridable + Position3D,
+{
+	pub sections: BTreeMap<usize, MeshSection<V>>,
+}
+
+impl<V> MeshGeometry<V>
+where
+	V: Overridable + Position3D + Clone,
+{
+	pub fn new() -> Self {
+		Self {
+			sections: BTreeMap::new(),
+		}
+	}
+
+	pub fn get_or_create_section(&mut self, section_idx: usize) -> &mut MeshSection<V> {
+		if !self.sections.contains_key(&section_idx) {
+			self.sections
+				.insert(section_idx, MeshSection::new(section_idx));
+		}
+		self.sections.get_mut(&section_idx).unwrap()
+	}
+
+	pub fn add_face3_data(&mut self, verts: [V; 3], data: FaceDataProps<V>) {
+		let section = self.get_or_create_section(data.section.unwrap_or(0));
+		section.add_face3_data(verts, data);
+	}
+
+	pub fn add_face4_data(&mut self, verts: [V; 4], data: FaceDataProps<V>) {
+		let section = self.get_or_create_section(data.section.unwrap_or(0));
+		section.add_face4_data(verts, data);
 	}
 
 	pub fn add_face3(&mut self, verts: [V; 3]) {
@@ -312,95 +393,40 @@ where
 		self.add_grid_cw_quads_data(grid, default())
 	}
 
-	pub fn vertex(&self, i: usize) -> &MeshVertex<V> {
-		&self.vertices[i]
+	pub fn vertex<T: Into<SectionIndex>>(&self, into_idx: T) -> &MeshVertex<V> {
+		let i: SectionIndex = into_idx.into();
+		&self.sections.get(&i.section).unwrap().vertices[i.index]
 	}
 
 	pub fn face<T: Into<SectionIndex>>(&self, into_idx: T) -> &Face<V> {
 		let i: SectionIndex = into_idx.into();
-		&self.faces.get(i.section).unwrap()[i.index]
+		&self.sections.get(&i.section).unwrap().faces[i.index]
 	}
 
 	pub fn face_mut<T: Into<SectionIndex>>(&mut self, into_idx: T) -> &mut Face<V> {
 		let i: SectionIndex = into_idx.into();
-		&mut self.faces.get_mut(i.section).unwrap()[i.index]
+		&mut self.sections.get_mut(&i.section).unwrap().faces[i.index]
 	}
 
 	pub fn face_vertices(&self, face: &Face<V>) -> Vec<V> {
-		face.vertices
-			.iter()
-			.map(|i| self.vertices[*i].data.clone())
-			.collect::<Vec<_>>()
-	}
-
-	pub fn get_vertex_index(&mut self, pos: Vec3) -> usize {
-		if let Some(idx) = self.vertex_indices.get(&pos.into()) {
-			*idx
-		} else {
-			let idx = self.next_index;
-			self.vertex_indices.insert(pos.into(), idx);
-			self.next_index = idx + 1;
-			idx
-		}
+		self.sections
+			.get(&face.section)
+			.unwrap()
+			.face_vertices(face)
 	}
 
 	pub fn remove_face<T: Into<SectionIndex>>(&mut self, face_idx: T) {
 		let face_idx: SectionIndex = face_idx.into();
-		let faces: &mut Vec<Face<V>> = self.faces.get_mut(face_idx.section).unwrap();
-		let vertices: &mut Vec<MeshVertex<V>> = &mut self.vertices;
-
-		let face = faces.swap_remove(face_idx.index);
-
-		face.vertices.into_iter().for_each(|i| {
-			let vert = &mut vertices[i];
-			let new_faces = vert
-				.faces
-				.iter()
-				.map(|j| *j)
-				.filter(|j| *j != face_idx)
-				.collect();
-			vert.faces = new_faces;
-		});
-
-		let len = faces.len();
-		if face_idx.index != len {
-			let new_face = &faces[face_idx.index];
-			for v in &new_face.vertices {
-				let vert = &mut vertices[*v];
-				let v_f_idx = vert
-					.faces
-					.iter()
-					.position(|i| {
-						*i == SectionIndex {
-							index: len,
-							section: face_idx.section,
-						}
-					})
-					.unwrap();
-				vert.faces[v_f_idx] = face_idx;
-			}
-		}
+		self.sections
+			.get_mut(&face_idx.section)
+			.unwrap()
+			.remove_face(face_idx.index);
 	}
 
 	pub fn set_vertex(&mut self, vertex_idx: usize, data: V) {
 		if let Some(vertex) = self.vertices.get_mut(vertex_idx) {
 			vertex.data = data
 		}
-	}
-
-	fn add_vertex(&mut self, vertex_idx: usize, face_idx: SectionIndex, data: V) {
-		let vertices = &mut self.vertices;
-		if let Some(v) = vertices.get_mut(vertex_idx) {
-			v.data = data;
-		} else {
-			vertices.push(MeshVertex {
-				data,
-				faces: Vec::with_capacity(8),
-				vertex_normal: None,
-			});
-		}
-		let v = &mut vertices[vertex_idx];
-		v.faces.push(face_idx);
 	}
 
 	fn calculate_vertex_normal(&self, section: usize, vert_index: usize) -> Vec3 {
