@@ -8,9 +8,9 @@ use trivalibs::{
 		mesh_geometry::{
 			face_normal,
 			utils::{vert_pos_uv, Vert3dUv},
-			MeshBufferType, MeshGeometry,
+			FaceDataProps, MeshBufferType, MeshGeometry,
 		},
-		shapes::quad::Quad3D,
+		shapes::{cuboid::Cuboid, quad::Quad3D},
 		BufferedGeometry,
 	},
 };
@@ -21,6 +21,35 @@ pub fn create_plane(width: f32, height: f32, normal: Vec3, center: Vec3) -> Buff
 
 	let mut geom = MeshGeometry::new();
 	geom.add_face4_data(plane.to_ccw_verts(), face_normal(plane.normal));
+
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceNormals)
+}
+
+pub fn create_box(center: Vec3, size: Vec3) -> BufferedGeometry {
+	let bbox = Cuboid::box_at(center, size.x, size.y, size.z);
+
+	let mut geom = MeshGeometry::new();
+
+	let face_data = |normal: Vec3, section: usize| FaceDataProps {
+		normal: Some(normal),
+		section: Some(section),
+		data: None,
+	};
+
+	let front = bbox.front_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.x, uvw.y)));
+	geom.add_face4_data(front.to_ccw_verts(), face_data(front.normal, 0));
+
+	let back = bbox.back_face_f(|pos, uvw| vert_pos_uv(pos, vec2(1.0 - uvw.x, uvw.y)));
+	geom.add_face4_data(back.to_ccw_verts(), face_data(back.normal, 1));
+
+	let left = bbox.left_face_f(|pos, uvw| vert_pos_uv(pos, vec2(1.0 - uvw.z, uvw.y)));
+	geom.add_face4_data(left.to_ccw_verts(), face_data(left.normal, 2));
+
+	// let top = bbox.top_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.x, 1.0 - uvw.z)));
+	// geom.add_face4_data(top.to_ccw_verts(), face_normal(top.normal));
+
+	// let bottom = bbox.bottom_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.x, uvw.z)));
+	// geom.add_face4_data(bottom.to_ccw_verts(), face_normal(bottom.normal));
 
 	geom.to_buffered_geometry_by_type(MeshBufferType::FaceNormals)
 }
@@ -59,15 +88,35 @@ impl CanvasApp<()> for App {
 			.form(&create_plane(20.5, 5.0, Vec3::Z, vec3(15.0, 3.0, 0.0)))
 			.create();
 
+		let x_axis_form = p
+			.form(&create_box(vec3(2.5, 0.5, 0.0), vec3(5.0, 0.5, 0.5)))
+			.create();
+		let y_axis_form = p
+			.form(&create_box(vec3(0.0, 3.0, 0.0), vec3(0.5, 5.0, 0.5)))
+			.create();
+		let z_axis_form = p
+			.form(&create_box(vec3(0.0, 0.5, 2.5), vec3(0.5, 0.5, 5.0)))
+			.create();
+
 		let ground_shape = p.shape(ground_form, shade).create();
 		let wall_shape = p.shape(wall_form, shade).create();
 		let roof_shape = p.shape(roof_form, shade).create();
+		let x_axis_shape = p.shape(x_axis_form, shade).with_cull_mode(None).create();
+		let y_axis_shape = p.shape(y_axis_form, shade).with_cull_mode(None).create();
+		let z_axis_shape = p.shape(z_axis_form, shade).with_cull_mode(None).create();
 
 		let vp_mat = p.uniform_mat4();
 
 		let canvas = p
 			.layer()
-			.with_shapes(vec![ground_shape, wall_shape, roof_shape])
+			.with_shapes(vec![
+				ground_shape,
+				wall_shape,
+				roof_shape,
+				x_axis_shape,
+				y_axis_shape,
+				z_axis_shape,
+			])
 			.with_clear_color(wgpu::Color {
 				r: 0.5,
 				g: 0.6,
