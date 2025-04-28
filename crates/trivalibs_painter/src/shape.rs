@@ -59,6 +59,11 @@ impl Shape {
 				props.blend_state.color.dst_factor as u8,
 				props.blend_state.color.src_factor as u8,
 				props.blend_state.color.operation as u8,
+				if let Some(cull_mode) = props.cull_mode {
+					cull_mode as u8
+				} else {
+					0xff
+				},
 			],
 		]
 		.into_iter()

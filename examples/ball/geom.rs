@@ -77,7 +77,7 @@ pub fn create_ball_geom() -> BufferedGeometry {
 		face.data = Some(color_vert(color));
 	}
 
-	geom.to_buffered_geometry_by_type(MeshBufferType::FaceNormals)
+	geom.to_buffered_geometry_by_type(MeshBufferType::VertexNormalFaceData)
 }
 
 #[test]
