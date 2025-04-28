@@ -45,11 +45,14 @@ pub fn create_box(center: Vec3, size: Vec3) -> BufferedGeometry {
 	let left = bbox.left_face_f(|pos, uvw| vert_pos_uv(pos, vec2(1.0 - uvw.z, uvw.y)));
 	geom.add_face4_data(left.to_ccw_verts(), face_data(left.normal, 2));
 
-	// let top = bbox.top_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.x, 1.0 - uvw.z)));
-	// geom.add_face4_data(top.to_ccw_verts(), face_normal(top.normal));
+	let right = bbox.right_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.z, uvw.y)));
+	geom.add_face4_data(right.to_ccw_verts(), face_data(right.normal, 3));
 
-	// let bottom = bbox.bottom_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.x, uvw.z)));
-	// geom.add_face4_data(bottom.to_ccw_verts(), face_normal(bottom.normal));
+	let top = bbox.top_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.x, 1.0 - uvw.z)));
+	geom.add_face4_data(top.to_ccw_verts(), face_data(top.normal, 4));
+
+	let bottom = bbox.bottom_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.x, uvw.z)));
+	geom.add_face4_data(bottom.to_ccw_verts(), face_data(bottom.normal, 5));
 
 	geom.to_buffered_geometry_by_type(MeshBufferType::FaceNormals)
 }
