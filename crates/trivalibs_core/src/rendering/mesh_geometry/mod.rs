@@ -200,7 +200,7 @@ where
 		}
 	}
 
-	pub fn get_vertex_index(&mut self, pos: Vec3) -> usize {
+	fn get_vertex_index(&mut self, pos: Vec3) -> usize {
 		if let Some(idx) = self.vertex_indices.get(&pos.into()) {
 			*idx
 		} else {
@@ -454,16 +454,16 @@ where
 			.face_vertices(face)
 	}
 
-	pub fn remove_face<T: Into<SectionIndex>>(&mut self, face_idx: T) {
-		let face_idx: SectionIndex = face_idx.into();
+	pub fn remove_face<T: Into<SectionIndex>>(&mut self, into_idx: T) {
+		let face_idx: SectionIndex = into_idx.into();
 		self.sections
 			.get_mut(&face_idx.section)
 			.unwrap()
 			.remove_face(face_idx.index);
 	}
 
-	pub fn set_vertex<I: Into<SectionIndex>>(&mut self, vertex_idx: I, data: V) {
-		let idx: SectionIndex = vertex_idx.into();
+	pub fn set_vertex<I: Into<SectionIndex>>(&mut self, into_idx: I, data: V) {
+		let idx: SectionIndex = into_idx.into();
 		let section = self.get_or_create_section(idx.section);
 		if let Some(vertex) = section.vertices.get_mut(idx.index) {
 			vertex.data = data
