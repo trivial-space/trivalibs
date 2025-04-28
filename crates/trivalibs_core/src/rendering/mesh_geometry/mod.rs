@@ -310,7 +310,7 @@ where
 	}
 }
 
-const DEFAULT_SECTION: usize = 0;
+pub const DEFAULT_MESH_SECTION: usize = 0;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct SectionIndex {
@@ -321,10 +321,14 @@ pub struct SectionIndex {
 impl From<usize> for SectionIndex {
 	fn from(index: usize) -> Self {
 		Self {
-			section: DEFAULT_SECTION,
+			section: DEFAULT_MESH_SECTION,
 			index,
 		}
 	}
+}
+
+pub fn section_index(section: usize, index: usize) -> SectionIndex {
+	SectionIndex { section, index }
 }
 
 pub struct MeshGeometry<V>
@@ -344,6 +348,26 @@ where
 		}
 	}
 
+	pub fn vertex_count(&self) -> usize {
+		let mut len = 0;
+		for section in self.sections.values() {
+			len += section.vertices.len();
+		}
+		len
+	}
+
+	pub fn face_count(&self) -> usize {
+		let mut len = 0;
+		for section in self.sections.values() {
+			len += section.faces.len();
+		}
+		len
+	}
+
+	pub fn default_section(&self) -> &MeshSection<V> {
+		self.sections.get(&DEFAULT_MESH_SECTION).unwrap()
+	}
+
 	pub fn get_or_create_section(&mut self, section_idx: usize) -> &mut MeshSection<V> {
 		if !self.sections.contains_key(&section_idx) {
 			self.sections
@@ -353,12 +377,12 @@ where
 	}
 
 	pub fn add_face3_data(&mut self, verts: [V; 3], data: FaceDataProps<V>) {
-		let section = self.get_or_create_section(data.section.unwrap_or(DEFAULT_SECTION));
+		let section = self.get_or_create_section(data.section.unwrap_or(DEFAULT_MESH_SECTION));
 		section.add_face3_data(verts, data);
 	}
 
 	pub fn add_face4_data(&mut self, verts: [V; 4], data: FaceDataProps<V>) {
-		let section = self.get_or_create_section(data.section.unwrap_or(DEFAULT_SECTION));
+		let section = self.get_or_create_section(data.section.unwrap_or(DEFAULT_MESH_SECTION));
 		section.add_face4_data(verts, data);
 	}
 
@@ -401,6 +425,16 @@ where
 	pub fn vertex<T: Into<SectionIndex>>(&self, into_idx: T) -> &MeshVertex<V> {
 		let i: SectionIndex = into_idx.into();
 		&self.sections.get(&i.section).unwrap().vertices[i.index]
+	}
+
+	pub fn get_vertex_index(&self, pos: Vec3) -> Vec<SectionIndex> {
+		let mut indices = vec![];
+		for (section_idx, section) in self.sections.iter() {
+			if let Some(idx) = section.vertex_indices.get(&pos.into()) {
+				indices.push(section_index(*section_idx, *idx));
+			}
+		}
+		indices
 	}
 
 	pub fn face<T: Into<SectionIndex>>(&self, into_idx: T) -> &Face<V> {
@@ -495,23 +529,14 @@ where
 					only_triangles = false;
 				}
 				if face.face_normal.is_none() {
-					let normal = Some(self.calculate_face_normal(SectionIndex {
-						section: section_idx,
-						index: face_idx,
-					}));
+					let normal =
+						Some(self.calculate_face_normal(section_index(section_idx, face_idx)));
 					let face = &mut self.sections.get_mut(&section_idx).unwrap().faces[face_idx];
 					face.face_normal = normal;
 				}
 			}
 		}
 		!only_triangles
-	}
-
-	pub fn face_count(&self) -> usize {
-		self.sections
-			.iter()
-			.map(|(_, section)| section.faces.len())
-			.sum()
 	}
 }
 
@@ -532,7 +557,7 @@ where
 						vertex_count += 1;
 					}
 
-					for face in section.faces {
+					for face in section.faces.iter() {
 						fill_face_index_buffer(&mut indices, &face.vertices);
 					}
 				}
@@ -541,72 +566,41 @@ where
 			MeshBufferType::VertexNormals => {
 				self.ensure_face_normals();
 
-				let mut section_vert_indices = BTreeMap::<usize, BTreeMap<usize, usize>>::new();
-				let mut section_vertices = BTreeMap::<usize, Vec<usize>>::new();
-
-				for section in self.sections.values() {
-					for (i, vertex) in section.vertices.iter().enumerate() {
-						for face_idx in &vertex.faces {
-							if !section_vertices.contains_key(&section) {
-								section_vertices.insert(section, vec![]);
-							}
-
-							if !section_vert_indices.contains_key(&i) {
-								section_vert_indices.insert(i, BTreeMap::new());
-							}
-
-							let index = section_vertices.get(&section).unwrap().len();
-
-							section_vert_indices
-								.get_mut(&i)
-								.unwrap()
-								.insert(section, index);
-
-							section_vertices.get_mut(&section).unwrap().push(i);
-						}
-					}
-				}
-
 				let mut idx_offset = 0;
 
-				for (section, faces) in self.faces.iter().enumerate() {
-					for v_idx in section_vertices.get(&section).unwrap() {
-						let vertex = &self.vertices[*v_idx];
-
-						let normal = self.calculate_vertex_normal(section, *v_idx);
+				for (sec_idx, section) in self.sections.iter() {
+					for (v_idx, vertex) in section.vertices.iter().enumerate() {
+						let normal = self.calculate_vertex_normal(section_index(*sec_idx, v_idx));
 
 						buffer.extend(bytemuck::bytes_of(&vertex.data));
 						buffer.extend(bytemuck::bytes_of(&normal));
 						vertex_count += 1;
 					}
 
-					for face in faces {
+					for face in section.faces.iter() {
 						let vert_indices = face
 							.vertices
 							.iter()
-							.map(|v| {
-								section_vert_indices.get(v).unwrap().get(&section).unwrap()
-									+ idx_offset
-							})
+							.map(|v| v + idx_offset)
 							.collect::<Vec<_>>();
 
 						fill_face_index_buffer(&mut indices, &vert_indices);
 					}
 
-					idx_offset += section_vertices.get(&section).unwrap().len();
+					idx_offset += section.vertices.len();
 				}
 			}
 
 			MeshBufferType::VertexNormalFaceData => {
 				let has_quads = self.ensure_face_normals();
 
-				for (section, faces) in self.faces.iter().enumerate() {
-					for face in faces {
+				for (sec_idx, section) in self.sections.iter() {
+					for face in section.faces.iter() {
 						let index_offset = vertex_count;
 
 						for v in &face.vertices {
-							let vertex = &self.vertices[*v];
-							let normal = self.calculate_vertex_normal(section, *v);
+							let vertex = &section.vertices[*v];
+							let normal = self.calculate_vertex_normal(section_index(*sec_idx, *v));
 							let mut data = vertex.data;
 							if face.data.is_some() {
 								data = data.override_with(&face.data.unwrap());
@@ -631,13 +625,13 @@ where
 			MeshBufferType::FaceNormals => {
 				let has_quads = self.ensure_face_normals();
 
-				for faces in self.faces.iter_mut() {
-					for face in faces {
+				for section in self.sections.values() {
+					for face in section.faces.iter() {
 						let index_offset = vertex_count;
 						let normal = face.face_normal.unwrap();
 
 						for v in &face.vertices {
-							let mut data = self.vertices[*v].data;
+							let mut data = section.vertices[*v].data;
 							if face.data.is_some() {
 								data = data.override_with(&face.data.unwrap());
 							}
