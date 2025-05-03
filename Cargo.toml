@@ -37,7 +37,7 @@ glam = { version = "0.30", features = [
 ] }
 winit = "0.30"
 wgpu = { version = "24.0", features = ["spirv"] }
-spirv-std = { version = "0.9" }
+spirv-std = { git = "https://github.com/Rust-GPU/rust-gpu", rev = "1e4e468ccf7965d90a9748c7513f72e852fb5041" }
 log = "0.4"
 env_logger = "0.11"
 pollster = "0.4.0"
