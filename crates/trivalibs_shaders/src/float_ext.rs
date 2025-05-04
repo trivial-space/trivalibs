@@ -18,22 +18,24 @@ pub fn step(edge: f32, x: f32) -> f32 {
 }
 
 /// Third order polynomial interpolation of values between 0 and 1.
-/// Other values are clamped to 0 or 1.
+/// Make sure to clamp the input to [0, 1] before using this function.
 pub fn smoothen(t: f32) -> f32 {
-	let t = t.clamp(0.0, 1.0);
 	t * t * (3.0 - 2.0 * t)
 }
 
 /// Fifth order polynomial interpolation of values between 0 and 1.
-/// Other values are clamped to 0 or 1.
+/// Make sure to clamp the input to [0, 1] before using this function.
 pub fn smoothen_more(t: f32) -> f32 {
-	let t = t.clamp(0.0, 1.0);
 	t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
 }
 
-pub trait FloatExt {
+pub trait FloatExt
+where
+	Self: Sized,
+{
 	fn fit0111(self) -> Self;
 	fn fit1101(self) -> Self;
+	fn clamp01(self) -> Self;
 
 	fn lerp(self, other: Self, t: f32) -> Self;
 	fn step(self, edge: Self) -> Self;
@@ -41,6 +43,7 @@ pub trait FloatExt {
 	fn smoothen(self) -> Self;
 	fn smoothen_more(self) -> Self;
 	fn smoothstep(self, edge0: Self, edge1: Self) -> Self;
+	fn step_fn<F: Fn(Self) -> Self>(self, edge0: Self, edge1: Self, f: F) -> Self;
 }
 
 impl FloatExt for f32 {
@@ -50,12 +53,19 @@ impl FloatExt for f32 {
 	fn fit1101(self) -> Self {
 		fit1101(self)
 	}
+	fn clamp01(self) -> Self {
+		self.clamp(0., 1.)
+	}
 
 	fn lerp(self, other: Self, t: f32) -> Self {
 		self + (other - self) * t
 	}
 	fn step(self, edge: Self) -> Self {
 		step(edge, self)
+	}
+	fn step_fn<F: Fn(Self) -> Self>(self, edge0: Self, edge1: Self, f: F) -> Self {
+		let t = (self - edge0) / (edge1 - edge0);
+		f(t.clamp01())
 	}
 
 	fn smoothen(self) -> Self {
@@ -65,7 +75,6 @@ impl FloatExt for f32 {
 		smoothen_more(self)
 	}
 	fn smoothstep(self, edge0: Self, edge1: Self) -> Self {
-		let t = (self - edge0) / (edge1 - edge0);
-		t.smoothen()
+		self.step_fn(edge0, edge1, |t| t.smoothen())
 	}
 }

@@ -227,9 +227,9 @@ pub fn simplex_noise_4d(pos: Vec4) -> f32 {
 	i0.w += tmp.y + 1.0 - is_yz.z;
 
 	// i0 now contains the unique values 0,1,2,3 in each channel
-	let i3 = i0.clamp(Vec4::ZERO, Vec4::ONE);
-	let i2 = (i0 - Vec4::ONE).clamp(Vec4::ZERO, Vec4::ONE);
-	let i1 = (i0 - Vec4::splat(2.0)).clamp(Vec4::ZERO, Vec4::ONE);
+	let i3 = i0.clamp01();
+	let i2 = (i0 - Vec4::ONE).clamp01();
+	let i1 = (i0 - Vec4::splat(2.0)).clamp01();
 
 	let x1 = x0 - i1 + c.xxxx();
 	let x2 = x0 - i2 + c.yyyy();
