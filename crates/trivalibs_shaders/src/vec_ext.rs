@@ -10,6 +10,7 @@ where
 	fn sin(self) -> Self;
 	fn cos(self) -> Self;
 	fn sqrt(self) -> Self;
+	fn frct(self) -> Self;
 
 	fn fit0111(self) -> Self;
 	fn fit1101(self) -> Self;
@@ -35,6 +36,9 @@ impl VecExt for Vec2 {
 	}
 	fn sqrt(self) -> Self {
 		vec2(self.x.sqrt(), self.y.sqrt())
+	}
+	fn frct(self) -> Self {
+		vec2(self.x.frct(), self.y.frct())
 	}
 
 	fn fit0111(self) -> Self {
@@ -87,6 +91,9 @@ impl VecExt for Vec3 {
 	}
 	fn sqrt(self) -> Self {
 		vec3(self.x.sqrt(), self.y.sqrt(), self.z.sqrt())
+	}
+	fn frct(self) -> Self {
+		vec3(self.x.frct(), self.y.frct(), self.z.frct())
 	}
 
 	fn fit0111(self) -> Self {
@@ -153,6 +160,9 @@ impl VecExt for Vec4 {
 	}
 	fn sqrt(self) -> Self {
 		vec4(self.x.sqrt(), self.y.sqrt(), self.z.sqrt(), self.w.sqrt())
+	}
+	fn frct(self) -> Self {
+		vec4(self.x.frct(), self.y.frct(), self.z.frct(), self.w.frct())
 	}
 
 	fn fit0111(self) -> Self {

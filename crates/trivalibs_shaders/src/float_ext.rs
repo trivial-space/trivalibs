@@ -29,6 +29,12 @@ pub fn smoothen_more(t: f32) -> f32 {
 	t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
 }
 
+/// Fractional part of a number. It is defined as `x - floor(x)`.
+/// In contrast, std implementation fract is defined as `x - trunc(x)`, which inverts direction when negative.
+pub fn frct(x: f32) -> f32 {
+	x - x.floor()
+}
+
 pub trait FloatExt
 where
 	Self: Sized,
@@ -37,11 +43,21 @@ where
 	fn fit1101(self) -> Self;
 	fn clamp01(self) -> Self;
 
+	/// Fractional part of a number. It is defined as `x - floor(x)`.
+	/// In contrast, std implementation fract is defined as `x - trunc(x)`, which inverts direction when negative.
+	fn frct(self) -> Self;
+
 	fn lerp(self, other: Self, t: f32) -> Self;
 	fn step(self, edge: Self) -> Self;
 
+	/// Third order polynomial interpolation of values between 0 and 1.
+	/// Make sure to clamp the input to [0, 1] before using this function.
 	fn smoothen(self) -> Self;
+
+	/// Fifth order polynomial interpolation of values between 0 and 1.
+	/// Make sure to clamp the input to [0, 1] before using this function.
 	fn smoothen_more(self) -> Self;
+
 	fn smoothstep(self, edge0: Self, edge1: Self) -> Self;
 	fn step_fn<F: Fn(Self) -> Self>(self, edge0: Self, edge1: Self, f: F) -> Self;
 }
@@ -55,6 +71,9 @@ impl FloatExt for f32 {
 	}
 	fn clamp01(self) -> Self {
 		self.clamp(0., 1.)
+	}
+	fn frct(self) -> Self {
+		frct(self)
 	}
 
 	fn lerp(self, other: Self, t: f32) -> Self {
