@@ -46,6 +46,7 @@ where
 	/// Fractional part of a number. It is defined as `x - floor(x)`.
 	/// In contrast, std implementation fract is defined as `x - trunc(x)`, which inverts direction when negative.
 	fn frct(self) -> Self;
+	fn rem(self, other: Self) -> Self;
 
 	fn lerp(self, other: Self, t: f32) -> Self;
 	fn step(self, edge: Self) -> Self;
@@ -74,6 +75,14 @@ impl FloatExt for f32 {
 	}
 	fn frct(self) -> Self {
 		frct(self)
+	}
+	fn rem(self, other: Self) -> Self {
+		let r = self % other;
+		if r < 0.0 {
+			r + other.abs()
+		} else {
+			r
+		}
 	}
 
 	fn lerp(self, other: Self, t: f32) -> Self {
