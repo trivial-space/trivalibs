@@ -1,10 +1,17 @@
-use crate::{binding::Binding, uniform::Uniform, Painter};
+use crate::{binding::Binding, texture_utils::num_mip_levels, uniform::Uniform, Painter};
 use trivalibs_core::utils::default;
+
+#[derive(Clone, Copy)]
+pub enum MipMapCount {
+	Full,
+	Max(u32),
+}
 
 #[derive(Clone, Copy)]
 pub struct Texture2DProps {
 	pub format: wgpu::TextureFormat,
 	pub usage: wgpu::TextureUsages,
+	pub mips: Option<MipMapCount>,
 }
 
 impl Default for Texture2DProps {
@@ -12,6 +19,7 @@ impl Default for Texture2DProps {
 		Texture2DProps {
 			format: wgpu::TextureFormat::Rgba8UnormSrgb,
 			usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+			mips: None,
 		}
 	}
 }
@@ -32,18 +40,34 @@ fn create_2d(
 	props: Texture2DProps,
 	multi_sampled: bool,
 ) -> wgpu::Texture {
+	let extent = wgpu::Extent3d {
+		width,
+		height,
+		depth_or_array_layers: 1,
+	};
+
+	let mip_level_count = if let Some(mips) = props.mips {
+		let max_mip_levels = num_mip_levels(extent);
+		match mips {
+			MipMapCount::Full => max_mip_levels,
+			MipMapCount::Max(max) => max.min(max_mip_levels),
+		}
+	} else {
+		1
+	};
+
 	painter.device.create_texture(&wgpu::TextureDescriptor {
 		label: None,
-		size: wgpu::Extent3d {
-			width,
-			height,
-			depth_or_array_layers: 1,
-		},
-		mip_level_count: 1,
+		size: extent,
+		mip_level_count,
 		sample_count: if multi_sampled { 4 } else { 1 },
 		dimension: wgpu::TextureDimension::D2,
 		format: props.format,
-		usage: props.usage,
+		usage: if mip_level_count > 1 {
+			props.usage | wgpu::TextureUsages::RENDER_ATTACHMENT
+		} else {
+			props.usage
+		},
 		view_formats: &[],
 	})
 }

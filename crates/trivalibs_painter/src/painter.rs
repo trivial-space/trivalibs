@@ -103,7 +103,7 @@ impl Painter {
 		surface.configure(&device, &config);
 
 		let fullscreen_quad_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-			label: None,
+			label: Some("Fullscreen Quad Shader"),
 			source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(FULL_SCREEN_QUAD)),
 		});
 
@@ -143,6 +143,15 @@ impl Painter {
 			&Vec::with_capacity(0),
 			&Vec::with_capacity(0),
 			&vec![(0, Sampler(0).uniform())],
+		);
+
+		Binding::uniforms(
+			&mut painter,
+			1,
+			Some(layer_sampler_layout),
+			&Vec::with_capacity(0),
+			&Vec::with_capacity(0),
+			&vec![(0, Sampler(1).uniform())],
 		);
 
 		let fullscreen_quad_pipeline_layout =
@@ -401,47 +410,47 @@ impl Painter {
 		}
 	}
 
-	fn render_shape(&self, rpass: &mut wgpu::RenderPass<'_>, shape: Shape, layer: Layer) {
+	fn render_shape(&self, pass: &mut wgpu::RenderPass<'_>, shape: Shape, layer: Layer) {
 		let s = &self.shapes[shape.0];
 		let f = &self.forms[s.form.0];
 		let l = &self.layers[layer.0];
 
-		let draw = |rpass: &mut wgpu::RenderPass, binding: Option<Binding>| {
+		let draw = |pass: &mut wgpu::RenderPass, binding: Option<Binding>| {
 			if let Some(binding) = binding {
-				rpass.set_bind_group(0, &self.bindings[binding.0].binding, &[]);
+				pass.set_bind_group(0, &self.bindings[binding.0].binding, &[]);
 			}
 
-			rpass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
+			pass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
 			if let Some(index_buffer) = &f.index_buffer {
-				rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-				rpass.draw_indexed(0..f.index_count, 0, 0..1);
+				pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+				pass.draw_indexed(0..f.index_count, 0, 0..1);
 			} else {
-				rpass.draw(0..f.vertex_count, 0..1);
+				pass.draw(0..f.vertex_count, 0..1);
 			}
 		};
 
 		let pipeline_key = self.get_shape_pipeline_key(shape, layer);
 		let pipeline = &self.pipelines[&pipeline_key];
-		rpass.set_pipeline(&pipeline.pipeline);
+		pass.set_pipeline(&pipeline.pipeline);
 
 		for (index, layer) in &l.effect_layers {
 			let l = &self.layers[layer.0];
 			let b = l.current_source();
-			rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
+			pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 		}
 
 		let s = &self.shapes[shape.0];
 		for (index, layer) in &s.effect_layers {
 			let l = &self.layers[layer.0];
 			let b = l.current_source();
-			rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
+			pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 		}
 
 		if s.uniform_bindings.is_empty() {
-			draw(rpass, None);
+			draw(pass, None);
 		} else {
 			for binding in &s.uniform_bindings {
-				draw(rpass, Some(binding.clone()));
+				draw(pass, Some(binding.clone()));
 			}
 		}
 	}
@@ -462,7 +471,7 @@ impl Painter {
 			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
 		{
-			let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+			let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
 				label: None,
 				color_attachments: &[Some(wgpu::RenderPassColorAttachment {
 					view,
@@ -481,31 +490,31 @@ impl Painter {
 
 			let pipeline_key = self.get_effect_pipeline_key(effect, layer);
 			let pipeline = &self.pipelines[&pipeline_key];
-			rpass.set_pipeline(&pipeline.pipeline);
+			pass.set_pipeline(&pipeline.pipeline);
 
 			if !skip_source {
 				let b = l.current_source();
-				rpass.set_bind_group(1, &self.bindings[b.0].binding, &[]);
+				pass.set_bind_group(1, &self.bindings[b.0].binding, &[]);
 			}
 
 			for (index, layer) in &l.effect_layers {
 				let l = &self.layers[layer.0];
 				let b = l.current_source();
-				rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
+				pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 			}
 
 			for (index, layer) in &e.effect_layers {
 				let l = &self.layers[layer.0];
 				let b = l.current_source();
-				rpass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
+				pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 			}
 
 			if e.uniform_bindings.is_empty() {
-				rpass.draw(0..3, 0..1);
+				pass.draw(0..3, 0..1);
 			} else {
 				for b in &e.uniform_bindings {
-					rpass.set_bind_group(0, &self.bindings[b.0].binding, &[]);
-					rpass.draw(0..3, 0..1);
+					pass.set_bind_group(0, &self.bindings[b.0].binding, &[]);
+					pass.draw(0..3, 0..1);
 				}
 			}
 		}
@@ -572,7 +581,7 @@ impl Painter {
 				.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
 			{
-				let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+				let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
 					label: None,
 					color_attachments: &color_attachments,
 					depth_stencil_attachment: l.depth_texture.as_ref().map(|t| {
@@ -591,7 +600,7 @@ impl Painter {
 
 				for i in 0..shapes_len {
 					let shape = l.shapes[i];
-					self.render_shape(&mut rpass, shape, layer);
+					self.render_shape(&mut pass, shape, layer);
 				}
 			}
 
@@ -638,7 +647,7 @@ impl Painter {
 		let pipeline = &self.pipelines[FULL_SCREEN_TEXTURE_PIPELINE];
 
 		{
-			let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+			let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
 				label: None,
 				color_attachments: &[Some(wgpu::RenderPassColorAttachment {
 					view: &view,
@@ -652,10 +661,10 @@ impl Painter {
 				timestamp_writes: None,
 				occlusion_query_set: None,
 			});
-			rpass.set_pipeline(&pipeline.pipeline);
-			rpass.set_bind_group(0, &self.bindings[0].binding, &[]);
-			rpass.set_bind_group(1, &self.bindings[layer_binding.0].binding, &[]);
-			rpass.draw(0..3, 0..1);
+			pass.set_pipeline(&pipeline.pipeline);
+			pass.set_bind_group(0, &self.bindings[0].binding, &[]);
+			pass.set_bind_group(1, &self.bindings[layer_binding.0].binding, &[]);
+			pass.draw(0..3, 0..1);
 		}
 
 		self.queue.submit(Some(encoder.finish()));
