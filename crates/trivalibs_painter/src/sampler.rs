@@ -6,6 +6,7 @@ pub struct SamplerProps {
 	pub address_mode_v: wgpu::AddressMode,
 	pub mag_filter: wgpu::FilterMode,
 	pub min_filter: wgpu::FilterMode,
+	pub mipmap_filter: wgpu::FilterMode,
 	pub sample_depth: bool,
 }
 
@@ -21,6 +22,7 @@ impl SamplerProps {
 		address_mode_v: wgpu::AddressMode::ClampToEdge,
 		mag_filter: wgpu::FilterMode::Nearest,
 		min_filter: wgpu::FilterMode::Nearest,
+		mipmap_filter: wgpu::FilterMode::Nearest,
 		sample_depth: false,
 	};
 
@@ -29,6 +31,7 @@ impl SamplerProps {
 		address_mode_v: wgpu::AddressMode::ClampToEdge,
 		mag_filter: wgpu::FilterMode::Linear,
 		min_filter: wgpu::FilterMode::Linear,
+		mipmap_filter: wgpu::FilterMode::Nearest,
 		sample_depth: false,
 	};
 }
@@ -44,7 +47,7 @@ impl Sampler {
 			address_mode_w: wgpu::AddressMode::ClampToEdge,
 			mag_filter: props.mag_filter,
 			min_filter: props.min_filter,
-			mipmap_filter: wgpu::FilterMode::Nearest,
+			mipmap_filter: props.mipmap_filter,
 			compare: props.sample_depth.then(|| wgpu::CompareFunction::LessEqual),
 			..Default::default()
 		});
@@ -105,6 +108,11 @@ impl<'a> SamplerBuilder<'a> {
 	pub fn with_filters(mut self, filter: wgpu::FilterMode) -> Self {
 		self.props.mag_filter = filter;
 		self.props.min_filter = filter;
+		self
+	}
+
+	pub fn with_mipmap_filter(mut self, filter: wgpu::FilterMode) -> Self {
+		self.props.mipmap_filter = filter;
 		self
 	}
 

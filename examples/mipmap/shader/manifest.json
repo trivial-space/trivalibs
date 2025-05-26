@@ -1,0 +1,12 @@
+[
+  {
+    "source_path": "image.spv",
+    "entry_point": "image",
+    "wgsl_entry_point": "image"
+  },
+  {
+    "source_path": "mip_sampling.spv",
+    "entry_point": "mip_sampling",
+    "wgsl_entry_point": "mip_sampling"
+  }
+]

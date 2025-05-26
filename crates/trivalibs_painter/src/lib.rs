@@ -9,7 +9,6 @@ pub mod effect;
 pub mod form;
 pub mod layer;
 pub(crate) mod pipeline;
-pub(crate) mod pipeline_utils;
 pub mod sampler;
 pub mod shade;
 pub mod shaders;

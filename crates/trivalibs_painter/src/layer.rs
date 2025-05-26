@@ -3,7 +3,7 @@ use crate::{
 	effect::Effect,
 	prelude::{UNIFORM_LAYER_BOTH, UNIFORM_LAYER_FRAG, UNIFORM_LAYER_VERT},
 	shape::Shape,
-	texture::{Texture, Texture2DProps},
+	texture::{MipMapCount, Texture, Texture2DProps},
 	uniform::{LayerLayout, Uniform},
 	Painter,
 };
@@ -111,6 +111,7 @@ pub(crate) struct LayerStorage {
 	pub is_multi_target: bool,
 	pub uniforms: Vec<(u32, Uniform)>,
 	pub effect_layers: Vec<(u32, Layer)>,
+	pub mips: Option<MipMapCount>,
 }
 
 impl LayerStorage {
@@ -146,6 +147,7 @@ pub struct LayerProps {
 	pub depth_test: bool,
 	pub layer_layout: LayerLayout,
 	pub multisampled: bool,
+	pub mips: Option<MipMapCount>,
 }
 
 impl Default for LayerProps {
@@ -162,6 +164,7 @@ impl Default for LayerProps {
 			clear_color: None,
 			depth_test: false,
 			multisampled: false,
+			mips: None,
 		}
 	}
 }
@@ -235,6 +238,7 @@ impl Layer {
 						format,
 						usage: wgpu::TextureUsages::RENDER_ATTACHMENT
 							| wgpu::TextureUsages::TEXTURE_BINDING,
+						mips: props.mips,
 					},
 					false,
 				);
@@ -250,6 +254,7 @@ impl Layer {
 						Texture2DProps {
 							format,
 							usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+							mips: None,
 						},
 						true,
 					));
@@ -269,6 +274,7 @@ impl Layer {
 						format,
 						usage: wgpu::TextureUsages::RENDER_ATTACHMENT
 							| wgpu::TextureUsages::TEXTURE_BINDING,
+						mips: props.mips,
 					},
 					false,
 				);
@@ -286,6 +292,7 @@ impl Layer {
 					Texture2DProps {
 						format,
 						usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+						mips: None,
 					},
 					true,
 				));
@@ -313,6 +320,7 @@ impl Layer {
 			uniforms: props.uniforms,
 			effect_layers: props.effect_layers,
 			binding_layout: layout,
+			mips: props.mips,
 		};
 
 		painter.layers.push(storage);
@@ -393,6 +401,7 @@ impl Layer {
 		let targets = storage.target_textures.clone();
 		let depth_texture = storage.depth_texture.clone();
 		let multisampled_textures = storage.multisampled_textures.clone();
+		let mips = storage.mips;
 
 		for texture in targets.iter() {
 			let format = painter.textures[texture.0].texture.format();
@@ -404,6 +413,7 @@ impl Layer {
 					format,
 					usage: wgpu::TextureUsages::RENDER_ATTACHMENT
 						| wgpu::TextureUsages::TEXTURE_BINDING,
+					mips,
 				},
 				false,
 			);
@@ -422,10 +432,16 @@ impl Layer {
 				Texture2DProps {
 					format,
 					usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+					mips: None,
 				},
 				true,
 			);
 		}
+	}
+
+	pub fn get_mip_levels_count(&self, painter: &Painter) -> u32 {
+		let storage = &painter.layers[self.0];
+		storage.target_textures[0].get_mip_level_count(painter)
 	}
 }
 
@@ -539,6 +555,16 @@ impl<'a> LayerBuilder<'a> {
 
 	pub fn with_multisampling(mut self) -> Self {
 		self.props.multisampled = true;
+		self
+	}
+
+	pub fn with_mips(mut self) -> Self {
+		self.props.mips = Some(MipMapCount::Full);
+		self
+	}
+
+	pub fn with_mips_max(mut self, max: u32) -> Self {
+		self.props.mips = Some(MipMapCount::Max(max));
 		self
 	}
 }
