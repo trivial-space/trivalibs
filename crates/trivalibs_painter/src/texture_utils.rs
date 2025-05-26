@@ -87,7 +87,7 @@ pub fn num_mip_levels(size: wgpu::Extent3d) -> u32 {
 //   device.queue.submit([commandBuffer]);
 // }
 
-pub fn generate_mipmap_2d(painter: &mut Painter, texture: &wgpu::Texture) {
+pub fn generate_mipmap_2d(painter: &Painter, texture: &wgpu::Texture) {
 	let mut encoder = painter
 		.device
 		.create_command_encoder(&wgpu::CommandEncoderDescriptor {

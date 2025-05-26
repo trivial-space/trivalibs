@@ -1,5 +1,11 @@
-use crate::{binding::Binding, texture_utils::num_mip_levels, uniform::Uniform, Painter};
+use crate::{
+	binding::Binding,
+	texture_utils::{generate_mipmap_2d, num_mip_levels},
+	uniform::Uniform,
+	Painter,
+};
 use trivalibs_core::utils::default;
+use wgpu::TextureViewDescriptor;
 
 #[derive(Clone, Copy)]
 pub enum MipMapCount {
@@ -26,7 +32,8 @@ impl Default for Texture2DProps {
 
 pub(crate) struct TextureStorage {
 	pub texture: wgpu::Texture,
-	pub view: wgpu::TextureView,
+	pub src_view: wgpu::TextureView,
+	pub dst_view: wgpu::TextureView,
 	pub bindings: Vec<Binding>,
 }
 
@@ -103,10 +110,20 @@ impl Texture {
 		multi_sampled: bool,
 	) -> Self {
 		let texture = create_2d(painter, width, height, props, multi_sampled);
-		let view = texture.create_view(&default());
+		let src_view = texture.create_view(&TextureViewDescriptor {
+			base_mip_level: 0,
+			mip_level_count: Some(texture.mip_level_count()),
+			..default()
+		});
+		let dst_view = texture.create_view(&TextureViewDescriptor {
+			base_mip_level: 0,
+			mip_level_count: Some(1),
+			..default()
+		});
 		let storage = TextureStorage {
 			texture,
-			view,
+			src_view,
+			dst_view,
 			bindings: Vec::with_capacity(16),
 		};
 		painter.textures.push(storage);
@@ -123,13 +140,24 @@ impl Texture {
 		multi_sampled: bool,
 	) {
 		let texture = create_2d(painter, width, height, props, multi_sampled);
-		let view = texture.create_view(&default());
+
+		let src_view = texture.create_view(&TextureViewDescriptor {
+			base_mip_level: 0,
+			mip_level_count: Some(texture.mip_level_count()),
+			..default()
+		});
+		let dst_view = texture.create_view(&TextureViewDescriptor {
+			base_mip_level: 0,
+			mip_level_count: Some(1),
+			..default()
+		});
 
 		let old = &mut painter.textures[self.0];
 
 		let storage = TextureStorage {
 			texture,
-			view,
+			src_view,
+			dst_view,
 			bindings: old.bindings.clone(),
 		};
 
@@ -151,7 +179,8 @@ impl Texture {
 
 		let storage = TextureStorage {
 			texture,
-			view,
+			src_view: view.clone(),
+			dst_view: view,
 			bindings: Vec::with_capacity(2),
 		};
 
@@ -173,7 +202,8 @@ impl Texture {
 
 		let storage = TextureStorage {
 			texture,
-			view,
+			src_view: view.clone(),
+			dst_view: view,
 			bindings: old.bindings.clone(),
 		};
 
@@ -225,6 +255,18 @@ impl Texture {
 		for b in t.bindings.clone() {
 			b.rebuild(painter);
 		}
+	}
+
+	pub fn update_mips(&self, painter: &Painter) {
+		let t = &painter.textures[self.0].texture;
+		if t.mip_level_count() > 1 {
+			let texture = &t.clone();
+			generate_mipmap_2d(painter, texture);
+		}
+	}
+
+	pub fn get_mip_level_count(&self, painter: &Painter) -> u32 {
+		painter.textures[self.0].texture.mip_level_count()
 	}
 }
 

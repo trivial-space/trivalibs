@@ -78,7 +78,7 @@ fn uniform_to_resource<'a>(
 	match uniform {
 		Uniform::Tex2D(tex) => {
 			let tex = &painter.textures[tex.0];
-			wgpu::BindingResource::TextureView(&tex.view)
+			wgpu::BindingResource::TextureView(&tex.src_view)
 		}
 		Uniform::Sampler(sampler) => {
 			let sampler = &painter.samplers[sampler.0];
