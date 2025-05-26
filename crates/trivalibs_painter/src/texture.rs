@@ -111,12 +111,10 @@ impl Texture {
 	) -> Self {
 		let texture = create_2d(painter, width, height, props, multi_sampled);
 		let src_view = texture.create_view(&TextureViewDescriptor {
-			base_mip_level: 0,
 			mip_level_count: Some(texture.mip_level_count()),
 			..default()
 		});
 		let dst_view = texture.create_view(&TextureViewDescriptor {
-			base_mip_level: 0,
 			mip_level_count: Some(1),
 			..default()
 		});
@@ -142,12 +140,10 @@ impl Texture {
 		let texture = create_2d(painter, width, height, props, multi_sampled);
 
 		let src_view = texture.create_view(&TextureViewDescriptor {
-			base_mip_level: 0,
 			mip_level_count: Some(texture.mip_level_count()),
 			..default()
 		});
 		let dst_view = texture.create_view(&TextureViewDescriptor {
-			base_mip_level: 0,
 			mip_level_count: Some(1),
 			..default()
 		});

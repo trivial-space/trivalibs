@@ -31,7 +31,7 @@ impl SamplerProps {
 		address_mode_v: wgpu::AddressMode::ClampToEdge,
 		mag_filter: wgpu::FilterMode::Linear,
 		min_filter: wgpu::FilterMode::Linear,
-		mipmap_filter: wgpu::FilterMode::Linear,
+		mipmap_filter: wgpu::FilterMode::Nearest,
 		sample_depth: false,
 	};
 }
