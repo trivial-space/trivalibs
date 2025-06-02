@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::{
 	binding::Binding,
 	texture_utils::{generate_mipmap_2d, num_mip_levels},
@@ -30,11 +32,41 @@ impl Default for Texture2DProps {
 	}
 }
 
+#[derive(PartialEq, PartialOrd, Ord, Eq, Copy, Clone, Debug)]
+pub(crate) enum TexViewKey {
+	Default,
+	WithAllMips,
+	AtMipLevel(u32),
+}
+
+impl TexViewKey {
+	pub fn make_view(&self, t: &wgpu::Texture) -> wgpu::TextureView {
+		match self {
+			TexViewKey::Default => t.create_view(&default()),
+			TexViewKey::WithAllMips => t.create_view(&TextureViewDescriptor {
+				mip_level_count: Some(t.mip_level_count()),
+				..default()
+			}),
+			TexViewKey::AtMipLevel(mip_level) => t.create_view(&wgpu::TextureViewDescriptor {
+				base_mip_level: *mip_level,
+				mip_level_count: Some(1),
+				..default()
+			}),
+		}
+	}
+}
+
 pub(crate) struct TextureStorage {
 	pub texture: wgpu::Texture,
-	pub src_view: wgpu::TextureView,
-	pub dst_view: wgpu::TextureView,
+	pub views: BTreeMap<TexViewKey, wgpu::TextureView>,
 	pub bindings: Vec<Binding>,
+}
+
+impl TextureStorage {
+	pub(crate) fn prepare_view(&mut self, key: TexViewKey) {
+		let view = key.make_view(&self.texture);
+		self.views.insert(key, view);
+	}
 }
 
 #[derive(Clone, Copy)]
@@ -110,20 +142,17 @@ impl Texture {
 		multi_sampled: bool,
 	) -> Self {
 		let texture = create_2d(painter, width, height, props, multi_sampled);
-		let src_view = texture.create_view(&TextureViewDescriptor {
-			mip_level_count: Some(texture.mip_level_count()),
-			..default()
-		});
-		let dst_view = texture.create_view(&TextureViewDescriptor {
-			mip_level_count: Some(1),
-			..default()
-		});
-		let storage = TextureStorage {
+
+		let mut storage = TextureStorage {
 			texture,
-			src_view,
-			dst_view,
+			views: BTreeMap::new(),
 			bindings: Vec::with_capacity(16),
 		};
+
+		storage.prepare_view(TexViewKey::Default);
+		storage.prepare_view(TexViewKey::AtMipLevel(0));
+		storage.prepare_view(TexViewKey::WithAllMips);
+
 		painter.textures.push(storage);
 
 		Self(painter.textures.len() - 1)
@@ -139,23 +168,17 @@ impl Texture {
 	) {
 		let texture = create_2d(painter, width, height, props, multi_sampled);
 
-		let src_view = texture.create_view(&TextureViewDescriptor {
-			mip_level_count: Some(texture.mip_level_count()),
-			..default()
-		});
-		let dst_view = texture.create_view(&TextureViewDescriptor {
-			mip_level_count: Some(1),
-			..default()
-		});
-
 		let old = &mut painter.textures[self.0];
 
-		let storage = TextureStorage {
+		let mut storage = TextureStorage {
 			texture,
-			src_view,
-			dst_view,
+			views: BTreeMap::new(),
 			bindings: old.bindings.clone(),
 		};
+
+		storage.prepare_view(TexViewKey::Default);
+		storage.prepare_view(TexViewKey::AtMipLevel(0));
+		storage.prepare_view(TexViewKey::WithAllMips);
 
 		old.texture.destroy();
 
@@ -171,14 +194,14 @@ impl Texture {
 		multi_sampled: bool,
 	) -> Self {
 		let texture = create_depth(painter, width, height, multi_sampled);
-		let view = texture.create_view(&default());
 
-		let storage = TextureStorage {
+		let mut storage = TextureStorage {
 			texture,
-			src_view: view.clone(),
-			dst_view: view,
+			views: BTreeMap::new(),
 			bindings: Vec::with_capacity(2),
 		};
+
+		storage.prepare_view(TexViewKey::Default);
 
 		painter.textures.push(storage);
 
@@ -193,15 +216,15 @@ impl Texture {
 		multi_sampled: bool,
 	) {
 		let texture = create_depth(painter, width, height, multi_sampled);
-		let view = texture.create_view(&default());
 		let old = &mut painter.textures[self.0];
 
-		let storage = TextureStorage {
+		let mut storage = TextureStorage {
 			texture,
-			src_view: view.clone(),
-			dst_view: view,
 			bindings: old.bindings.clone(),
+			views: BTreeMap::new(),
 		};
+
+		storage.prepare_view(TexViewKey::Default);
 
 		old.texture.destroy();
 
@@ -244,12 +267,40 @@ impl Texture {
 		Uniform::Tex2D(*self)
 	}
 
+	pub(crate) fn prepare_view(&self, painter: &mut Painter, key: TexViewKey) {
+		let view = key.make_view(&painter.textures[self.0].texture);
+		painter.textures[self.0].views.insert(key, view);
+	}
+
+	pub(crate) fn view_at<'a>(
+		&self,
+		painter: &'a Painter,
+		key: &TexViewKey,
+	) -> &'a wgpu::TextureView {
+		painter.textures[self.0].views.get(key).unwrap()
+	}
+
+	pub(crate) fn source_view<'a>(&'a self, painter: &'a Painter) -> &'a wgpu::TextureView {
+		self.view_at(painter, &TexViewKey::WithAllMips)
+	}
+
+	pub(crate) fn target_view<'a>(&self, painter: &'a Painter) -> &'a wgpu::TextureView {
+		self.view_at(painter, &TexViewKey::AtMipLevel(0))
+	}
+
 	// Suggestion: Do not recreate bindings multiple time, if they reference several textures.
 	// Instead mark them as dirty and rebuild them later.
 	pub(crate) fn rebuild_bindings(&self, painter: &mut Painter) {
 		let t = &painter.textures[self.0];
+		let mut has_mip_level_view = false;
 		for b in t.bindings.clone() {
 			b.rebuild(painter);
+			has_mip_level_view |= b.has_mip_level_texture(painter);
+		}
+		if has_mip_level_view {
+			for i in 1..=self.get_mip_level_count(painter) {
+				self.prepare_view(painter, TexViewKey::AtMipLevel(i));
+			}
 		}
 	}
 

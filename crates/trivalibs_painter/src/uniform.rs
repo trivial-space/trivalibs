@@ -17,6 +17,7 @@ pub struct LayerLayout {
 pub enum Uniform {
 	Buffer(Buffer),
 	Tex2D(Texture),
+	Tex2DAtMipLevel(Texture, u32),
 	Sampler(Sampler),
 }
 

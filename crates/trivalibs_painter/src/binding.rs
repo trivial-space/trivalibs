@@ -1,6 +1,6 @@
 use crate::{
 	layer::Layer,
-	texture::Texture,
+	texture::{TexViewKey, Texture},
 	uniform::{InstanceUniforms, LayerLayout, Uniform, UniformLayout},
 	Painter,
 };
@@ -76,9 +76,13 @@ fn uniform_to_resource<'a>(
 	painter: &'a Painter,
 ) -> wgpu::BindingResource<'a> {
 	match uniform {
-		Uniform::Tex2D(tex) => {
-			let tex = &painter.textures[tex.0];
-			wgpu::BindingResource::TextureView(&tex.src_view)
+		Uniform::Tex2D(texture) => {
+			let view = texture.source_view(painter);
+			wgpu::BindingResource::TextureView(&view)
+		}
+		Uniform::Tex2DAtMipLevel(texture, mip_level) => {
+			let view = texture.view_at(painter, &TexViewKey::AtMipLevel(*mip_level));
+			wgpu::BindingResource::TextureView(&view)
 		}
 		Uniform::Sampler(sampler) => {
 			let sampler = &painter.samplers[sampler.0];
@@ -258,6 +262,7 @@ impl Binding {
 
 				painter.bindings[self.0].binding = bind_group;
 			}
+
 			BindingType::Uniforms(layout) => {
 				let layout = &painter.binding_layouts[layout.0];
 				let entries = storage
@@ -281,6 +286,14 @@ impl Binding {
 				painter.bindings[self.0].binding = bind_group;
 			}
 		}
+	}
+
+	pub(crate) fn has_mip_level_texture(&self, painter: &Painter) -> bool {
+		let storage = &painter.bindings[self.0];
+		storage.data.iter().any(|u| match u {
+			Uniform::Tex2DAtMipLevel(_, mip_level) => *mip_level > 0,
+			_ => false,
+		})
 	}
 
 	fn update_texture_bindings(&self, painter: &mut Painter) {

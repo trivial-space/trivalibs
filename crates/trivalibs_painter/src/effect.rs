@@ -14,6 +14,7 @@ pub(crate) struct EffectStorage {
 	pub pipeline_key: Vec<u8>,
 	pub blend_state: wgpu::BlendState,
 	pub uniform_bindings: Vec<Binding>,
+	pub dst_mip_level: Option<u32>,
 }
 
 #[derive(Clone)]
@@ -22,6 +23,7 @@ pub struct EffectProps {
 	pub effect_layers: Vec<(u32, Layer)>,
 	pub instances: Vec<InstanceUniforms>,
 	pub blend_state: wgpu::BlendState,
+	pub dst_mip_level: Option<u32>,
 }
 
 impl Default for EffectProps {
@@ -31,6 +33,7 @@ impl Default for EffectProps {
 			effect_layers: Vec::with_capacity(0),
 			instances: Vec::with_capacity(0),
 			blend_state: wgpu::BlendState::REPLACE,
+			dst_mip_level: None,
 		}
 	}
 }
@@ -63,6 +66,7 @@ impl Effect {
 			pipeline_key,
 			blend_state: props.blend_state,
 			uniform_bindings: Vec::with_capacity(0),
+			dst_mip_level: props.dst_mip_level,
 		};
 
 		painter.effects.push(effect);
@@ -88,6 +92,11 @@ impl Effect {
 		);
 
 		painter.effects[self.0].uniform_bindings = uniforms;
+	}
+
+	pub fn has_mip_target(&self, painter: &Painter) -> bool {
+		let e = &painter.effects[self.0];
+		e.dst_mip_level.is_some()
 	}
 }
 
