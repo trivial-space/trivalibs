@@ -81,7 +81,7 @@ fn uniform_to_resource<'a>(
 			wgpu::BindingResource::TextureView(&view)
 		}
 		Uniform::Tex2DAtMipLevel(texture, mip_level) => {
-			let view = texture.view_at(painter, &TexViewKey::AtMipLevel(*mip_level));
+			let view = texture.view(painter, &TexViewKey::AtMipLevel(*mip_level));
 			wgpu::BindingResource::TextureView(&view)
 		}
 		Uniform::Sampler(sampler) => {

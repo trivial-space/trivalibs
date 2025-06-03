@@ -149,7 +149,6 @@ impl Texture {
 			bindings: Vec::with_capacity(16),
 		};
 
-		storage.prepare_view(TexViewKey::Default);
 		storage.prepare_view(TexViewKey::AtMipLevel(0));
 		storage.prepare_view(TexViewKey::WithAllMips);
 
@@ -176,7 +175,6 @@ impl Texture {
 			bindings: old.bindings.clone(),
 		};
 
-		storage.prepare_view(TexViewKey::Default);
 		storage.prepare_view(TexViewKey::AtMipLevel(0));
 		storage.prepare_view(TexViewKey::WithAllMips);
 
@@ -268,24 +266,30 @@ impl Texture {
 	}
 
 	pub(crate) fn prepare_view(&self, painter: &mut Painter, key: TexViewKey) {
-		let view = key.make_view(&painter.textures[self.0].texture);
-		painter.textures[self.0].views.insert(key, view);
+		let t = &painter.textures[self.0];
+		if !t.views.contains_key(&key) {
+			let view = key.make_view(&t.texture);
+			painter.textures[self.0].views.insert(key, view);
+		}
 	}
 
-	pub(crate) fn view_at<'a>(
-		&self,
-		painter: &'a Painter,
-		key: &TexViewKey,
-	) -> &'a wgpu::TextureView {
+	pub(crate) fn prepare_mip_level_views(&self, painter: &mut Painter) {
+		let t = &painter.textures[self.0].texture;
+		for i in 1..=t.mip_level_count() {
+			self.prepare_view(painter, TexViewKey::AtMipLevel(i));
+		}
+	}
+
+	pub(crate) fn view<'a>(&self, painter: &'a Painter, key: &TexViewKey) -> &'a wgpu::TextureView {
 		painter.textures[self.0].views.get(key).unwrap()
 	}
 
 	pub(crate) fn source_view<'a>(&'a self, painter: &'a Painter) -> &'a wgpu::TextureView {
-		self.view_at(painter, &TexViewKey::WithAllMips)
+		self.view(painter, &TexViewKey::WithAllMips)
 	}
 
 	pub(crate) fn target_view<'a>(&self, painter: &'a Painter) -> &'a wgpu::TextureView {
-		self.view_at(painter, &TexViewKey::AtMipLevel(0))
+		self.view(painter, &TexViewKey::AtMipLevel(0))
 	}
 
 	// Suggestion: Do not recreate bindings multiple time, if they reference several textures.
@@ -298,9 +302,7 @@ impl Texture {
 			has_mip_level_view |= b.has_mip_level_texture(painter);
 		}
 		if has_mip_level_view {
-			for i in 1..=self.get_mip_level_count(painter) {
-				self.prepare_view(painter, TexViewKey::AtMipLevel(i));
-			}
+			self.prepare_mip_level_views(painter);
 		}
 	}
 

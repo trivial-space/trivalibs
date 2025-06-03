@@ -9,7 +9,7 @@ use crate::{
 	shade::{AttribsFormat, Shade, ShadeBuilder, ShadeEffectBuilder, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
 	shape::{Shape, ShapeBuilder, ShapeStorage},
-	texture::{Texture2DBuilder, TextureStorage},
+	texture::{TexViewKey, Texture2DBuilder, TextureStorage},
 	uniform::{Mat3U, Uniform, UniformBuffer, Vec3U},
 };
 use std::{collections::BTreeMap, sync::Arc};
@@ -435,14 +435,14 @@ impl Painter {
 
 		for (index, layer) in &l.effect_layers {
 			let l = &self.layers[layer.0];
-			let b = l.current_source();
+			let b = l.current_source_binding();
 			pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 		}
 
 		let s = &self.shapes[shape.0];
 		for (index, layer) in &s.effect_layers {
 			let l = &self.layers[layer.0];
-			let b = l.current_source();
+			let b = l.current_source_binding();
 			pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 		}
 
@@ -453,8 +453,6 @@ impl Painter {
 				draw(pass, Some(binding.clone()));
 			}
 		}
-
-		l.current_target().update_mips(self);
 	}
 
 	fn render_effect(
@@ -466,7 +464,8 @@ impl Painter {
 		let e = &self.effects[effect.0];
 		let l = &self.layers[layer.0];
 
-		let view = &self.textures[l.current_target().0].dst_view;
+		// TODO: check effect mip level target
+		let view = l.current_target_texture().target_view(self);
 
 		let mut encoder = self
 			.device
@@ -495,19 +494,19 @@ impl Painter {
 			pass.set_pipeline(&pipeline.pipeline);
 
 			if !skip_source {
-				let b = l.current_source();
+				let b = l.current_source_binding();
 				pass.set_bind_group(1, &self.bindings[b.0].binding, &[]);
 			}
 
 			for (index, layer) in &l.effect_layers {
 				let l = &self.layers[layer.0];
-				let b = l.current_source();
+				let b = l.current_source_binding();
 				pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 			}
 
 			for (index, layer) in &e.effect_layers {
 				let l = &self.layers[layer.0];
-				let b = l.current_source();
+				let b = l.current_source_binding();
 				pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
 			}
 
@@ -523,8 +522,6 @@ impl Painter {
 
 		self.queue.submit(Some(encoder.finish()));
 
-		l.current_target().update_mips(self);
-
 		Ok(())
 	}
 
@@ -537,11 +534,10 @@ impl Painter {
 		if has_shapes {
 			let color_attachments: Vec<Option<RenderPassColorAttachment<'_>>> =
 				if !l.is_multi_target {
-					let target_view = &self.textures[l.current_target().0].dst_view;
+					let target_view = l.current_target_texture().target_view(self);
 					let multisampled_texture = l.multisampled_textures.get(0);
 
-					let view =
-						multisampled_texture.map_or(target_view, |t| &self.textures[t.0].dst_view);
+					let view = multisampled_texture.map_or(target_view, |t| t.target_view(self));
 					let resolve_target = multisampled_texture.map(|_| target_view);
 
 					vec![Some(wgpu::RenderPassColorAttachment {
@@ -559,11 +555,11 @@ impl Painter {
 						.iter()
 						.enumerate()
 						.map(|(i, t)| {
-							let target_view = &self.textures[t.0].dst_view;
+							let target_view = t.target_view(self);
 							let multisampled_texture = l.multisampled_textures.get(i);
 
-							let view = multisampled_texture
-								.map_or(target_view, |t| &self.textures[t.0].dst_view);
+							let view =
+								multisampled_texture.map_or(target_view, |t| t.target_view(self));
 							let resolve_target = multisampled_texture.map(|_| target_view);
 
 							Some(wgpu::RenderPassColorAttachment {
@@ -590,7 +586,7 @@ impl Painter {
 					color_attachments: &color_attachments,
 					depth_stencil_attachment: l.depth_texture.as_ref().map(|t| {
 						wgpu::RenderPassDepthStencilAttachment {
-							view: &self.textures[t.0].dst_view,
+							view: t.view(self, &TexViewKey::Default),
 							depth_ops: Some(wgpu::Operations {
 								load: wgpu::LoadOp::Clear(1.0),
 								store: wgpu::StoreOp::Store,
@@ -612,6 +608,7 @@ impl Painter {
 		}
 
 		if effects_len == 0 {
+			l.current_target_texture().update_mips(self);
 			return Ok(());
 		}
 
@@ -625,6 +622,10 @@ impl Painter {
 			self.render_effect(effect, layer, skip_source_tex)?;
 			self.layers[layer.0].swap_targets();
 		}
+
+		self.layers[layer.0]
+			.current_source_texture()
+			.update_mips(self);
 
 		Ok(())
 	}
@@ -647,7 +648,7 @@ impl Painter {
 			.device
 			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-		let layer_binding = self.layers[layer.0].current_source();
+		let layer_binding = self.layers[layer.0].current_source_binding();
 		let pipeline = &self.pipelines[FULL_SCREEN_TEXTURE_PIPELINE];
 
 		{

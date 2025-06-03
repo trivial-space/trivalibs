@@ -37,11 +37,20 @@ impl LayerStorage {
 		self.current_target = next;
 	}
 
-	pub(crate) fn current_target<'a>(&'a self) -> &'a Texture {
+	pub(crate) fn current_target_texture<'a>(&'a self) -> &'a Texture {
 		&self.target_textures[self.current_target]
 	}
 
-	pub(crate) fn current_source<'a>(&'a self) -> &'a Binding {
+	pub(crate) fn current_source_texture<'a>(&'a self) -> &'a Texture {
+		let mut idx = self.current_target;
+		if idx == 0 {
+			idx = self.texture_count;
+		}
+
+		&self.target_textures[idx - 1]
+	}
+
+	pub(crate) fn current_source_binding<'a>(&'a self) -> &'a Binding {
 		let mut idx = self.current_target;
 		if idx == 0 {
 			idx = self.texture_count;

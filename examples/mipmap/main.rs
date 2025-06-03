@@ -60,7 +60,22 @@ impl CanvasApp<()> for App {
 			.with_effect_layers(map! { 1 => image })
 			.create();
 
-		let canvas = p.layer().with_effect(sample_effect).create();
+		let effect_shade = p
+			.shade_effect()
+			.with_uniforms(&[UNIFORM_BUFFER_FRAG, UNIFORM_SAMPLER_FRAG])
+			.with_effect_layer()
+			.create();
+		load_fragment_shader!(effect_shade, p, "./shader/wave_effect.spv");
+
+		let effect = p
+			.effect(effect_shade)
+			.with_uniforms(map! {
+				0 => u_time.uniform(),
+				1 => sampler.uniform()
+			})
+			.create();
+
+		let canvas = p.layer().with_effects(vec![sample_effect, effect]).create();
 
 		Self {
 			time: 0.0,
