@@ -3,8 +3,8 @@ use trivalibs::{map, painter::prelude::*, prelude::*};
 struct App {
 	time: f32,
 
-	u_time: UniformBuffer<f32>,
-	u_size: UniformBuffer<UVec2>,
+	u_time: BindingBuffer<f32>,
+	u_size: BindingBuffer<UVec2>,
 	canvas: Layer,
 }
 
@@ -21,9 +21,9 @@ impl CanvasApp<()> for App {
 
 		let effect = p
 			.effect(shade)
-			.with_uniforms(map! {
-				0 => u_size.uniform(),
-				1 => u_time.uniform()
+			.with_bindings(map! {
+				0 => u_size.binding(),
+				1 => u_time.binding()
 			})
 			.create();
 

@@ -15,8 +15,8 @@ struct Canvas {
 
 struct App {
 	time: f32,
-	u_size: UniformBuffer<UVec2>,
-	u_time: UniformBuffer<f32>,
+	u_size: BindingBuffer<UVec2>,
+	u_time: BindingBuffer<f32>,
 
 	canvases: Vec<Canvas>,
 	current_canvas: usize,
@@ -37,9 +37,9 @@ impl CanvasApp<()> for App {
 			let layer = p
 				.layer()
 				.with_effect(e)
-				.with_uniforms(map! {
-					0 => u_size.uniform(),
-					1 => u_time.uniform()
+				.with_bindings(map! {
+					0 => u_size.binding(),
+					1 => u_time.binding()
 				})
 				.create();
 

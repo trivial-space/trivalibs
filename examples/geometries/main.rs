@@ -59,7 +59,7 @@ pub fn create_box(center: Vec3, size: Vec3) -> BufferedGeometry {
 
 struct App {
 	cam: PerspectiveCamera,
-	vp_mat: UniformBuffer<Mat4>,
+	vp_mat: BindingBuffer<Mat4>,
 	canvas: Layer,
 
 	input: InputState,
@@ -126,8 +126,8 @@ impl CanvasApp<()> for App {
 				b: 0.7,
 				a: 1.0,
 			})
-			.with_uniforms(map! {
-				0 => vp_mat.uniform(),
+			.with_bindings(map! {
+				0 => vp_mat.binding(),
 			})
 			.with_multisampling()
 			.with_depth_test()

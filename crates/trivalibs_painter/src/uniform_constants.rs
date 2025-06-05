@@ -1,7 +1,7 @@
-use crate::uniform::{LayerLayout, UniformLayout};
+use crate::binding::{BindingLayout, LayerLayout};
 use wgpu::BindingType;
 
-pub const UNIFORM_BUFFER_VERT: UniformLayout = UniformLayout {
+pub const UNIFORM_BUFFER_VERT: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::VERTEX,
 	binding_type: BindingType::Buffer {
 		ty: wgpu::BufferBindingType::Uniform,
@@ -10,7 +10,7 @@ pub const UNIFORM_BUFFER_VERT: UniformLayout = UniformLayout {
 	},
 };
 
-pub const UNIFORM_BUFFER_FRAG: UniformLayout = UniformLayout {
+pub const UNIFORM_BUFFER_FRAG: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::FRAGMENT,
 	binding_type: BindingType::Buffer {
 		ty: wgpu::BufferBindingType::Uniform,
@@ -19,7 +19,7 @@ pub const UNIFORM_BUFFER_FRAG: UniformLayout = UniformLayout {
 	},
 };
 
-pub const UNIFORM_BUFFER_BOTH: UniformLayout = UniformLayout {
+pub const UNIFORM_BUFFER_BOTH: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
 	binding_type: BindingType::Buffer {
 		ty: wgpu::BufferBindingType::Uniform,
@@ -28,7 +28,7 @@ pub const UNIFORM_BUFFER_BOTH: UniformLayout = UniformLayout {
 	},
 };
 
-pub const UNIFORM_TEX2D_VERT: UniformLayout = UniformLayout {
+pub const UNIFORM_TEX2D_VERT: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::VERTEX,
 	binding_type: wgpu::BindingType::Texture {
 		multisampled: false,
@@ -37,7 +37,7 @@ pub const UNIFORM_TEX2D_VERT: UniformLayout = UniformLayout {
 	},
 };
 
-pub const UNIFORM_TEX2D_FRAG: UniformLayout = UniformLayout {
+pub const UNIFORM_TEX2D_FRAG: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::FRAGMENT,
 	binding_type: wgpu::BindingType::Texture {
 		multisampled: false,
@@ -46,7 +46,7 @@ pub const UNIFORM_TEX2D_FRAG: UniformLayout = UniformLayout {
 	},
 };
 
-pub const UNIFORM_TEX2D_BOTH: UniformLayout = UniformLayout {
+pub const UNIFORM_TEX2D_BOTH: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
 	binding_type: wgpu::BindingType::Texture {
 		multisampled: false,
@@ -55,7 +55,7 @@ pub const UNIFORM_TEX2D_BOTH: UniformLayout = UniformLayout {
 	},
 };
 
-pub const UNIFORM_TEX2D_VERT_NO_FILTER: UniformLayout = UniformLayout {
+pub const UNIFORM_TEX2D_VERT_NO_FILTER: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::VERTEX,
 	binding_type: wgpu::BindingType::Texture {
 		multisampled: false,
@@ -64,7 +64,7 @@ pub const UNIFORM_TEX2D_VERT_NO_FILTER: UniformLayout = UniformLayout {
 	},
 };
 
-pub const UNIFORM_TEX2D_FRAG_NO_FILTER: UniformLayout = UniformLayout {
+pub const UNIFORM_TEX2D_FRAG_NO_FILTER: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::FRAGMENT,
 	binding_type: wgpu::BindingType::Texture {
 		multisampled: false,
@@ -73,7 +73,7 @@ pub const UNIFORM_TEX2D_FRAG_NO_FILTER: UniformLayout = UniformLayout {
 	},
 };
 
-pub const UNIFORM_TEX2D_BOTH_NO_FILTER: UniformLayout = UniformLayout {
+pub const UNIFORM_TEX2D_BOTH_NO_FILTER: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
 	binding_type: wgpu::BindingType::Texture {
 		multisampled: false,
@@ -82,17 +82,17 @@ pub const UNIFORM_TEX2D_BOTH_NO_FILTER: UniformLayout = UniformLayout {
 	},
 };
 
-pub const UNIFORM_SAMPLER_VERT: UniformLayout = UniformLayout {
+pub const UNIFORM_SAMPLER_VERT: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::VERTEX,
 	binding_type: BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
 };
 
-pub const UNIFORM_SAMPLER_FRAG: UniformLayout = UniformLayout {
+pub const UNIFORM_SAMPLER_FRAG: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::FRAGMENT,
 	binding_type: BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
 };
 
-pub const UNIFORM_SAMPLER_BOTH: UniformLayout = UniformLayout {
+pub const UNIFORM_SAMPLER_BOTH: BindingLayout = BindingLayout {
 	visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
 	binding_type: BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
 };

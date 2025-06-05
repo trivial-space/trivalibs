@@ -17,8 +17,8 @@ struct App {
 	ball_transform: Transform,
 
 	canvas: Layer,
-	mvp: UniformBuffer<Mat4>,
-	norm: UniformBuffer<Mat3U>,
+	mvp: BindingBuffer<Mat4>,
+	norm: BindingBuffer<Mat3U>,
 }
 
 impl CanvasApp<()> for App {
@@ -54,12 +54,12 @@ impl CanvasApp<()> for App {
 		let mvp = p.uniform_mat4();
 		let norm = p.uniform_mat3();
 
-		let s = p.sampler_linear().uniform();
+		let s = p.sampler_linear().binding();
 		let shape = p
 			.shape(form, shade)
-			.with_uniforms(map! {
-				0 => mvp.uniform(),
-				1 => norm.uniform(),
+			.with_bindings(map! {
+				0 => mvp.binding(),
+				1 => norm.binding(),
 				2 => tex.uniform(),
 				3 => s,
 			})

@@ -66,10 +66,10 @@ struct App {
 	triangle_transform: Transform,
 	quad_transform: Transform,
 
-	color_quad_mvp: UniformBuffer<Mat4>,
-	color_triangle_mvp: UniformBuffer<Mat4>,
-	tex_quad_mvp: UniformBuffer<Mat4>,
-	tex_triangle_mvp: UniformBuffer<Mat4>,
+	color_quad_mvp: BindingBuffer<Mat4>,
+	color_triangle_mvp: BindingBuffer<Mat4>,
+	tex_quad_mvp: BindingBuffer<Mat4>,
+	tex_triangle_mvp: BindingBuffer<Mat4>,
 
 	color_triangle_layer: Layer,
 	color_quad_layer: Layer,
@@ -126,8 +126,8 @@ impl CanvasApp<ResizeEvent> for App {
 
 		let color_quad_shape = p
 			.shape(quad_form, color_shade)
-			.with_uniforms(map! {
-				0 => color_quad_mvp.uniform(),
+			.with_bindings(map! {
+				0 => color_quad_mvp.binding(),
 				1 => quad_color,
 			})
 			.with_cull_mode(None)
@@ -135,8 +135,8 @@ impl CanvasApp<ResizeEvent> for App {
 
 		let color_triangle_shape = p
 			.shape(triangle_form, color_shade)
-			.with_uniforms(map! {
-				0 => color_triangle_mvp.uniform(),
+			.with_bindings(map! {
+				0 => color_triangle_mvp.binding(),
 				1 => triangle_color,
 			})
 			.with_cull_mode(None)
@@ -167,20 +167,20 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_quad_shape = p
 			.shape(quad_form, tex_shader)
 			.with_cull_mode(None)
-			.with_uniforms(map! {
-				0 => tex_quad_mvp.uniform(),
+			.with_bindings(map! {
+				0 => tex_quad_mvp.binding(),
 				1 => tex,
-				2 => sn.uniform(),
+				2 => sn.binding(),
 			})
 			.create();
 
 		let tex = color_quad_layer.uniform(p);
 		let tex_triangle_shape = p
 			.shape(triangle_form, tex_shader)
-			.with_uniforms(map! {
-				0 => tex_triangle_mvp.uniform(),
+			.with_bindings(map! {
+				0 => tex_triangle_mvp.binding(),
 				1 => tex,
-				2 => sl.uniform(),
+				2 => sl.binding(),
 			})
 			.with_cull_mode(None)
 			.create();

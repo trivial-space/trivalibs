@@ -1,0 +1,18 @@
+[package]
+name = "render_to_mip_shader"
+edition.workspace = true
+version = "0.1.0"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+spirv-std.workspace = true
+trivalibs_shaders.workspace = true
+
+[package.metadata.rust-gpu.build]
+multimodule = true
+
+[package.metadata.rust-gpu.install]
+spirv_builder_source = "https://github.com/Rust-GPU/rust-gpu"
+spirv_builder_version = "1e4e468ccf7965d90a9748c7513f72e852fb5041"

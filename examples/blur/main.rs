@@ -32,7 +32,7 @@ const TRIANGLE: &[Vertex] = &[
 
 struct App {
 	canvas: Layer,
-	size: UniformBuffer<Vec2>,
+	size: BindingBuffer<Vec2>,
 }
 
 impl CanvasApp<()> for App {
@@ -49,7 +49,7 @@ impl CanvasApp<()> for App {
 				UNIFORM_BUFFER_FRAG,
 				UNIFORM_SAMPLER_FRAG,
 			])
-			.with_effect_layer()
+			.with_layer()
 			.create();
 		load_fragment_shader!(blur_shade, p, "./shader/blur_fs.spv");
 
@@ -60,7 +60,7 @@ impl CanvasApp<()> for App {
 		let size = p.uniform_vec2();
 		let horiz = p.uniform_const_vec2(vec2(1.0, 0.0));
 		let vertical = p.uniform_const_vec2(vec2(0.0, 1.0));
-		let s = p.sampler_linear().uniform();
+		let s = p.sampler_linear().binding();
 
 		let mut effects = vec![];
 
@@ -72,9 +72,9 @@ impl CanvasApp<()> for App {
 			let diameter = p.uniform_const_f32(counter);
 			effects.push(
 				p.effect(blur_shade)
-					.with_uniforms(map! {
+					.with_bindings(map! {
 						0 => diameter,
-						1 => size.uniform(),
+						1 => size.binding(),
 						2 => horiz,
 						3 => s
 					})
@@ -82,9 +82,9 @@ impl CanvasApp<()> for App {
 			);
 			effects.push(
 				p.effect(blur_shade)
-					.with_uniforms(map! {
+					.with_bindings(map! {
 						0 => diameter,
-						1 => size.uniform(),
+						1 => size.binding(),
 						2 => vertical,
 						3 => s
 					})

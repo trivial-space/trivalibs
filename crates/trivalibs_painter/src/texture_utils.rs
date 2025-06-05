@@ -60,7 +60,7 @@ pub fn generate_mipmap_2d(painter: &Painter, texture: &wgpu::Texture) {
 			});
 
 			pass.set_pipeline(&pipeline.pipeline);
-			pass.set_bind_group(0, &painter.bindings[1].binding, &[]);
+			pass.set_bind_group(0, &painter.bind_groups[1].bind_group, &[]);
 			pass.set_bind_group(1, &src_binding, &[]);
 
 			pass.draw(0..3, 0..1); // Assuming a fullscreen quad

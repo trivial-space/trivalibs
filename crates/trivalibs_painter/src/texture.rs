@@ -1,9 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
-	binding::Binding,
+	bind_group::BindGroup,
 	texture_utils::{generate_mipmap_2d, num_mip_levels},
-	uniform::Uniform,
 	Painter,
 };
 use trivalibs_core::utils::default;
@@ -15,8 +14,11 @@ pub enum MipMapCount {
 	Max(u32),
 }
 
+/// # Default Texture2DProps
+/// - Format: `Rgba8UnormSrgb` (8-bit RGBA color in sRGB color space)
+/// - Usage: `TEXTURE_BINDING | COPY_DST` (can be used as texture and receive data)
 #[derive(Clone, Copy)]
-pub struct Texture2DProps {
+pub(crate) struct Texture2DProps {
 	pub format: wgpu::TextureFormat,
 	pub usage: wgpu::TextureUsages,
 	pub mips: Option<MipMapCount>,
@@ -59,7 +61,7 @@ impl TexViewKey {
 pub(crate) struct TextureStorage {
 	pub texture: wgpu::Texture,
 	pub views: BTreeMap<TexViewKey, wgpu::TextureView>,
-	pub bindings: Vec<Binding>,
+	pub bindings: BTreeSet<BindGroup>,
 }
 
 impl TextureStorage {
@@ -146,7 +148,7 @@ impl Texture {
 		let mut storage = TextureStorage {
 			texture,
 			views: BTreeMap::new(),
-			bindings: Vec::with_capacity(16),
+			bindings: BTreeSet::new(),
 		};
 
 		storage.prepare_view(TexViewKey::AtMipLevel(0));
@@ -182,7 +184,7 @@ impl Texture {
 
 		painter.textures[self.0] = storage;
 
-		self.rebuild_bindings(painter);
+		// self.rebuild_bindings(painter);
 	}
 
 	pub fn create_depth(
@@ -196,7 +198,7 @@ impl Texture {
 		let mut storage = TextureStorage {
 			texture,
 			views: BTreeMap::new(),
-			bindings: Vec::with_capacity(2),
+			bindings: BTreeSet::new(),
 		};
 
 		storage.prepare_view(TexViewKey::Default);
@@ -228,7 +230,7 @@ impl Texture {
 
 		painter.textures[self.0] = storage;
 
-		self.rebuild_bindings(painter);
+		// self.rebuild_bindings(painter);
 	}
 
 	pub fn fill_2d(&self, painter: &Painter, data: &[u8]) {
@@ -261,10 +263,6 @@ impl Texture {
 		t.texture.destroy();
 	}
 
-	pub fn uniform(&self) -> Uniform {
-		Uniform::Tex2D(*self)
-	}
-
 	pub(crate) fn prepare_view(&self, painter: &mut Painter, key: TexViewKey) {
 		let t = &painter.textures[self.0];
 		if !t.views.contains_key(&key) {
@@ -294,17 +292,17 @@ impl Texture {
 
 	// Suggestion: Do not recreate bindings multiple time, if they reference several textures.
 	// Instead mark them as dirty and rebuild them later.
-	pub(crate) fn rebuild_bindings(&self, painter: &mut Painter) {
-		let t = &painter.textures[self.0];
-		let mut has_mip_level_view = false;
-		for b in t.bindings.clone() {
-			b.rebuild(painter);
-			has_mip_level_view |= b.has_mip_level_texture(painter);
-		}
-		if has_mip_level_view {
-			self.prepare_mip_level_views(painter);
-		}
-	}
+	// pub(crate) fn rebuild_bindings(&self, painter: &mut Painter) {
+	// 	let t = &painter.textures[self.0];
+	// 	let mut has_mip_level_view = false;
+	// 	for b in t.bindings.clone() {
+	// 		b.rebuild(painter);
+	// 		has_mip_level_view |= b.has_mip_level_texture(painter);
+	// 	}
+	// 	if has_mip_level_view {
+	// 		self.prepare_mip_level_views(painter);
+	// 	}
+	// }
 
 	pub fn update_mips(&self, painter: &Painter) {
 		let t = &painter.textures[self.0].texture;
@@ -316,50 +314,5 @@ impl Texture {
 
 	pub fn get_mip_level_count(&self, painter: &Painter) -> u32 {
 		painter.textures[self.0].texture.mip_level_count()
-	}
-}
-
-/// A builder for creating 2D textures with customizable properties.
-///
-/// # Default Texture2DProps
-/// - Format: `Rgba8UnormSrgb` (8-bit RGBA color in sRGB color space)
-/// - Usage: `TEXTURE_BINDING | COPY_DST` (can be used as texture and receive data)
-///
-/// # Example
-/// ```
-/// let texture = Texture2DBuilder::new(painter, 512, 512)
-///     .width_format(wgpu::TextureFormat::Rgba8Unorm)
-///     .width_usage(wgpu::TextureUsages::STORAGE_BINDING)
-///     .create();
-/// ```
-pub struct Texture2DBuilder<'a> {
-	width: u32,
-	height: u32,
-	painter: &'a mut Painter,
-	props: Texture2DProps,
-}
-
-impl<'a> Texture2DBuilder<'a> {
-	pub fn new(painter: &'a mut Painter, width: u32, height: u32) -> Self {
-		Texture2DBuilder {
-			width,
-			height,
-			painter,
-			props: Texture2DProps::default(),
-		}
-	}
-
-	pub fn create(self) -> Texture {
-		Texture::create_2d(self.painter, self.width, self.height, self.props, false)
-	}
-
-	pub fn with_format(mut self, format: wgpu::TextureFormat) -> Self {
-		self.props.format = format;
-		self
-	}
-
-	pub fn with_usage(mut self, usage: wgpu::TextureUsages) -> Self {
-		self.props.usage = usage;
-		self
 	}
 }

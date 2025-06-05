@@ -1,20 +1,18 @@
 use crate::{
-	binding::{Binding, BindingLayout},
+	binding::{LayerBinding, LayerLayout, ValueBinding},
 	effect::Effect,
 	prelude::{UNIFORM_LAYER_BOTH, UNIFORM_LAYER_FRAG, UNIFORM_LAYER_VERT},
 	shape::Shape,
 	texture::{MipMapCount, Texture, Texture2DProps},
 	texture_utils::map_format_to_u8,
-	uniform::{LayerLayout, Uniform},
 	Painter,
 };
 
 pub(crate) struct LayerStorage {
+	pub static_tex: Option<Texture>,
 	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
-	pub binding_layout: BindingLayout,
 	pub target_textures: Vec<Texture>,
-	pub target_bindings: Vec<Binding>,
 	pub depth_texture: Option<Texture>,
 	pub width: u32,
 	pub height: u32,
@@ -26,8 +24,8 @@ pub(crate) struct LayerStorage {
 	pub current_target: usize,
 	pub texture_count: usize,
 	pub is_multi_target: bool,
-	pub uniforms: Vec<(u32, Uniform)>,
-	pub effect_layers: Vec<(u32, Layer)>,
+	pub bindings: Vec<(u32, ValueBinding)>,
+	pub layers: Vec<(u32, LayerBinding)>,
 	pub mips: Option<MipMapCount>,
 }
 
@@ -49,23 +47,14 @@ impl LayerStorage {
 
 		&self.target_textures[idx - 1]
 	}
-
-	pub(crate) fn current_source_binding<'a>(&'a self) -> &'a Binding {
-		let mut idx = self.current_target;
-		if idx == 0 {
-			idx = self.texture_count;
-		}
-
-		&self.target_bindings[idx - 1]
-	}
 }
 
 #[derive(Clone)]
 pub struct LayerProps {
 	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
-	pub uniforms: Vec<(u32, Uniform)>,
-	pub effect_layers: Vec<(u32, Layer)>,
+	pub bindings: Vec<(u32, ValueBinding)>,
+	pub layers: Vec<(u32, LayerBinding)>,
 	pub width: u32,
 	pub height: u32,
 	pub formats: Vec<wgpu::TextureFormat>,
@@ -81,8 +70,8 @@ impl Default for LayerProps {
 		LayerProps {
 			shapes: Vec::with_capacity(0),
 			effects: Vec::with_capacity(0),
-			uniforms: Vec::with_capacity(0),
-			effect_layers: Vec::with_capacity(0),
+			bindings: Vec::with_capacity(0),
+			layers: Vec::with_capacity(0),
 			width: 0,
 			height: 0,
 			formats: Vec::with_capacity(1),
@@ -144,11 +133,9 @@ impl Layer {
 		};
 
 		let mut target_textures = Vec::with_capacity(texture_count);
-		let mut target_bindings = Vec::with_capacity(texture_count);
 		let mut multisampled_textures =
 			Vec::with_capacity(if props.multisampled { texture_count } else { 0 });
 		let mut formats = Vec::with_capacity(texture_count);
-		let layout = BindingLayout::swapping_effect_layer(painter, props.layer_layout);
 
 		if is_multi_target {
 			if use_swap_targets {
@@ -169,8 +156,6 @@ impl Layer {
 					false,
 				);
 				target_textures.push(tex);
-
-				target_bindings.push(Binding::layer(painter, layer, layout, tex));
 
 				if props.multisampled {
 					multisampled_textures.push(Texture::create_2d(
@@ -206,8 +191,6 @@ impl Layer {
 				);
 
 				target_textures.push(tex);
-
-				target_bindings.push(Binding::layer(painter, layer, layout, tex));
 			}
 
 			if props.multisampled {
@@ -228,12 +211,12 @@ impl Layer {
 		}
 
 		let storage = LayerStorage {
+			static_tex: None,
 			shapes: props.shapes.clone(),
 			effects: props.effects.clone(),
 			width,
 			height,
 			target_textures,
-			target_bindings,
 			depth_texture,
 			multisampled_textures,
 			use_window_size,
@@ -243,19 +226,18 @@ impl Layer {
 			current_target: 0,
 			texture_count,
 			is_multi_target,
-			uniforms: props.uniforms,
-			effect_layers: props.effect_layers,
-			binding_layout: layout,
+			bindings: props.bindings,
+			layers: props.layers,
 			mips: props.mips,
 		};
 
 		painter.layers.push(storage);
 
 		for s in props.shapes {
-			s.prepare_uniforms(painter, layer);
+			s.prepare_bindings(painter, layer);
 		}
 		for e in props.effects {
-			e.prepare_uniforms(painter, layer);
+			e.prepare_bindings(painter, layer);
 		}
 
 		layer
@@ -278,24 +260,16 @@ impl Layer {
 		}
 	}
 
-	pub fn uniform(&self, painter: &Painter) -> Uniform {
-		let l = &painter.layers[self.0];
-		if l.target_textures.len() > 1 {
-			panic!("This layer has more than one target textures. Please use effect layer uniforms in a separate bind group if this layer uses swapping effect buffers or `uniform_at` to get a specific target texture uniform.");
-		}
-		self.uniform_at(painter, 0)
+	pub fn binding(&self) -> LayerBinding {
+		LayerBinding::Source(*self)
 	}
 
-	pub fn uniform_at(&self, painter: &Painter, index: usize) -> Uniform {
-		painter.layers[self.0].target_textures[index].uniform()
+	pub fn binding_at_mip_level(&self, mip_level: u32) -> LayerBinding {
+		LayerBinding::SourceAtMipLevel(*self, mip_level)
 	}
 
-	pub fn depth_uniform(&self, painter: &Painter) -> Uniform {
-		painter.layers[self.0]
-			.depth_texture
-			.as_ref()
-			.unwrap()
-			.uniform()
+	pub fn depth_binding(&self) -> LayerBinding {
+		LayerBinding::Depth(*self)
 	}
 
 	pub fn set_clear_color(&mut self, painter: &mut Painter, color: Option<wgpu::Color>) {
@@ -438,13 +412,13 @@ impl<'a> LayerBuilder<'a> {
 		self
 	}
 
-	pub fn with_uniforms(mut self, uniforms: Vec<(u32, Uniform)>) -> Self {
-		self.props.uniforms = uniforms;
+	pub fn with_bindings(mut self, bindings: Vec<(u32, ValueBinding)>) -> Self {
+		self.props.bindings = bindings;
 		self
 	}
 
-	pub fn with_effect_layers(mut self, effect_layers: Vec<(u32, Layer)>) -> Self {
-		self.props.effect_layers = effect_layers;
+	pub fn with_layers(mut self, layers: Vec<(u32, LayerBinding)>) -> Self {
+		self.props.layers = layers;
 		self
 	}
 

@@ -4,7 +4,6 @@ struct App {
 	time: f32,
 
 	u_time: BindingBuffer<f32>,
-	u_size: BindingBuffer<UVec2>,
 	u_mip_levels: BindingBuffer<f32>,
 
 	image: Layer,
@@ -15,18 +14,17 @@ impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let image_shade = p
 			.shade_effect()
-			.with_uniforms(&[UNIFORM_BUFFER_FRAG, UNIFORM_BUFFER_FRAG])
+			.with_uniforms(&[UNIFORM_BUFFER_FRAG, UNIFORM_SAMPLER_FRAG])
+			.with_layer()
 			.create();
 		load_fragment_shader!(image_shade, p, "./shader/image.spv");
 
 		let u_time = p.uniform_f32();
-		let u_size = p.uniform_uvec2();
 		let u_mip_levels = p.uniform_f32();
 
 		let image_effect = p
 			.effect(image_shade)
 			.with_bindings(map! {
-				0 => u_size.binding(),
 				1 => u_time.binding()
 			})
 			.create();
@@ -81,7 +79,6 @@ impl CanvasApp<()> for App {
 			time: 0.0,
 
 			u_time,
-			u_size,
 			u_mip_levels,
 
 			canvas,
@@ -90,8 +87,6 @@ impl CanvasApp<()> for App {
 	}
 
 	fn resize(&mut self, p: &mut Painter, width: u32, height: u32) {
-		self.u_size.update(p, uvec2(width, height));
-
 		let mips = self.image.get_mip_levels_count(p);
 		println!("mip levels: {}", mips);
 		self.u_mip_levels.update(p, mips as f32);

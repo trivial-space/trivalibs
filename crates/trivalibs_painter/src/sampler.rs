@@ -1,4 +1,4 @@
-use crate::{uniform::Uniform, Painter};
+use crate::{binding::ValueBinding, Painter};
 
 #[derive(Clone, Copy)]
 pub struct SamplerProps {
@@ -57,8 +57,8 @@ impl Sampler {
 		Self(painter.samplers.len() - 1)
 	}
 
-	pub fn uniform(&self) -> Uniform {
-		Uniform::Sampler(*self)
+	pub fn binding(&self) -> ValueBinding {
+		ValueBinding::Sampler(*self)
 	}
 }
 

@@ -17,11 +17,11 @@ struct App {
 	ball_transform: Transform,
 	box_transform: Transform,
 
-	u_ball_model_mat: UniformBuffer<Mat4>,
-	u_ball_rot: UniformBuffer<Quat>,
-	u_box_model_mat: UniformBuffer<Mat4>,
-	u_box_rot: UniformBuffer<Quat>,
-	u_vp_mat: UniformBuffer<Mat4>,
+	u_ball_model_mat: BindingBuffer<Mat4>,
+	u_ball_rot: BindingBuffer<Quat>,
+	u_box_model_mat: BindingBuffer<Mat4>,
+	u_box_rot: BindingBuffer<Quat>,
+	u_vp_mat: BindingBuffer<Mat4>,
 	scene_layer: Layer,
 	canvas: Layer,
 }
@@ -50,9 +50,9 @@ impl CanvasApp<()> for App {
 
 		let ball_shape = p
 			.shape(ball_form, scene_shade)
-			.with_uniforms(map! {
-				0 => u_ball_model_mat.uniform(),
-				2 => u_ball_rot.uniform(),
+			.with_bindings(map! {
+				0 => u_ball_model_mat.binding(),
+				2 => u_ball_rot.binding(),
 			})
 			.create();
 
@@ -63,9 +63,9 @@ impl CanvasApp<()> for App {
 
 		let box_shape = p
 			.shape(box_form, scene_shade)
-			.with_uniforms(map! {
-				0 => u_box_model_mat.uniform(),
-				2 => u_box_rot.uniform(),
+			.with_bindings(map! {
+				0 => u_box_model_mat.binding(),
+				2 => u_box_rot.binding(),
 			})
 			.create();
 
@@ -79,8 +79,8 @@ impl CanvasApp<()> for App {
 			})
 			.with_shapes(vec![ball_shape, box_shape])
 			.with_formats(vec![Rgba8UnormSrgb, Rgba16Float, Rgba16Float])
-			.with_uniforms(map! {
-				1 => u_vp_mat.uniform(),
+			.with_bindings(map! {
+				1 => u_vp_mat.binding(),
 			})
 			.with_multisampling()
 			.with_depth_test()
@@ -100,9 +100,9 @@ impl CanvasApp<()> for App {
 			.create();
 		load_fragment_shader!(canvas_shade, p, "./shader/light_fs.spv");
 
-		let color_target = scene_layer.uniform_at(p, 0);
-		let normal_target = scene_layer.uniform_at(p, 1);
-		let position_target = scene_layer.uniform_at(p, 2);
+		let color_target = scene_layer.binding_at(p, 0);
+		let normal_target = scene_layer.binding_at(p, 1);
+		let position_target = scene_layer.binding_at(p, 2);
 
 		let lights = (0..LIGHTS_COUNT)
 			.map(|_| {
@@ -111,8 +111,8 @@ impl CanvasApp<()> for App {
 
 				let light_color_u = p.uniform_const_vec3(rand_vec3());
 
-				InstanceUniforms {
-					uniforms: map! {
+				InstanceBinding {
+					bindings: map! {
 						5 => light_pos_u,
 						6 => light_color_u,
 					},
@@ -124,11 +124,11 @@ impl CanvasApp<()> for App {
 		let cam_pos = vec3(0.0, 5.0, 0.0);
 		let cam_pos_u = p.uniform_const_vec3(cam_pos);
 
-		let s = p.sampler_nearest().uniform();
+		let s = p.sampler_nearest().binding();
 
 		let canvas_effect = p
 			.effect(canvas_shade)
-			.with_uniforms(map! {
+			.with_bindings(map! {
 				0 => color_target,
 				1 => normal_target,
 				2 => position_target,
