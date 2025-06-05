@@ -136,7 +136,7 @@ fn create_depth(
 }
 
 impl Texture {
-	pub fn create_2d(
+	pub(crate) fn create_2d(
 		painter: &mut Painter,
 		width: u32,
 		height: u32,
@@ -159,7 +159,7 @@ impl Texture {
 		Self(painter.textures.len() - 1)
 	}
 
-	pub fn replace_2d(
+	pub(crate) fn replace_2d(
 		&self,
 		painter: &mut Painter,
 		width: u32,
@@ -229,8 +229,6 @@ impl Texture {
 		old.texture.destroy();
 
 		painter.textures[self.0] = storage;
-
-		// self.rebuild_bindings(painter);
 	}
 
 	pub fn fill_2d(&self, painter: &Painter, data: &[u8]) {
@@ -289,20 +287,6 @@ impl Texture {
 	pub(crate) fn target_view<'a>(&self, painter: &'a Painter) -> &'a wgpu::TextureView {
 		self.view(painter, &TexViewKey::AtMipLevel(0))
 	}
-
-	// Suggestion: Do not recreate bindings multiple time, if they reference several textures.
-	// Instead mark them as dirty and rebuild them later.
-	// pub(crate) fn rebuild_bindings(&self, painter: &mut Painter) {
-	// 	let t = &painter.textures[self.0];
-	// 	let mut has_mip_level_view = false;
-	// 	for b in t.bindings.clone() {
-	// 		b.rebuild(painter);
-	// 		has_mip_level_view |= b.has_mip_level_texture(painter);
-	// 	}
-	// 	if has_mip_level_view {
-	// 		self.prepare_mip_level_views(painter);
-	// 	}
-	// }
 
 	pub fn update_mips(&self, painter: &Painter) {
 		let t = &painter.textures[self.0].texture;

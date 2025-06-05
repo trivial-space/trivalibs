@@ -1,5 +1,6 @@
 use crate::{
 	binding::{BindingLayout, InstanceBinding, LayerBinding, LayerLayout, ValueBinding},
+	texture::TexViewKey,
 	Painter,
 };
 use std::collections::btree_map;
@@ -211,15 +212,32 @@ impl LayerBindGroupData {
 				entries: &entries,
 			})
 	}
-}
 
-pub(crate) enum BindGroupType {
-	Values(ValuesBindGroupData),
-	Layers(LayerBindGroupData),
+	pub(crate) fn to_gpu_bind_group_with_first(
+		&self,
+		painter: &Painter,
+		first: &LayerBinding,
+	) -> wgpu::BindGroup {
+		let entries = std::iter::once(first)
+			.chain(self.data.iter().skip(1))
+			.enumerate()
+			.map(|(i, u)| wgpu::BindGroupEntry {
+				binding: i as u32,
+				resource: layer_to_resource(u, painter),
+			})
+			.collect::<Vec<_>>();
+
+		painter
+			.device
+			.create_bind_group(&wgpu::BindGroupDescriptor {
+				label: None,
+				layout: &painter.bind_group_layouts[self.layout.0],
+				entries: &entries,
+			})
+	}
 }
 
 pub(crate) struct BindGroupStorage {
-	pub(crate) typ: BindGroupType,
 	pub(crate) bind_group: wgpu::BindGroup,
 }
 
@@ -241,21 +259,31 @@ fn value_to_resource<'a>(
 
 fn layer_to_resource<'a>(
 	binding: &'a LayerBinding,
-	_painter: &'a Painter,
+	painter: &'a Painter,
 ) -> wgpu::BindingResource<'a> {
 	match binding {
-		LayerBinding::Source(_layer) => {
-			// let view = layer.source_view(painter);
-			// wgpu::BindingResource::TextureView(&view)
-			todo!()
+		LayerBinding::Source(layer) => {
+			let l = &painter.layers[layer.0];
+			wgpu::BindingResource::TextureView(l.current_source_texture().source_view(painter))
 		}
-		LayerBinding::SourceAtMipLevel(_layer, _mip_level) => {
-			// let view = texture.view(painter, &TexViewKey::AtMipLevel(*mip_level));
-			// wgpu::BindingResource::TextureView(&view)
-			todo!()
+		LayerBinding::SourceAtMipLevel(layer, mip_level) => {
+			let l = &painter.layers[layer.0];
+			wgpu::BindingResource::TextureView(
+				l.current_source_texture()
+					.view(painter, &TexViewKey::AtMipLevel(*mip_level)),
+			)
 		}
-		LayerBinding::Depth(_layer) => {
-			todo!()
+		LayerBinding::Depth(layer) => {
+			let l = &painter.layers[layer.0];
+			wgpu::BindingResource::TextureView(
+				l.depth_texture.unwrap().view(painter, &TexViewKey::Default),
+			)
+		}
+		LayerBinding::AtIndex(layer, index) => {
+			let l = &painter.layers[layer.0];
+			wgpu::BindingResource::TextureView(
+				l.target_textures[*index].view(painter, &TexViewKey::Default),
+			)
 		}
 	}
 }
@@ -264,6 +292,22 @@ fn layer_to_resource<'a>(
 pub struct BindGroup(pub(crate) usize);
 
 impl BindGroup {
+	pub(crate) fn layer_gpu_bind_group(
+		painter: &mut Painter,
+		layer: LayerBinding,
+	) -> wgpu::BindGroup {
+		painter
+			.device
+			.create_bind_group(&wgpu::BindGroupDescriptor {
+				label: None,
+				layout: &painter.bind_group_layouts[1],
+				entries: &[wgpu::BindGroupEntry {
+					binding: 0,
+					resource: layer_to_resource(&layer, painter),
+				}],
+			})
+	}
+
 	pub(crate) fn values_bind_groups(
 		painter: &mut Painter,
 		bindings_length: usize,
@@ -286,10 +330,7 @@ impl BindGroup {
 
 			for bind_group in bind_groups {
 				let index = painter.bind_groups.len();
-				painter.bind_groups.push(BindGroupStorage {
-					typ: BindGroupType::Values(data.clone()),
-					bind_group,
-				});
+				painter.bind_groups.push(BindGroupStorage { bind_group });
 				bind_group_indices.push(BindGroup(index));
 			}
 
@@ -298,82 +339,4 @@ impl BindGroup {
 			Vec::new()
 		}
 	}
-
-	// pub(crate) fn rebuild(&self, painter: &mut Painter) {
-	// 	let storage = &painter.bind_groups[self.0];
-
-	// 	match storage.typ {
-	// 		BindGroupType::Layers(_) => {
-	// 			todo!()
-	// 		}
-	// BindGroupType::Layer(layer) | BindGroupType::LayerAtMipLevel(layer, _) => {
-	// 	let b = painter.layers[layer.0].binding_layout;
-	// 	let layout = &painter.bind_group_layouts[b.0];
-	// 	let entries = storage
-	// 		.data
-	// 		.iter()
-	// 		.enumerate()
-	// 		.map(|(i, u)| wgpu::BindGroupEntry {
-	// 			binding: i as u32,
-	// 			resource: value_to_resource(u, painter),
-	// 		})
-	// 		.collect::<Vec<_>>();
-
-	// 	let bind_group = painter
-	// 		.device
-	// 		.create_bind_group(&wgpu::BindGroupDescriptor {
-	// 			label: None,
-	// 			layout,
-	// 			entries: &entries,
-	// 		});
-
-	// 	painter.bind_groups[self.0].bind_group = bind_group;
-	// }
-	// 		BindGroupType::Values(layout) => {
-	// 			let layout = &painter.bind_group_layouts[layout.0];
-	// 			let entries = storage
-	// 				.data
-	// 				.iter()
-	// 				.enumerate()
-	// 				.map(|(i, u)| wgpu::BindGroupEntry {
-	// 					binding: i as u32,
-	// 					resource: value_to_resource(u, painter),
-	// 				})
-	// 				.collect::<Vec<_>>();
-
-	// 			let bind_group = painter
-	// 				.device
-	// 				.create_bind_group(&wgpu::BindGroupDescriptor {
-	// 					label: None,
-	// 					layout,
-	// 					entries: &entries,
-	// 				});
-
-	// 			painter.bind_groups[self.0].bind_group = bind_group;
-	// 		}
-	// 	}
-	// }
-
-	// pub(crate) fn has_mip_level_texture(&self, painter: &Painter) -> bool {
-	// 	let storage = &painter.bind_groups[self.0];
-	// 	storage.data.iter().any(|u| match u {
-	// 		Uniform::Tex2DAtMipLevel(_, mip_level) => *mip_level > 0,
-	// 		_ => false,
-	// 	})
-	// }
-
-	// fn update_texture_bind_groups(&self, painter: &mut Painter) {
-	// 	let storage = &painter.bind_groups[self.0];
-	// 	for u in &storage.data {
-	// 		match u {
-	// 			Uniform::Tex2DAtMipLevel(tex, _) => {
-	// 				painter.textures[tex.0].bindings.insert(*self);
-	// 			}
-	// 			Uniform::Tex2D(tex) => {
-	// 				painter.textures[tex.0].bindings.insert(*self);
-	// 			}
-	// 			_ => {}
-	// 		}
-	// 	}
-	// }
 }

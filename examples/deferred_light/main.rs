@@ -89,20 +89,18 @@ impl CanvasApp<()> for App {
 		let canvas_shade = p
 			.shade_effect()
 			.with_uniforms(&[
-				UNIFORM_TEX2D_FRAG,
-				UNIFORM_TEX2D_FRAG,
-				UNIFORM_TEX2D_FRAG,
 				UNIFORM_SAMPLER_FRAG,
 				UNIFORM_BUFFER_FRAG,
 				UNIFORM_BUFFER_FRAG,
 				UNIFORM_BUFFER_FRAG,
 			])
+			.with_layers(&[UNIFORM_TEX2D_FRAG, UNIFORM_TEX2D_FRAG, UNIFORM_TEX2D_FRAG])
 			.create();
 		load_fragment_shader!(canvas_shade, p, "./shader/light_fs.spv");
 
-		let color_target = scene_layer.binding_at(p, 0);
-		let normal_target = scene_layer.binding_at(p, 1);
-		let position_target = scene_layer.binding_at(p, 2);
+		let color_target = scene_layer.binding_at(0);
+		let normal_target = scene_layer.binding_at(1);
+		let position_target = scene_layer.binding_at(2);
 
 		let lights = (0..LIGHTS_COUNT)
 			.map(|_| {
@@ -113,8 +111,8 @@ impl CanvasApp<()> for App {
 
 				InstanceBinding {
 					bindings: map! {
-						5 => light_pos_u,
-						6 => light_color_u,
+						2 => light_pos_u,
+						3 => light_color_u,
 					},
 					..default()
 				}
@@ -129,11 +127,13 @@ impl CanvasApp<()> for App {
 		let canvas_effect = p
 			.effect(canvas_shade)
 			.with_bindings(map! {
+				0 => s,
+				1 => cam_pos_u,
+			})
+			.with_layers(map! {
 				0 => color_target,
 				1 => normal_target,
 				2 => position_target,
-				3 => s,
-				4 => cam_pos_u,
 			})
 			.with_instances(lights)
 			.with_blend_state(wgpu::BlendState {

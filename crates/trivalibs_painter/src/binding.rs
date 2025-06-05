@@ -22,6 +22,7 @@ pub enum ValueBinding {
 #[derive(Clone, Copy)]
 pub enum LayerBinding {
 	Source(Layer),
+	AtIndex(Layer, usize),
 	SourceAtMipLevel(Layer, u32),
 	Depth(Layer),
 }

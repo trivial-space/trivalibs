@@ -94,31 +94,24 @@ impl Shape {
 		let sd = &painter.shades[sp.shade.0];
 		let l = &painter.layers[layer.0];
 
-		let values_len = sd.value_bindings_length;
-		let layout = sd.binding_layout;
 		let value_bindings = &sp.bindings.clone();
 		let layer_bindings = &l.bindings.clone();
 		let instances = &sp.instances.clone();
 
-		let layers_len = sd.layer_bindings_length;
-		let layers_layout = sd.layers_layout;
-		let shape_layers = &sp.layers.clone();
-		let layer_layers = &l.layers.clone();
+		let layer_bind_group_data = LayerBindGroupData::from_bindings(
+			sd.layer_bindings_length,
+			sd.layers_layout,
+			&sp.layers.clone(),
+			&l.layers.clone(),
+		);
 
 		let bind_groups = BindGroup::values_bind_groups(
 			painter,
-			values_len,
-			layout,
+			sd.value_bindings_length,
+			sd.binding_layout,
 			value_bindings,
 			instances,
 			layer_bindings,
-		);
-
-		let layer_bind_group_data = LayerBindGroupData::from_bindings(
-			layers_len,
-			layers_layout,
-			shape_layers,
-			layer_layers,
 		);
 
 		painter.shapes[self.0].bind_groups = bind_groups;

@@ -272,6 +272,10 @@ impl Layer {
 		LayerBinding::Depth(*self)
 	}
 
+	pub fn binding_at(&self, index: usize) -> LayerBinding {
+		LayerBinding::AtIndex(*self, index)
+	}
+
 	pub fn set_clear_color(&mut self, painter: &mut Painter, color: Option<wgpu::Color>) {
 		painter.layers[self.0].clear_color = color;
 	}

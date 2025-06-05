@@ -136,7 +136,7 @@ impl Painter {
 		let layer_texture_layout =
 			BindGroupLayout::layers(&mut painter, &[UNIFORM_LAYER_FRAG]).unwrap();
 
-		BindGroup::bind_groups(
+		BindGroup::values_bind_groups(
 			&mut painter,
 			1,
 			Some(layer_sampler_layout),
@@ -145,7 +145,7 @@ impl Painter {
 			&vec![(0, Sampler(0).binding())],
 		);
 
-		BindGroup::bind_groups(
+		BindGroup::values_bind_groups(
 			&mut painter,
 			1,
 			Some(layer_sampler_layout),
@@ -480,21 +480,13 @@ impl Painter {
 			let pipeline = &self.pipelines[&pipeline_key];
 			pass.set_pipeline(&pipeline.pipeline);
 
-			if !skip_source {
-				let b = l.current_source_binding();
-				pass.set_bind_group(1, &self.bind_groups[b.0].bind_group, &[]);
-			}
-
-			for (index, layer) in &l.layers {
-				let l = &self.layers[layer.0];
-				let b = l.current_source_binding();
-				pass.set_bind_group(*index, &self.bind_groups[b.0].bind_group, &[]);
-			}
-
-			for (index, layer) in &e.layers {
-				let l = &self.layers[layer.0];
-				let b = l.current_source_binding();
-				pass.set_bind_group(*index, &self.bind_groups[b.0].bind_group, &[]);
+			if let Some(bind_group) = e.layer_bind_group_data.as_ref() {
+				let layer_bind_group = if skip_source {
+					bind_group.to_gpu_bind_group(self)
+				} else {
+					bind_group.to_gpu_bind_group_with_first(self, &layer.binding())
+				};
+				pass.set_bind_group(1, &layer_bind_group, &[]);
 			}
 
 			if e.bind_groups.is_empty() {
@@ -635,7 +627,6 @@ impl Painter {
 			.device
 			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-		let layer_binding = self.layers[layer.0].current_source_binding();
 		let pipeline = &self.pipelines[FULL_SCREEN_TEXTURE_PIPELINE];
 
 		{
@@ -655,7 +646,11 @@ impl Painter {
 			});
 			pass.set_pipeline(&pipeline.pipeline);
 			pass.set_bind_group(0, &self.bind_groups[0].bind_group, &[]);
-			pass.set_bind_group(1, &self.bind_groups[layer_binding.0].bind_group, &[]);
+			pass.set_bind_group(
+				1,
+				&BindGroup::layer_gpu_bind_group(self, layer.binding()),
+				&[],
+			);
 			pass.draw(0..3, 0..1);
 		}
 
