@@ -254,6 +254,8 @@ impl Texture {
 			},
 			size,
 		);
+
+		self.update_mips(painter);
 	}
 
 	pub fn destroy(self, painter: &mut Painter) {

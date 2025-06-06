@@ -34,8 +34,11 @@ impl CanvasApp<()> for App {
 		// Grab the bytes of the image.
 		let tex_rgba = &buf[..info.buffer_size()];
 
-		let tex = p.texture_2d(info.width, info.height).create();
-		tex.fill_2d(p, tex_rgba);
+		let tex = p
+			.layer()
+			.with_size(info.width, info.height)
+			.with_static_texture_data(tex_rgba)
+			.create();
 
 		let shade = p
 			.shade(&[Float32x3, Float32x2, Float32x3, Float32x3])
@@ -60,8 +63,10 @@ impl CanvasApp<()> for App {
 			.with_bindings(map! {
 				0 => mvp.binding(),
 				1 => norm.binding(),
-				2 => tex.uniform(),
-				3 => s,
+				2 => s
+			})
+			.with_layers(map! {
+				0 => tex.binding()
 			})
 			.create();
 

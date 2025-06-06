@@ -9,7 +9,6 @@ use crate::{
 };
 
 pub(crate) struct LayerStorage {
-	pub static_tex: Option<Texture>,
 	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
 	pub target_textures: Vec<Texture>,
@@ -50,7 +49,9 @@ impl LayerStorage {
 }
 
 #[derive(Clone)]
-pub struct LayerProps {
+pub struct LayerProps<'a> {
+	pub static_texture: bool,
+	pub static_texture_data: Option<&'a [u8]>,
 	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
 	pub bindings: Vec<(u32, ValueBinding)>,
@@ -65,9 +66,11 @@ pub struct LayerProps {
 	pub mips: Option<MipMapCount>,
 }
 
-impl Default for LayerProps {
+impl Default for LayerProps<'_> {
 	fn default() -> Self {
 		LayerProps {
+			static_texture: false,
+			static_texture_data: None,
 			shapes: Vec::with_capacity(0),
 			effects: Vec::with_capacity(0),
 			bindings: Vec::with_capacity(0),
@@ -89,6 +92,10 @@ pub struct Layer(pub(crate) usize);
 
 impl Layer {
 	pub fn new(painter: &mut Painter, props: LayerProps) -> Self {
+		if props.static_texture && props.shapes.len() > 0 {
+			panic!("A layer can only either contain a static texture or render shapes, not both")
+		}
+
 		let use_window_size = props.width == 0 || props.height == 0;
 		let width = if use_window_size {
 			painter.config.width
@@ -116,8 +123,8 @@ impl Layer {
 
 		let layer = Layer(painter.layers.len());
 
-		let use_swap_targets =
-			props.effects.len() > 1 || (props.shapes.len() > 0 && props.effects.len() > 0);
+		let use_swap_targets = props.effects.len() > 1
+			|| ((props.shapes.len() > 0 || props.static_texture) && props.effects.len() > 0);
 
 		let format_len = props.formats.len();
 		let is_multi_target = format_len > 1;
@@ -137,6 +144,12 @@ impl Layer {
 			Vec::with_capacity(if props.multisampled { texture_count } else { 0 });
 		let mut formats = Vec::with_capacity(texture_count);
 
+		let mut usage =
+			wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING;
+		if props.static_texture {
+			usage |= wgpu::TextureUsages::COPY_DST;
+		}
+
 		if is_multi_target {
 			if use_swap_targets {
 				panic!("Postprocessing is not supported with multiple targets. Only sketches or one effect can be used.");
@@ -149,8 +162,7 @@ impl Layer {
 					height,
 					Texture2DProps {
 						format,
-						usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-							| wgpu::TextureUsages::TEXTURE_BINDING,
+						usage,
 						mips: props.mips,
 					},
 					false,
@@ -183,8 +195,7 @@ impl Layer {
 					height,
 					Texture2DProps {
 						format,
-						usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-							| wgpu::TextureUsages::TEXTURE_BINDING,
+						usage,
 						mips: props.mips,
 					},
 					false,
@@ -211,7 +222,6 @@ impl Layer {
 		}
 
 		let storage = LayerStorage {
-			static_tex: None,
 			shapes: props.shapes.clone(),
 			effects: props.effects.clone(),
 			width,
@@ -240,6 +250,10 @@ impl Layer {
 			e.prepare_bindings(painter, layer);
 		}
 
+		if let Some(data) = props.static_texture_data {
+			layer.update_static_data(painter, data);
+		}
+
 		layer
 	}
 
@@ -258,6 +272,12 @@ impl Layer {
 			let key = painter.get_effect_pipeline_key(e, *self);
 			painter.ensure_effect_pipeline(&key, e, *self);
 		}
+	}
+
+	pub fn update_static_data(&self, painter: &Painter, data: &[u8]) {
+		painter.layers[self.0]
+			.current_source_texture()
+			.fill_2d(painter, data);
 	}
 
 	pub fn binding(&self) -> LayerBinding {
@@ -367,12 +387,12 @@ impl Layer {
 ///     .create();
 /// ```
 ///
-pub struct LayerBuilder<'a> {
-	props: LayerProps,
+pub struct LayerBuilder<'a, 'b> {
+	props: LayerProps<'b>,
 	painter: &'a mut Painter,
 }
 
-impl<'a> LayerBuilder<'a> {
+impl<'a, 'b> LayerBuilder<'a, 'b> {
 	pub fn new(painter: &'a mut Painter) -> Self {
 		LayerBuilder {
 			props: LayerProps::default(),
@@ -394,6 +414,17 @@ impl<'a> LayerBuilder<'a> {
 		let layer = Layer::new(self.painter, self.props);
 		layer.init_layer_gpu_pipelines(self.painter);
 		layer
+	}
+
+	pub fn with_static_texture(mut self) -> Self {
+		self.props.static_texture = true;
+		self
+	}
+
+	pub fn with_static_texture_data(mut self, data: &'b [u8]) -> Self {
+		self.props.static_texture = true;
+		self.props.static_texture_data = Some(data);
+		self
 	}
 
 	pub fn with_shapes(mut self, shapes: Vec<Shape>) -> Self {

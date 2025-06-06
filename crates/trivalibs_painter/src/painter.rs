@@ -272,7 +272,7 @@ impl Painter {
 
 	// layer utils
 
-	pub fn layer(&mut self) -> LayerBuilder<'_> {
+	pub fn layer<'b>(&mut self) -> LayerBuilder<'_, 'b> {
 		LayerBuilder::new(self)
 	}
 
