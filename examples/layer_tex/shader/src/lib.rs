@@ -35,8 +35,8 @@ pub fn texture_vs(
 #[spirv(fragment)]
 pub fn texture_fs(
 	uv: Vec2,
-	#[spirv(descriptor_set = 0, binding = 1)] tex: &Image!(2D, type=f32, sampled),
-	#[spirv(descriptor_set = 0, binding = 2)] sampler: &Sampler,
+	#[spirv(descriptor_set = 0, binding = 1)] sampler: &Sampler,
+	#[spirv(descriptor_set = 1, binding = 0)] tex: &Image!(2D, type=f32, sampled),
 	out: &mut Vec4,
 ) {
 	*out = tex.sample(*sampler, uv);

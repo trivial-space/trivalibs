@@ -86,3 +86,16 @@ pub fn mip_sampling(
 	let col = tex.sample_by_lod(*sampler, coord, (*time * 0.2).sin().fit1101() * mips);
 	*out = col;
 }
+
+#[spirv(fragment)]
+pub fn wave_effect(
+	coord: Vec2,
+	#[spirv(uniform, descriptor_set = 0, binding = 0)] time: &f32,
+	#[spirv(descriptor_set = 0, binding = 1)] sampler: &Sampler,
+	#[spirv(descriptor_set = 1, binding = 0)] tex: &Image!(2D, type=f32, sampled),
+	out: &mut Vec4,
+) {
+	let coord = vec2(coord.x + (coord.y * 30.0 + time).sin() * 0.005, coord.y);
+	let col = tex.sample(*sampler, coord);
+	*out = col;
+}

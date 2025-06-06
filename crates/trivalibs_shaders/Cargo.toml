@@ -5,3 +5,6 @@ edition.workspace = true
 
 [dependencies]
 spirv-std.workspace = true
+
+[target.'cfg(not(target_arch = "spirv"))'.dependencies]
+glam.workspace = true

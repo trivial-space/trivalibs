@@ -1,16 +1,16 @@
 use crate::{
-	binding::{Binding, BindingLayout, BindingStorage},
+	bind_group::{BindGroup, BindGroupLayout, BindGroupStorage},
+	binding::{BindingBuffer, Mat3U, ValueBinding, Vec3U},
 	effect::{Effect, EffectBuilder, EffectStorage},
 	form::{Form, FormBuffers, FormBuilder, FormStorage},
 	layer::{Layer, LayerBuilder, LayerStorage},
 	pipeline::PipelineStorage,
-	prelude::{UNIFORM_LAYER_FRAG, UNIFORM_SAMPLER_FRAG},
+	prelude::{BINDING_LAYER_FRAG, BINDING_SAMPLER_FRAG},
 	sampler::{Sampler, SamplerBuilder, SamplerProps},
 	shade::{AttribsFormat, Shade, ShadeBuilder, ShadeEffectBuilder, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
 	shape::{Shape, ShapeBuilder, ShapeStorage},
-	texture::{Texture2DBuilder, TextureStorage},
-	uniform::{Mat3U, Uniform, UniformBuffer, Vec3U},
+	texture::{TexViewKey, TextureStorage},
 };
 use std::{collections::BTreeMap, sync::Arc};
 use trivalibs_core::{
@@ -38,8 +38,8 @@ pub struct Painter {
 	pub(crate) shapes: Vec<ShapeStorage>,
 	pub(crate) effects: Vec<EffectStorage>,
 	pub(crate) layers: Vec<LayerStorage>,
-	pub(crate) bindings: Vec<BindingStorage>,
-	pub(crate) binding_layouts: Vec<wgpu::BindGroupLayout>,
+	pub(crate) bind_groups: Vec<BindGroupStorage>,
+	pub(crate) bind_group_layouts: Vec<wgpu::BindGroupLayout>,
 	pub(crate) pipelines: BTreeMap<Vec<u8>, PipelineStorage>,
 	pub(crate) fullscreen_quad_shader: wgpu::ShaderModule,
 }
@@ -122,8 +122,8 @@ impl Painter {
 			shapes: Vec::with_capacity(8),
 			effects: Vec::with_capacity(8),
 			layers: Vec::with_capacity(8),
-			binding_layouts: Vec::with_capacity(8),
-			bindings: Vec::with_capacity(8),
+			bind_group_layouts: Vec::with_capacity(8),
+			bind_groups: Vec::with_capacity(8),
 			pipelines: BTreeMap::new(),
 			fullscreen_quad_shader,
 		};
@@ -132,26 +132,26 @@ impl Painter {
 		Sampler::create(&mut painter, SamplerProps::LINEAR);
 
 		let layer_sampler_layout =
-			BindingLayout::uniforms(&mut painter, &[UNIFORM_SAMPLER_FRAG]).unwrap();
+			BindGroupLayout::values(&mut painter, &[BINDING_SAMPLER_FRAG]).unwrap();
 		let layer_texture_layout =
-			BindingLayout::swapping_effect_layer(&mut painter, UNIFORM_LAYER_FRAG);
+			BindGroupLayout::layers(&mut painter, &[BINDING_LAYER_FRAG]).unwrap();
 
-		Binding::uniforms(
+		BindGroup::values_bind_groups(
 			&mut painter,
 			1,
 			Some(layer_sampler_layout),
 			&Vec::with_capacity(0),
 			&Vec::with_capacity(0),
-			&vec![(0, Sampler(0).uniform())],
+			&vec![(0, Sampler(0).binding())],
 		);
 
-		Binding::uniforms(
+		BindGroup::values_bind_groups(
 			&mut painter,
 			1,
 			Some(layer_sampler_layout),
 			&Vec::with_capacity(0),
 			&Vec::with_capacity(0),
-			&vec![(0, Sampler(1).uniform())],
+			&vec![(0, Sampler(1).binding())],
 		);
 
 		let fullscreen_quad_pipeline_layout =
@@ -160,8 +160,8 @@ impl Painter {
 				.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 					label: None,
 					bind_group_layouts: &[
-						&painter.binding_layouts[layer_sampler_layout.0],
-						&painter.binding_layouts[layer_texture_layout.0],
+						&painter.bind_group_layouts[layer_sampler_layout.0],
+						&painter.bind_group_layouts[layer_texture_layout.0],
 					],
 					push_constant_ranges: &[],
 				});
@@ -248,10 +248,6 @@ impl Painter {
 
 	// texture helpers
 
-	pub fn texture_2d(&mut self, width: u32, height: u32) -> Texture2DBuilder<'_> {
-		Texture2DBuilder::new(self, width, height)
-	}
-
 	pub fn sampler(&mut self) -> SamplerBuilder<'_> {
 		SamplerBuilder::new(self)
 	}
@@ -276,77 +272,78 @@ impl Painter {
 
 	// layer utils
 
-	pub fn layer(&mut self) -> LayerBuilder<'_> {
+	pub fn layer<'b>(&mut self) -> LayerBuilder<'_, 'b> {
 		LayerBuilder::new(self)
 	}
 
-	// uniform utils
+	// binding utils
 
-	pub fn uniform_buff<T: bytemuck::Pod>(&mut self, data: T) -> UniformBuffer<T> {
-		UniformBuffer::new(self, data)
+	pub fn bind_buff<T: bytemuck::Pod>(&mut self, data: T) -> BindingBuffer<T> {
+		BindingBuffer::new(self, data)
 	}
-	pub fn uniform_mat3(&mut self) -> UniformBuffer<Mat3U> {
-		self.uniform_buff(Mat3U(Mat3A::IDENTITY))
+	pub fn bind_mat3(&mut self) -> BindingBuffer<Mat3U> {
+		self.bind_buff(Mat3U(Mat3A::IDENTITY))
 	}
-	pub fn uniform_mat4(&mut self) -> UniformBuffer<Mat4> {
-		self.uniform_buff(Mat4::IDENTITY)
+	pub fn bind_mat4(&mut self) -> BindingBuffer<Mat4> {
+		self.bind_buff(Mat4::IDENTITY)
 	}
-	pub fn uniform_vec2(&mut self) -> UniformBuffer<Vec2> {
-		self.uniform_buff(Vec2::ZERO)
+	pub fn bind_vec2(&mut self) -> BindingBuffer<Vec2> {
+		self.bind_buff(Vec2::ZERO)
 	}
-	pub fn uniform_vec3(&mut self) -> UniformBuffer<Vec3U> {
-		self.uniform_buff(Vec3U(Vec3A::ZERO))
+	pub fn bind_vec3(&mut self) -> BindingBuffer<Vec3U> {
+		self.bind_buff(Vec3U(Vec3A::ZERO))
 	}
-	pub fn uniform_vec4(&mut self) -> UniformBuffer<Vec4> {
-		self.uniform_buff(Vec4::ZERO)
+	pub fn bind_vec4(&mut self) -> BindingBuffer<Vec4> {
+		self.bind_buff(Vec4::ZERO)
 	}
-	pub fn uniform_uvec2(&mut self) -> UniformBuffer<UVec2> {
-		self.uniform_buff(UVec2::ZERO)
+	pub fn bind_uvec2(&mut self) -> BindingBuffer<UVec2> {
+		self.bind_buff(UVec2::ZERO)
 	}
-	pub fn uniform_f32(&mut self) -> UniformBuffer<f32> {
-		self.uniform_buff(0.0f32)
+	pub fn bind_f32(&mut self) -> BindingBuffer<f32> {
+		self.bind_buff(0.0f32)
 	}
-	pub fn uniform_u32(&mut self) -> UniformBuffer<u32> {
-		self.uniform_buff(0u32)
+	pub fn bind_u32(&mut self) -> BindingBuffer<u32> {
+		self.bind_buff(0u32)
 	}
-	pub fn uniform_quat(&mut self) -> UniformBuffer<Quat> {
-		self.uniform_buff(Quat::IDENTITY)
+	pub fn bind_quat(&mut self) -> BindingBuffer<Quat> {
+		self.bind_buff(Quat::IDENTITY)
 	}
 
-	pub fn uniform_const_buff<T: bytemuck::Pod>(&mut self, data: T) -> Uniform {
-		self.uniform_buff(data).uniform()
+	pub fn bind_const_buff<T: bytemuck::Pod>(&mut self, data: T) -> ValueBinding {
+		self.bind_buff(data).binding()
 	}
-	pub fn uniform_const_mat3(&mut self, mat: Mat3) -> Uniform {
-		let u = self.uniform_mat3();
+	pub fn bind_const_mat3(&mut self, mat: Mat3) -> ValueBinding {
+		let u = self.bind_mat3();
 		u.update_mat3(self, mat);
-		u.uniform()
+		u.binding()
 	}
-	pub fn uniform_const_mat4(&mut self, mat: Mat4) -> Uniform {
-		self.uniform_const_buff(mat)
+	pub fn bind_const_mat4(&mut self, mat: Mat4) -> ValueBinding {
+		self.bind_const_buff(mat)
 	}
-	pub fn uniform_const_vec2(&mut self, vec: Vec2) -> Uniform {
-		self.uniform_const_buff(vec)
+	pub fn bind_const_vec2(&mut self, vec: Vec2) -> ValueBinding {
+		self.bind_const_buff(vec)
 	}
-	pub fn uniform_const_vec3(&mut self, vec: Vec3) -> Uniform {
-		let u = self.uniform_vec3();
+	pub fn bind_const_vec3(&mut self, vec: Vec3) -> ValueBinding {
+		let u = self.bind_vec3();
 		u.update_vec3(self, vec);
-		u.uniform()
+		u.binding()
 	}
-	pub fn uniform_const_vec4(&mut self, vec: Vec4) -> Uniform {
-		self.uniform_const_buff(vec)
+	pub fn bind_const_vec4(&mut self, vec: Vec4) -> ValueBinding {
+		self.bind_const_buff(vec)
 	}
-	pub fn uniform_const_uvec2(&mut self, vec: UVec2) -> Uniform {
-		self.uniform_const_buff(vec)
+	pub fn bind_const_uvec2(&mut self, vec: UVec2) -> ValueBinding {
+		self.bind_const_buff(vec)
 	}
-	pub fn uniform_const_f32(&mut self, f: f32) -> Uniform {
-		self.uniform_const_buff(f)
+	pub fn bind_const_f32(&mut self, f: f32) -> ValueBinding {
+		self.bind_const_buff(f)
 	}
-	pub fn uniform_const_u32(&mut self, u: u32) -> Uniform {
-		self.uniform_const_buff(u)
+	pub fn bind_const_u32(&mut self, u: u32) -> ValueBinding {
+		self.bind_const_buff(u)
 	}
-	pub fn uniform_const_quat(&mut self, quat: Quat) -> Uniform {
-		self.uniform_const_buff(quat)
+	pub fn bind_const_quat(&mut self, quat: Quat) -> ValueBinding {
+		self.bind_const_buff(quat)
 	}
+
 	// general utils
 
 	pub fn request_next_frame(&self) {
@@ -413,11 +410,10 @@ impl Painter {
 	fn render_shape(&self, pass: &mut wgpu::RenderPass<'_>, shape: Shape, layer: Layer) {
 		let s = &self.shapes[shape.0];
 		let f = &self.forms[s.form.0];
-		let l = &self.layers[layer.0];
 
-		let draw = |pass: &mut wgpu::RenderPass, binding: Option<Binding>| {
+		let draw = |pass: &mut wgpu::RenderPass, binding: Option<BindGroup>| {
 			if let Some(binding) = binding {
-				pass.set_bind_group(0, &self.bindings[binding.0].binding, &[]);
+				pass.set_bind_group(0, &self.bind_groups[binding.0].bind_group, &[]);
 			}
 
 			pass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
@@ -433,28 +429,18 @@ impl Painter {
 		let pipeline = &self.pipelines[&pipeline_key];
 		pass.set_pipeline(&pipeline.pipeline);
 
-		for (index, layer) in &l.effect_layers {
-			let l = &self.layers[layer.0];
-			let b = l.current_source();
-			pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
+		if let Some(bind_group) = s.layer_bind_group_data.as_ref() {
+			let layer_bind_group = bind_group.to_gpu_bind_group(self);
+			pass.set_bind_group(1, &layer_bind_group, &[]);
 		}
 
-		let s = &self.shapes[shape.0];
-		for (index, layer) in &s.effect_layers {
-			let l = &self.layers[layer.0];
-			let b = l.current_source();
-			pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
-		}
-
-		if s.uniform_bindings.is_empty() {
+		if s.bind_groups.is_empty() {
 			draw(pass, None);
 		} else {
-			for binding in &s.uniform_bindings {
-				draw(pass, Some(binding.clone()));
+			for bind_group in &s.bind_groups {
+				draw(pass, Some(bind_group.clone()));
 			}
 		}
-
-		l.current_target().update_mips(self);
 	}
 
 	fn render_effect(
@@ -466,7 +452,12 @@ impl Painter {
 		let e = &self.effects[effect.0];
 		let l = &self.layers[layer.0];
 
-		let view = &self.textures[l.current_target().0].dst_view;
+		let view = if let Some(mip_level) = e.dst_mip_level {
+			l.current_target_texture()
+				.view(self, &TexViewKey::AtMipLevel(mip_level))
+		} else {
+			l.current_target_texture().target_view(self)
+		};
 
 		let mut encoder = self
 			.device
@@ -494,36 +485,31 @@ impl Painter {
 			let pipeline = &self.pipelines[&pipeline_key];
 			pass.set_pipeline(&pipeline.pipeline);
 
-			if !skip_source {
-				let b = l.current_source();
-				pass.set_bind_group(1, &self.bindings[b.0].binding, &[]);
+			if let Some(bind_group_data) = e.layer_bind_group_data.as_ref() {
+				let layer_bind_group = if skip_source {
+					bind_group_data.to_gpu_bind_group(self)
+				} else {
+					let binding = if let Some(src_mip_level) = e.src_mip_level {
+						layer.binding_at_mip_level(src_mip_level)
+					} else {
+						layer.binding()
+					};
+					bind_group_data.to_gpu_bind_group_with_first(self, &binding)
+				};
+				pass.set_bind_group(1, &layer_bind_group, &[]);
 			}
 
-			for (index, layer) in &l.effect_layers {
-				let l = &self.layers[layer.0];
-				let b = l.current_source();
-				pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
-			}
-
-			for (index, layer) in &e.effect_layers {
-				let l = &self.layers[layer.0];
-				let b = l.current_source();
-				pass.set_bind_group(*index, &self.bindings[b.0].binding, &[]);
-			}
-
-			if e.uniform_bindings.is_empty() {
+			if e.bind_groups.is_empty() {
 				pass.draw(0..3, 0..1);
 			} else {
-				for b in &e.uniform_bindings {
-					pass.set_bind_group(0, &self.bindings[b.0].binding, &[]);
+				for b in &e.bind_groups {
+					pass.set_bind_group(0, &self.bind_groups[b.0].bind_group, &[]);
 					pass.draw(0..3, 0..1);
 				}
 			}
 		}
 
 		self.queue.submit(Some(encoder.finish()));
-
-		l.current_target().update_mips(self);
 
 		Ok(())
 	}
@@ -537,11 +523,10 @@ impl Painter {
 		if has_shapes {
 			let color_attachments: Vec<Option<RenderPassColorAttachment<'_>>> =
 				if !l.is_multi_target {
-					let target_view = &self.textures[l.current_target().0].dst_view;
+					let target_view = l.current_target_texture().target_view(self);
 					let multisampled_texture = l.multisampled_textures.get(0);
 
-					let view =
-						multisampled_texture.map_or(target_view, |t| &self.textures[t.0].dst_view);
+					let view = multisampled_texture.map_or(target_view, |t| t.target_view(self));
 					let resolve_target = multisampled_texture.map(|_| target_view);
 
 					vec![Some(wgpu::RenderPassColorAttachment {
@@ -559,11 +544,11 @@ impl Painter {
 						.iter()
 						.enumerate()
 						.map(|(i, t)| {
-							let target_view = &self.textures[t.0].dst_view;
+							let target_view = t.target_view(self);
 							let multisampled_texture = l.multisampled_textures.get(i);
 
-							let view = multisampled_texture
-								.map_or(target_view, |t| &self.textures[t.0].dst_view);
+							let view =
+								multisampled_texture.map_or(target_view, |t| t.target_view(self));
 							let resolve_target = multisampled_texture.map(|_| target_view);
 
 							Some(wgpu::RenderPassColorAttachment {
@@ -590,7 +575,7 @@ impl Painter {
 					color_attachments: &color_attachments,
 					depth_stencil_attachment: l.depth_texture.as_ref().map(|t| {
 						wgpu::RenderPassDepthStencilAttachment {
-							view: &self.textures[t.0].dst_view,
+							view: t.view(self, &TexViewKey::Default),
 							depth_ops: Some(wgpu::Operations {
 								load: wgpu::LoadOp::Clear(1.0),
 								store: wgpu::StoreOp::Store,
@@ -612,6 +597,7 @@ impl Painter {
 		}
 
 		if effects_len == 0 {
+			l.current_target_texture().update_mips(self);
 			return Ok(());
 		}
 
@@ -619,11 +605,27 @@ impl Painter {
 			self.layers[layer.0].swap_targets();
 		}
 
+		let mut update_mips = true;
 		for i in 0..effects_len {
-			let skip_source_tex = i == 0 && !has_shapes;
 			let effect = self.layers[layer.0].effects[i];
+			let e = &self.effects[effect.0];
+
+			let skip_source_tex = i == 0 && !(has_shapes || e.src_mip_level.is_some());
 			self.render_effect(effect, layer, skip_source_tex)?;
-			self.layers[layer.0].swap_targets();
+
+			if self.effects[effect.0].dst_mip_level.is_none() {
+				self.layers[layer.0].swap_targets();
+			} else {
+				// If the effect has a mip target, we don't swap the targets.
+				// Instead, we update the mips of the current target texture.
+				update_mips = false;
+			}
+		}
+
+		if update_mips {
+			self.layers[layer.0]
+				.current_source_texture()
+				.update_mips(self);
 		}
 
 		Ok(())
@@ -647,7 +649,6 @@ impl Painter {
 			.device
 			.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-		let layer_binding = self.layers[layer.0].current_source();
 		let pipeline = &self.pipelines[FULL_SCREEN_TEXTURE_PIPELINE];
 
 		{
@@ -666,8 +667,12 @@ impl Painter {
 				occlusion_query_set: None,
 			});
 			pass.set_pipeline(&pipeline.pipeline);
-			pass.set_bind_group(0, &self.bindings[0].binding, &[]);
-			pass.set_bind_group(1, &self.bindings[layer_binding.0].binding, &[]);
+			pass.set_bind_group(0, &self.bind_groups[0].bind_group, &[]);
+			pass.set_bind_group(
+				1,
+				&BindGroup::layer_gpu_bind_group(self, layer.binding()),
+				&[],
+			);
 			pass.draw(0..3, 0..1);
 		}
 

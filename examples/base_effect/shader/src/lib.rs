@@ -5,6 +5,7 @@ use spirv_std::glam::{vec2, vec4, UVec2, Vec2, Vec4};
 #[allow(unused_imports)]
 use spirv_std::num_traits::Float;
 use spirv_std::spirv;
+use trivalibs_shaders::{float_ext::FloatExt, vec_ext::VecExt};
 
 #[spirv(fragment)]
 pub fn main(
@@ -20,13 +21,13 @@ pub fn main(
 	let gap_size = 0.1;
 	let gap = vec2(gap_size, gap_size * tile_ratio);
 	let mut tile = coord * tile_size;
-	tile.y -= (time * 0.5).fract() * 2.0;
+	tile.y -= (time * 0.5).frct() * 2.0;
 	let y_offet = tile.y.ceil() % 2.0;
 	if y_offet == 0.0 {
 		tile.x += 0.5;
 	}
 	tile -= gap * 0.5;
-	let tile = tile.fract();
+	let tile = tile.frct();
 	*out = if tile.x >= 1.0 - gap.x || tile.y >= 1.0 - gap.y {
 		vec4(0.4, 0.6, 0.9, 1.0)
 	} else {

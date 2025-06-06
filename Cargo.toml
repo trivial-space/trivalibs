@@ -51,6 +51,7 @@ notify = "8.0.0"
 trivalibs = { path = "crates/trivalibs" }
 trivalibs_core = { path = "crates/trivalibs_core" }
 trivalibs_painter = { path = "crates/trivalibs_painter" }
+trivalibs_shaders = { path = "crates/trivalibs_shaders" }
 png.workspace = true
 bytemuck.workspace = true
 log.workspace = true

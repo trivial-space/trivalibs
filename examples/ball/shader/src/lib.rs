@@ -29,8 +29,8 @@ pub fn fragment(
 	in_uv: Vec2,
 	in_color: Vec3,
 	in_norm: Vec3,
-	#[spirv(descriptor_set = 0, binding = 2)] tex: &Image!(2D, type=f32, sampled),
-	#[spirv(descriptor_set = 0, binding = 3)] sampler: &Sampler,
+	#[spirv(descriptor_set = 0, binding = 2)] sampler: &Sampler,
+	#[spirv(descriptor_set = 1, binding = 0)] tex: &Image!(2D, type=f32, sampled),
 	frag_color: &mut Vec4,
 ) {
 	let col = tex.sample(*sampler, in_uv);
