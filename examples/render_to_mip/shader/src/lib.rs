@@ -52,6 +52,6 @@ pub fn mip_sampling(
 	#[spirv(descriptor_set = 1, binding = 0)] tex: &Image!(2D, type=f32, sampled),
 	out: &mut Vec4,
 ) {
-	let col = tex.sample_by_lod(*sampler, coord, (*time * 0.2).frct() * mips);
+	let col = tex.sample_by_lod(*sampler, coord, (*time * 0.1).frct() * mips);
 	*out = col;
 }

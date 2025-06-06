@@ -6,6 +6,7 @@ pub use painter::Painter;
 pub mod app;
 pub mod bind_group;
 pub mod binding;
+pub mod binding_constants;
 pub mod effect;
 pub mod form;
 pub mod layer;
@@ -16,7 +17,6 @@ pub mod shaders;
 pub mod shape;
 pub mod texture;
 pub mod texture_utils;
-pub mod uniform_constants;
 pub mod utils;
 pub(crate) mod window_dimensions;
 
@@ -24,6 +24,7 @@ pub mod prelude {
 	pub use crate::{
 		app::{AppConfig, CanvasApp, Event},
 		binding::{BindingBuffer, InstanceBinding, Mat3U, Vec3U},
+		binding_constants::*,
 		effect::EffectProps,
 		form::FormProps,
 		layer::{Layer, LayerProps},
@@ -32,7 +33,6 @@ pub mod prelude {
 		sampler::{Sampler, SamplerProps},
 		shade::{Shade, ShadeEffectProps, ShadeProps},
 		shape::{Shape, ShapeProps},
-		uniform_constants::*,
 		wgpu::{self, SurfaceError, TextureFormat::*, VertexFormat::*},
 	};
 }

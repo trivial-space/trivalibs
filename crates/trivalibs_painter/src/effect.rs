@@ -6,18 +6,6 @@ use crate::{
 	Painter,
 };
 
-pub(crate) struct EffectStorage {
-	pub shade: Shade,
-	pub bindings: Vec<(u32, ValueBinding)>,
-	pub layers: Vec<(u32, LayerBinding)>,
-	pub instances: Vec<InstanceBinding>,
-	pub pipeline_key: Vec<u8>,
-	pub blend_state: wgpu::BlendState,
-	pub bind_groups: Vec<BindGroup>,
-	pub layer_bind_group_data: Option<LayerBindGroupData>,
-	pub dst_mip_level: Option<u32>,
-}
-
 #[derive(Clone)]
 pub struct EffectProps {
 	pub bindings: Vec<(u32, ValueBinding)>,
@@ -25,6 +13,7 @@ pub struct EffectProps {
 	pub instances: Vec<InstanceBinding>,
 	pub blend_state: wgpu::BlendState,
 	pub dst_mip_level: Option<u32>,
+	pub src_mip_level: Option<u32>,
 }
 
 impl Default for EffectProps {
@@ -35,8 +24,22 @@ impl Default for EffectProps {
 			instances: Vec::with_capacity(0),
 			blend_state: wgpu::BlendState::REPLACE,
 			dst_mip_level: None,
+			src_mip_level: None,
 		}
 	}
+}
+
+pub(crate) struct EffectStorage {
+	pub shade: Shade,
+	pub bindings: Vec<(u32, ValueBinding)>,
+	pub layers: Vec<(u32, LayerBinding)>,
+	pub instances: Vec<InstanceBinding>,
+	pub pipeline_key: Vec<u8>,
+	pub blend_state: wgpu::BlendState,
+	pub bind_groups: Vec<BindGroup>,
+	pub layer_bind_group_data: Option<LayerBindGroupData>,
+	pub dst_mip_level: Option<u32>,
+	pub src_mip_level: Option<u32>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -69,6 +72,7 @@ impl Effect {
 			bind_groups: Vec::with_capacity(0),
 			layer_bind_group_data: None,
 			dst_mip_level: props.dst_mip_level,
+			src_mip_level: props.src_mip_level,
 		};
 
 		painter.effects.push(effect);
@@ -149,6 +153,16 @@ impl<'a> EffectBuilder<'a> {
 
 	pub fn with_blend_state(mut self, blend_state: wgpu::BlendState) -> Self {
 		self.props.blend_state = blend_state;
+		self
+	}
+
+	pub fn with_mip_target(mut self, dst_mip_level: u32) -> Self {
+		self.props.dst_mip_level = Some(dst_mip_level);
+		self
+	}
+
+	pub fn with_mip_source(mut self, src_mip_level: u32) -> Self {
+		self.props.src_mip_level = Some(src_mip_level);
 		self
 	}
 }

@@ -219,7 +219,7 @@ impl LayerBindGroupData {
 		first: &LayerBinding,
 	) -> wgpu::BindGroup {
 		let entries = std::iter::once(first)
-			.chain(self.data.iter().skip(1))
+			.chain(self.data.iter())
 			.enumerate()
 			.map(|(i, u)| wgpu::BindGroupEntry {
 				binding: i as u32,

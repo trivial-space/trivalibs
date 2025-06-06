@@ -1,4 +1,5 @@
 use trivalibs::{map, painter::prelude::*, prelude::*};
+use trivalibs_shaders::color::hsv2rgb;
 
 struct App {
 	time: f32,
@@ -10,6 +11,8 @@ struct App {
 	canvas: Layer,
 }
 
+const MIP_EFFECT_COUNT: u32 = 8;
+
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let image_shade = p
@@ -19,17 +22,39 @@ impl CanvasApp<()> for App {
 			.create();
 		load_fragment_shader!(image_shade, p, "./shader/image.spv");
 
-		let u_time = p.bind_f32();
-		let u_mip_levels = p.bind_f32();
-
-		let image_effect = p
-			.effect(image_shade)
-			.with_bindings(map! {
-				1 => u_time.binding()
-			})
+		let sampler = p
+			.sampler()
+			.with_filters(wgpu::FilterMode::Nearest)
+			.with_mipmap_filter(wgpu::FilterMode::Linear)
 			.create();
 
-		let image = p.layer().with_effect(image_effect).with_mips().create();
+		let mut effects = vec![];
+
+		for i in 1..MIP_EFFECT_COUNT {
+			let color_shift = i as f32 / MIP_EFFECT_COUNT as f32;
+			let color = hsv2rgb(vec3(color_shift, 1.0, 0.7));
+			let color_binding = p.bind_const_vec3(color);
+			let i = MIP_EFFECT_COUNT - i;
+			effects.push(
+				p.effect(image_shade)
+					.with_bindings(map! {
+						0 => color_binding,
+						1 => sampler.binding(),
+					})
+					.with_mip_source(i)
+					.with_mip_target(i - 1)
+					.create(),
+			);
+		}
+
+		let image = p
+			.layer()
+			.with_effects(effects)
+			.with_mips_max(MIP_EFFECT_COUNT)
+			.create();
+
+		let u_time = p.bind_f32();
+		let u_mip_levels = p.bind_f32();
 
 		let sample_shade = p
 			.shade_effect()
@@ -42,12 +67,6 @@ impl CanvasApp<()> for App {
 			.create();
 		load_fragment_shader!(sample_shade, p, "./shader/mip_sampling.spv");
 
-		let sampler = p
-			.sampler()
-			.with_filters(wgpu::FilterMode::Linear)
-			.with_mipmap_filter(wgpu::FilterMode::Linear)
-			.create();
-
 		let sample_effect = p
 			.effect(sample_shade)
 			.with_bindings(map! {
@@ -58,22 +77,7 @@ impl CanvasApp<()> for App {
 			.with_layers(map! { 1 => image.binding() })
 			.create();
 
-		let effect_shade = p
-			.shade_effect()
-			.with_uniforms(&[BINDING_BUFFER_FRAG, BINDING_SAMPLER_FRAG])
-			.with_layer()
-			.create();
-		load_fragment_shader!(effect_shade, p, "./shader/wave_effect.spv");
-
-		let effect = p
-			.effect(effect_shade)
-			.with_bindings(map! {
-				0 => u_time.binding(),
-				1 => sampler.binding()
-			})
-			.create();
-
-		let canvas = p.layer().with_effects(vec![sample_effect, effect]).create();
+		let canvas = p.layer().with_effects(vec![sample_effect]).create();
 
 		Self {
 			time: 0.0,
@@ -86,13 +90,9 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn resize(&mut self, p: &mut Painter, width: u32, height: u32) {
+	fn resize(&mut self, p: &mut Painter, _width: u32, _height: u32) {
 		let mips = self.image.get_mip_levels_count(p);
-		println!("mip levels: {}", mips);
 		self.u_mip_levels.update(p, mips as f32);
-
-		let canvas_mips = self.canvas.get_mip_levels_count(p);
-		println!("canvas mip levels: {}", canvas_mips);
 	}
 
 	fn update(&mut self, p: &mut Painter, tpf: f32) {

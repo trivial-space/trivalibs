@@ -8,6 +8,45 @@ use crate::{
 	Painter,
 };
 
+#[derive(Clone)]
+pub struct LayerProps<'a> {
+	pub static_texture: bool,
+	pub static_texture_data: Option<&'a [u8]>,
+	pub shapes: Vec<Shape>,
+	pub effects: Vec<Effect>,
+	pub bindings: Vec<(u32, ValueBinding)>,
+	pub layers: Vec<(u32, LayerBinding)>,
+	pub width: u32,
+	pub height: u32,
+	pub formats: Vec<wgpu::TextureFormat>,
+	pub clear_color: Option<wgpu::Color>,
+	pub depth_test: bool,
+	pub layer_layout: LayerLayout,
+	pub multisampled: bool,
+	pub mips: Option<MipMapCount>,
+}
+
+impl Default for LayerProps<'_> {
+	fn default() -> Self {
+		LayerProps {
+			static_texture: false,
+			static_texture_data: None,
+			shapes: Vec::with_capacity(0),
+			effects: Vec::with_capacity(0),
+			bindings: Vec::with_capacity(0),
+			layers: Vec::with_capacity(0),
+			width: 0,
+			height: 0,
+			formats: Vec::with_capacity(1),
+			layer_layout: BINDING_LAYER_FRAG,
+			clear_color: None,
+			depth_test: false,
+			multisampled: false,
+			mips: None,
+		}
+	}
+}
+
 pub(crate) struct LayerStorage {
 	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
@@ -48,45 +87,6 @@ impl LayerStorage {
 	}
 }
 
-#[derive(Clone)]
-pub struct LayerProps<'a> {
-	pub static_texture: bool,
-	pub static_texture_data: Option<&'a [u8]>,
-	pub shapes: Vec<Shape>,
-	pub effects: Vec<Effect>,
-	pub bindings: Vec<(u32, ValueBinding)>,
-	pub layers: Vec<(u32, LayerBinding)>,
-	pub width: u32,
-	pub height: u32,
-	pub formats: Vec<wgpu::TextureFormat>,
-	pub clear_color: Option<wgpu::Color>,
-	pub depth_test: bool,
-	pub layer_layout: LayerLayout,
-	pub multisampled: bool,
-	pub mips: Option<MipMapCount>,
-}
-
-impl Default for LayerProps<'_> {
-	fn default() -> Self {
-		LayerProps {
-			static_texture: false,
-			static_texture_data: None,
-			shapes: Vec::with_capacity(0),
-			effects: Vec::with_capacity(0),
-			bindings: Vec::with_capacity(0),
-			layers: Vec::with_capacity(0),
-			width: 0,
-			height: 0,
-			formats: Vec::with_capacity(1),
-			layer_layout: BINDING_LAYER_FRAG,
-			clear_color: None,
-			depth_test: false,
-			multisampled: false,
-			mips: None,
-		}
-	}
-}
-
 #[derive(Clone, Copy)]
 pub struct Layer(pub(crate) usize);
 
@@ -123,8 +123,14 @@ impl Layer {
 
 		let layer = Layer(painter.layers.len());
 
-		let use_swap_targets = props.effects.len() > 1
-			|| ((props.shapes.len() > 0 || props.static_texture) && props.effects.len() > 0);
+		let swapping_effect_count = props
+			.effects
+			.iter()
+			.filter(|e| !e.has_mip_target(painter))
+			.count();
+
+		let use_swap_targets = swapping_effect_count > 1
+			|| ((props.shapes.len() > 0 || props.static_texture) && swapping_effect_count > 0);
 
 		let format_len = props.formats.len();
 		let is_multi_target = format_len > 1;
@@ -246,8 +252,14 @@ impl Layer {
 		for s in props.shapes {
 			s.prepare_bindings(painter, layer);
 		}
-		for e in props.effects {
+		for e in props.effects.iter() {
 			e.prepare_bindings(painter, layer);
+		}
+		if props.effects.iter().any(|e| e.has_mip_target(painter)) {
+			let textures = painter.layers[layer.0].target_textures.clone();
+			for t in textures {
+				t.prepare_mip_level_views(painter);
+			}
 		}
 
 		if let Some(data) = props.static_texture_data {
@@ -360,6 +372,16 @@ impl Layer {
 				},
 				true,
 			);
+		}
+
+		let effects = painter.layers[self.0].effects.clone();
+		let prepare_effect_mips = effects.iter().any(|e| e.has_mip_target(painter));
+
+		if prepare_effect_mips {
+			let textures = painter.layers[self.0].target_textures.clone();
+			for t in textures {
+				t.prepare_mip_level_views(painter);
+			}
 		}
 	}
 

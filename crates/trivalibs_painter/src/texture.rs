@@ -273,7 +273,7 @@ impl Texture {
 
 	pub(crate) fn prepare_mip_level_views(&self, painter: &mut Painter) {
 		let t = &painter.textures[self.0].texture;
-		for i in 1..=t.mip_level_count() {
+		for i in 1..t.mip_level_count() {
 			self.prepare_view(painter, TexViewKey::AtMipLevel(i));
 		}
 	}

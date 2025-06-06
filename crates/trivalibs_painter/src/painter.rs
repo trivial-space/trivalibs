@@ -452,8 +452,12 @@ impl Painter {
 		let e = &self.effects[effect.0];
 		let l = &self.layers[layer.0];
 
-		// TODO: check effect mip level target
-		let view = l.current_target_texture().target_view(self);
+		let view = if let Some(mip_level) = e.dst_mip_level {
+			l.current_target_texture()
+				.view(self, &TexViewKey::AtMipLevel(mip_level))
+		} else {
+			l.current_target_texture().target_view(self)
+		};
 
 		let mut encoder = self
 			.device
@@ -485,7 +489,12 @@ impl Painter {
 				let layer_bind_group = if skip_source {
 					bind_group_data.to_gpu_bind_group(self)
 				} else {
-					bind_group_data.to_gpu_bind_group_with_first(self, &layer.binding())
+					let binding = if let Some(src_mip_level) = e.src_mip_level {
+						layer.binding_at_mip_level(src_mip_level)
+					} else {
+						layer.binding()
+					};
+					bind_group_data.to_gpu_bind_group_with_first(self, &binding)
 				};
 				pass.set_bind_group(1, &layer_bind_group, &[]);
 			}
@@ -596,16 +605,28 @@ impl Painter {
 			self.layers[layer.0].swap_targets();
 		}
 
+		let mut update_mips = true;
 		for i in 0..effects_len {
-			let skip_source_tex = i == 0 && !has_shapes;
 			let effect = self.layers[layer.0].effects[i];
+			let e = &self.effects[effect.0];
+
+			let skip_source_tex = i == 0 && !(has_shapes || e.src_mip_level.is_some());
 			self.render_effect(effect, layer, skip_source_tex)?;
-			self.layers[layer.0].swap_targets();
+
+			if self.effects[effect.0].dst_mip_level.is_none() {
+				self.layers[layer.0].swap_targets();
+			} else {
+				// If the effect has a mip target, we don't swap the targets.
+				// Instead, we update the mips of the current target texture.
+				update_mips = false;
+			}
 		}
 
-		self.layers[layer.0]
-			.current_source_texture()
-			.update_mips(self);
+		if update_mips {
+			self.layers[layer.0]
+				.current_source_texture()
+				.update_mips(self);
+		}
 
 		Ok(())
 	}
