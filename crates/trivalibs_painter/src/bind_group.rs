@@ -282,7 +282,7 @@ fn layer_to_resource<'a>(
 		LayerBinding::AtIndex(layer, index) => {
 			let l = &painter.layers[layer.0];
 			wgpu::BindingResource::TextureView(
-				l.target_textures[*index].view(painter, &TexViewKey::Default),
+				l.target_textures[*index].view(painter, &TexViewKey::WithAllMips),
 			)
 		}
 	}

@@ -14,7 +14,7 @@ impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let image_shade = p
 			.shade_effect()
-			.with_uniforms(&[UNIFORM_BUFFER_FRAG, UNIFORM_SAMPLER_FRAG])
+			.with_uniforms(&[BINDING_BUFFER_FRAG, BINDING_SAMPLER_FRAG])
 			.with_layer()
 			.create();
 		load_fragment_shader!(image_shade, p, "./shader/image.spv");
@@ -34,9 +34,9 @@ impl CanvasApp<()> for App {
 		let sample_shade = p
 			.shade_effect()
 			.with_uniforms(&[
-				UNIFORM_BUFFER_FRAG,
-				UNIFORM_BUFFER_FRAG,
-				UNIFORM_SAMPLER_FRAG,
+				BINDING_BUFFER_FRAG,
+				BINDING_BUFFER_FRAG,
+				BINDING_SAMPLER_FRAG,
 			])
 			.with_layer()
 			.create();
@@ -60,7 +60,7 @@ impl CanvasApp<()> for App {
 
 		let effect_shade = p
 			.shade_effect()
-			.with_uniforms(&[UNIFORM_BUFFER_FRAG, UNIFORM_SAMPLER_FRAG])
+			.with_uniforms(&[BINDING_BUFFER_FRAG, BINDING_SAMPLER_FRAG])
 			.with_layer()
 			.create();
 		load_fragment_shader!(effect_shade, p, "./shader/wave_effect.spv");

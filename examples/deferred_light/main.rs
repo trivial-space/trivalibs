@@ -33,9 +33,9 @@ impl CanvasApp<()> for App {
 		let scene_shade = p
 			.shade(&[Float32x3, Float32x3, Float32x3])
 			.with_uniforms(&[
-				UNIFORM_BUFFER_VERT,
-				UNIFORM_BUFFER_VERT,
-				UNIFORM_BUFFER_VERT,
+				BINDING_BUFFER_VERT,
+				BINDING_BUFFER_VERT,
+				BINDING_BUFFER_VERT,
 			])
 			.create();
 		load_vertex_shader!(scene_shade, p, "./shader/scene_vs.spv");
@@ -89,12 +89,12 @@ impl CanvasApp<()> for App {
 		let canvas_shade = p
 			.shade_effect()
 			.with_uniforms(&[
-				UNIFORM_SAMPLER_FRAG,
-				UNIFORM_BUFFER_FRAG,
-				UNIFORM_BUFFER_FRAG,
-				UNIFORM_BUFFER_FRAG,
+				BINDING_SAMPLER_FRAG,
+				BINDING_BUFFER_FRAG,
+				BINDING_BUFFER_FRAG,
+				BINDING_BUFFER_FRAG,
 			])
-			.with_layers(&[UNIFORM_TEX2D_FRAG, UNIFORM_TEX2D_FRAG, UNIFORM_TEX2D_FRAG])
+			.with_layers(&[BINDING_LAYER_FRAG, BINDING_LAYER_FRAG, BINDING_LAYER_FRAG])
 			.create();
 		load_fragment_shader!(canvas_shade, p, "./shader/light_fs.spv");
 

@@ -40,10 +40,10 @@ impl CanvasApp<()> for App {
 		let shade = p
 			.shade(&[Float32x3, Float32x2, Float32x3, Float32x3])
 			.with_uniforms(&[
-				UNIFORM_BUFFER_VERT,
-				UNIFORM_BUFFER_VERT,
+				BINDING_BUFFER_VERT,
+				BINDING_BUFFER_VERT,
 				UNIFORM_TEX2D_FRAG,
-				UNIFORM_SAMPLER_FRAG,
+				BINDING_SAMPLER_FRAG,
 			])
 			.create();
 		load_vertex_shader!(shade, p, "./shader/vertex.spv");

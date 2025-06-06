@@ -44,10 +44,10 @@ impl CanvasApp<()> for App {
 		let blur_shade = p
 			.shade_effect()
 			.with_uniforms(&[
-				UNIFORM_BUFFER_FRAG,
-				UNIFORM_BUFFER_FRAG,
-				UNIFORM_BUFFER_FRAG,
-				UNIFORM_SAMPLER_FRAG,
+				BINDING_BUFFER_FRAG,
+				BINDING_BUFFER_FRAG,
+				BINDING_BUFFER_FRAG,
+				BINDING_SAMPLER_FRAG,
 			])
 			.with_layer()
 			.create();

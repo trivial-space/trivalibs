@@ -99,7 +99,7 @@ impl CanvasApp<ResizeEvent> for App {
 	fn init(p: &mut Painter) -> Self {
 		let color_shade = p
 			.shade(&[Float32x3, Float32x2])
-			.with_uniforms(&[UNIFORM_BUFFER_VERT, UNIFORM_BUFFER_FRAG])
+			.with_uniforms(&[BINDING_BUFFER_VERT, BINDING_BUFFER_FRAG])
 			.create();
 		load_vertex_shader!(color_shade, p, "./shader/color_vs.spv");
 		load_fragment_shader!(color_shade, p, "./shader/color_fs.spv");
@@ -107,9 +107,9 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_shader = p
 			.shade(&[Float32x3, Float32x2])
 			.with_uniforms(&[
-				UNIFORM_BUFFER_VERT,
+				BINDING_BUFFER_VERT,
 				UNIFORM_TEX2D_FRAG,
-				UNIFORM_SAMPLER_FRAG,
+				BINDING_SAMPLER_FRAG,
 			])
 			.create();
 		load_vertex_shader!(tex_shader, p, "./shader/texture_vs.spv");

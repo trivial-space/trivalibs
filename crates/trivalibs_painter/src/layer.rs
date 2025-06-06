@@ -1,7 +1,7 @@
 use crate::{
 	binding::{LayerBinding, LayerLayout, ValueBinding},
 	effect::Effect,
-	prelude::{UNIFORM_LAYER_BOTH, UNIFORM_LAYER_FRAG, UNIFORM_LAYER_VERT},
+	prelude::{BINDING_LAYER_BOTH, BINDING_LAYER_FRAG, BINDING_LAYER_VERT},
 	shape::Shape,
 	texture::{MipMapCount, Texture, Texture2DProps},
 	texture_utils::map_format_to_u8,
@@ -75,7 +75,7 @@ impl Default for LayerProps {
 			width: 0,
 			height: 0,
 			formats: Vec::with_capacity(1),
-			layer_layout: UNIFORM_LAYER_FRAG,
+			layer_layout: BINDING_LAYER_FRAG,
 			clear_color: None,
 			depth_test: false,
 			multisampled: false,
@@ -448,12 +448,12 @@ impl<'a> LayerBuilder<'a> {
 	}
 
 	pub fn with_layer_layout_vert(mut self) -> Self {
-		self.props.layer_layout = UNIFORM_LAYER_VERT;
+		self.props.layer_layout = BINDING_LAYER_VERT;
 		self
 	}
 
 	pub fn with_layer_layout_both(mut self) -> Self {
-		self.props.layer_layout = UNIFORM_LAYER_BOTH;
+		self.props.layer_layout = BINDING_LAYER_BOTH;
 		self
 	}
 

@@ -5,7 +5,7 @@ use crate::{
 	form::{Form, FormBuffers, FormBuilder, FormStorage},
 	layer::{Layer, LayerBuilder, LayerStorage},
 	pipeline::PipelineStorage,
-	prelude::{UNIFORM_LAYER_FRAG, UNIFORM_SAMPLER_FRAG},
+	prelude::{BINDING_LAYER_FRAG, BINDING_SAMPLER_FRAG},
 	sampler::{Sampler, SamplerBuilder, SamplerProps},
 	shade::{AttribsFormat, Shade, ShadeBuilder, ShadeEffectBuilder, ShadeStorage},
 	shaders::FULL_SCREEN_QUAD,
@@ -132,9 +132,9 @@ impl Painter {
 		Sampler::create(&mut painter, SamplerProps::LINEAR);
 
 		let layer_sampler_layout =
-			BindGroupLayout::values(&mut painter, &[UNIFORM_SAMPLER_FRAG]).unwrap();
+			BindGroupLayout::values(&mut painter, &[BINDING_SAMPLER_FRAG]).unwrap();
 		let layer_texture_layout =
-			BindGroupLayout::layers(&mut painter, &[UNIFORM_LAYER_FRAG]).unwrap();
+			BindGroupLayout::layers(&mut painter, &[BINDING_LAYER_FRAG]).unwrap();
 
 		BindGroup::values_bind_groups(
 			&mut painter,
@@ -480,11 +480,11 @@ impl Painter {
 			let pipeline = &self.pipelines[&pipeline_key];
 			pass.set_pipeline(&pipeline.pipeline);
 
-			if let Some(bind_group) = e.layer_bind_group_data.as_ref() {
+			if let Some(bind_group_data) = e.layer_bind_group_data.as_ref() {
 				let layer_bind_group = if skip_source {
-					bind_group.to_gpu_bind_group(self)
+					bind_group_data.to_gpu_bind_group(self)
 				} else {
-					bind_group.to_gpu_bind_group_with_first(self, &layer.binding())
+					bind_group_data.to_gpu_bind_group_with_first(self, &layer.binding())
 				};
 				pass.set_bind_group(1, &layer_bind_group, &[]);
 			}

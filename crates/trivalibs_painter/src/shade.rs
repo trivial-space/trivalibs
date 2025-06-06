@@ -1,7 +1,7 @@
 use crate::{
 	bind_group::BindGroupLayout,
 	binding::{BindingLayout, LayerLayout},
-	prelude::UNIFORM_LAYER_FRAG,
+	prelude::BINDING_LAYER_FRAG,
 	Painter,
 };
 use std::fs;
@@ -322,7 +322,7 @@ impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
 	}
 
 	pub fn with_layer(mut self) -> Self {
-		self.props.layers = &[UNIFORM_LAYER_FRAG];
+		self.props.layers = &[BINDING_LAYER_FRAG];
 		self
 	}
 }

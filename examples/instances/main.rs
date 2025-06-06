@@ -52,9 +52,9 @@ impl CanvasApp<()> for App {
 		let shade = p
 			.shade(&[Float32x3])
 			.with_uniforms(&[
-				UNIFORM_BUFFER_VERT,
-				UNIFORM_BUFFER_VERT,
-				UNIFORM_BUFFER_FRAG,
+				BINDING_BUFFER_VERT,
+				BINDING_BUFFER_VERT,
+				BINDING_BUFFER_FRAG,
 			])
 			.create();
 		load_vertex_shader!(shade, p, "./shader/vertex.spv");

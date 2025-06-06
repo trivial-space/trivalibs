@@ -30,7 +30,7 @@ impl CanvasApp<()> for App {
 		let shade_canvas = |p: &mut Painter, animated: bool| {
 			let s = p
 				.shade_effect()
-				.with_uniforms(&[UNIFORM_BUFFER_FRAG, UNIFORM_BUFFER_FRAG])
+				.with_uniforms(&[BINDING_BUFFER_FRAG, BINDING_BUFFER_FRAG])
 				.create();
 
 			let e = p.effect(s).create();
