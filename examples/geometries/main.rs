@@ -108,7 +108,7 @@ impl CanvasApp<()> for App {
 		let y_axis_shape = p.shape(y_axis_form, shade).with_cull_mode(None).create();
 		let z_axis_shape = p.shape(z_axis_form, shade).with_cull_mode(None).create();
 
-		let vp_mat = p.uniform_mat4();
+		let vp_mat = p.bind_mat4();
 
 		let canvas = p
 			.layer()

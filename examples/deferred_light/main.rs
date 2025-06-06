@@ -43,10 +43,10 @@ impl CanvasApp<()> for App {
 
 		let ball_form = p.form(&create_ball_geom()).create();
 
-		let u_vp_mat = p.uniform_mat4();
+		let u_vp_mat = p.bind_mat4();
 
-		let u_ball_model_mat = p.uniform_mat4();
-		let u_ball_rot = p.uniform_quat();
+		let u_ball_model_mat = p.bind_mat4();
+		let u_ball_rot = p.bind_quat();
 
 		let ball_shape = p
 			.shape(ball_form, scene_shade)
@@ -58,8 +58,8 @@ impl CanvasApp<()> for App {
 
 		let box_form = p.form(&create_box_geom()).create();
 
-		let u_box_model_mat = p.uniform_mat4();
-		let u_box_rot = p.uniform_quat();
+		let u_box_model_mat = p.bind_mat4();
+		let u_box_rot = p.bind_quat();
 
 		let box_shape = p
 			.shape(box_form, scene_shade)
@@ -105,9 +105,9 @@ impl CanvasApp<()> for App {
 		let lights = (0..LIGHTS_COUNT)
 			.map(|_| {
 				let light_pos = rand_vec3_unit() * rand_range(10.0, 30.0);
-				let light_pos_u = p.uniform_const_vec3(light_pos);
+				let light_pos_u = p.bind_const_vec3(light_pos);
 
-				let light_color_u = p.uniform_const_vec3(rand_vec3());
+				let light_color_u = p.bind_const_vec3(rand_vec3());
 
 				InstanceBinding {
 					bindings: map! {
@@ -120,7 +120,7 @@ impl CanvasApp<()> for App {
 			.collect::<Vec<_>>();
 
 		let cam_pos = vec3(0.0, 5.0, 0.0);
-		let cam_pos_u = p.uniform_const_vec3(cam_pos);
+		let cam_pos_u = p.bind_const_vec3(cam_pos);
 
 		let s = p.sampler_nearest().binding();
 

@@ -63,17 +63,17 @@ impl CanvasApp<()> for App {
 		let form = p.form(VERTICES).create();
 
 		let model_mats = (0..triangles.len())
-			.map(|_| p.uniform_mat4())
+			.map(|_| p.bind_mat4())
 			.collect::<Vec<_>>();
 
-		let cam = p.uniform_mat4();
+		let cam = p.bind_mat4();
 
 		let instances = model_mats
 			.iter()
 			.map(|model| InstanceBinding {
 				bindings: map! {
 					1 => model.binding(),
-					2 => p.uniform_const_vec4(rand_vec4())
+					2 => p.bind_const_vec4(rand_vec4())
 				},
 				..default()
 			})

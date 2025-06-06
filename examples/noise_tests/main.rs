@@ -24,8 +24,8 @@ struct App {
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let u_size = p.uniform_uvec2();
-		let u_time = p.uniform_f32();
+		let u_size = p.bind_uvec2();
+		let u_time = p.bind_f32();
 
 		let shade_canvas = |p: &mut Painter, animated: bool| {
 			let s = p

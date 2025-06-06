@@ -106,11 +106,8 @@ impl CanvasApp<ResizeEvent> for App {
 
 		let tex_shader = p
 			.shade(&[Float32x3, Float32x2])
-			.with_uniforms(&[
-				BINDING_BUFFER_VERT,
-				UNIFORM_TEX2D_FRAG,
-				BINDING_SAMPLER_FRAG,
-			])
+			.with_uniforms(&[BINDING_BUFFER_VERT, BINDING_SAMPLER_FRAG])
+			.with_layers(&[BINDING_LAYER_FRAG])
 			.create();
 		load_vertex_shader!(tex_shader, p, "./shader/texture_vs.spv");
 		load_fragment_shader!(tex_shader, p, "./shader/texture_fs.spv");
@@ -118,11 +115,11 @@ impl CanvasApp<ResizeEvent> for App {
 		let quad_form = p.form(QUAD).create();
 		let triangle_form = p.form(TRIANGLE).create();
 
-		let color_quad_mvp = p.uniform_mat4();
-		let color_triangle_mvp = p.uniform_mat4();
+		let color_quad_mvp = p.bind_mat4();
+		let color_triangle_mvp = p.bind_mat4();
 
-		let quad_color = p.uniform_const_vec3(vec3(0.0, 0.0, 1.0));
-		let triangle_color = p.uniform_const_vec3(vec3(1.0, 0.0, 0.0));
+		let quad_color = p.bind_const_vec3(vec3(0.0, 0.0, 1.0));
+		let triangle_color = p.bind_const_vec3(vec3(1.0, 0.0, 0.0));
 
 		let color_quad_shape = p
 			.shape(quad_form, color_shade)
@@ -160,27 +157,29 @@ impl CanvasApp<ResizeEvent> for App {
 			.with_multisampling()
 			.create();
 
-		let tex_triangle_mvp = p.uniform_mat4();
-		let tex_quad_mvp = p.uniform_mat4();
+		let tex_triangle_mvp = p.bind_mat4();
+		let tex_quad_mvp = p.bind_mat4();
 
-		let tex = color_triangle_layer.uniform(p);
 		let tex_quad_shape = p
 			.shape(quad_form, tex_shader)
 			.with_cull_mode(None)
 			.with_bindings(map! {
 				0 => tex_quad_mvp.binding(),
-				1 => tex,
-				2 => sn.binding(),
+				1 => sn.binding(),
+			})
+			.with_layers(map! {
+				0 => color_triangle_layer.binding()
 			})
 			.create();
 
-		let tex = color_quad_layer.uniform(p);
 		let tex_triangle_shape = p
 			.shape(triangle_form, tex_shader)
 			.with_bindings(map! {
 				0 => tex_triangle_mvp.binding(),
-				1 => tex,
-				2 => sl.binding(),
+				1 => sl.binding(),
+			})
+			.with_layers(map! {
+				0 => color_quad_layer.binding()
 			})
 			.with_cull_mode(None)
 			.create();

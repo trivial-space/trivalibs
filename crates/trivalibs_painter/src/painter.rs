@@ -276,73 +276,74 @@ impl Painter {
 		LayerBuilder::new(self)
 	}
 
-	// uniform utils
+	// binding utils
 
-	pub fn uniform_buff<T: bytemuck::Pod>(&mut self, data: T) -> BindingBuffer<T> {
+	pub fn bind_buff<T: bytemuck::Pod>(&mut self, data: T) -> BindingBuffer<T> {
 		BindingBuffer::new(self, data)
 	}
-	pub fn uniform_mat3(&mut self) -> BindingBuffer<Mat3U> {
-		self.uniform_buff(Mat3U(Mat3A::IDENTITY))
+	pub fn bind_mat3(&mut self) -> BindingBuffer<Mat3U> {
+		self.bind_buff(Mat3U(Mat3A::IDENTITY))
 	}
-	pub fn uniform_mat4(&mut self) -> BindingBuffer<Mat4> {
-		self.uniform_buff(Mat4::IDENTITY)
+	pub fn bind_mat4(&mut self) -> BindingBuffer<Mat4> {
+		self.bind_buff(Mat4::IDENTITY)
 	}
-	pub fn uniform_vec2(&mut self) -> BindingBuffer<Vec2> {
-		self.uniform_buff(Vec2::ZERO)
+	pub fn bind_vec2(&mut self) -> BindingBuffer<Vec2> {
+		self.bind_buff(Vec2::ZERO)
 	}
-	pub fn uniform_vec3(&mut self) -> BindingBuffer<Vec3U> {
-		self.uniform_buff(Vec3U(Vec3A::ZERO))
+	pub fn bind_vec3(&mut self) -> BindingBuffer<Vec3U> {
+		self.bind_buff(Vec3U(Vec3A::ZERO))
 	}
-	pub fn uniform_vec4(&mut self) -> BindingBuffer<Vec4> {
-		self.uniform_buff(Vec4::ZERO)
+	pub fn bind_vec4(&mut self) -> BindingBuffer<Vec4> {
+		self.bind_buff(Vec4::ZERO)
 	}
-	pub fn uniform_uvec2(&mut self) -> BindingBuffer<UVec2> {
-		self.uniform_buff(UVec2::ZERO)
+	pub fn bind_uvec2(&mut self) -> BindingBuffer<UVec2> {
+		self.bind_buff(UVec2::ZERO)
 	}
-	pub fn uniform_f32(&mut self) -> BindingBuffer<f32> {
-		self.uniform_buff(0.0f32)
+	pub fn bind_f32(&mut self) -> BindingBuffer<f32> {
+		self.bind_buff(0.0f32)
 	}
-	pub fn uniform_u32(&mut self) -> BindingBuffer<u32> {
-		self.uniform_buff(0u32)
+	pub fn bind_u32(&mut self) -> BindingBuffer<u32> {
+		self.bind_buff(0u32)
 	}
-	pub fn uniform_quat(&mut self) -> BindingBuffer<Quat> {
-		self.uniform_buff(Quat::IDENTITY)
+	pub fn bind_quat(&mut self) -> BindingBuffer<Quat> {
+		self.bind_buff(Quat::IDENTITY)
 	}
 
-	pub fn uniform_const_buff<T: bytemuck::Pod>(&mut self, data: T) -> ValueBinding {
-		self.uniform_buff(data).binding()
+	pub fn bind_const_buff<T: bytemuck::Pod>(&mut self, data: T) -> ValueBinding {
+		self.bind_buff(data).binding()
 	}
-	pub fn uniform_const_mat3(&mut self, mat: Mat3) -> ValueBinding {
-		let u = self.uniform_mat3();
+	pub fn bind_const_mat3(&mut self, mat: Mat3) -> ValueBinding {
+		let u = self.bind_mat3();
 		u.update_mat3(self, mat);
 		u.binding()
 	}
-	pub fn uniform_const_mat4(&mut self, mat: Mat4) -> ValueBinding {
-		self.uniform_const_buff(mat)
+	pub fn bind_const_mat4(&mut self, mat: Mat4) -> ValueBinding {
+		self.bind_const_buff(mat)
 	}
-	pub fn uniform_const_vec2(&mut self, vec: Vec2) -> ValueBinding {
-		self.uniform_const_buff(vec)
+	pub fn bind_const_vec2(&mut self, vec: Vec2) -> ValueBinding {
+		self.bind_const_buff(vec)
 	}
-	pub fn uniform_const_vec3(&mut self, vec: Vec3) -> ValueBinding {
-		let u = self.uniform_vec3();
+	pub fn bind_const_vec3(&mut self, vec: Vec3) -> ValueBinding {
+		let u = self.bind_vec3();
 		u.update_vec3(self, vec);
 		u.binding()
 	}
-	pub fn uniform_const_vec4(&mut self, vec: Vec4) -> ValueBinding {
-		self.uniform_const_buff(vec)
+	pub fn bind_const_vec4(&mut self, vec: Vec4) -> ValueBinding {
+		self.bind_const_buff(vec)
 	}
-	pub fn uniform_const_uvec2(&mut self, vec: UVec2) -> ValueBinding {
-		self.uniform_const_buff(vec)
+	pub fn bind_const_uvec2(&mut self, vec: UVec2) -> ValueBinding {
+		self.bind_const_buff(vec)
 	}
-	pub fn uniform_const_f32(&mut self, f: f32) -> ValueBinding {
-		self.uniform_const_buff(f)
+	pub fn bind_const_f32(&mut self, f: f32) -> ValueBinding {
+		self.bind_const_buff(f)
 	}
-	pub fn uniform_const_u32(&mut self, u: u32) -> ValueBinding {
-		self.uniform_const_buff(u)
+	pub fn bind_const_u32(&mut self, u: u32) -> ValueBinding {
+		self.bind_const_buff(u)
 	}
-	pub fn uniform_const_quat(&mut self, quat: Quat) -> ValueBinding {
-		self.uniform_const_buff(quat)
+	pub fn bind_const_quat(&mut self, quat: Quat) -> ValueBinding {
+		self.bind_const_buff(quat)
 	}
+
 	// general utils
 
 	pub fn request_next_frame(&self) {

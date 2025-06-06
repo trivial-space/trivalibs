@@ -16,8 +16,8 @@ impl CanvasApp<()> for App {
 			.create();
 		load_fragment_shader!(shade, p, "./shader/main.spv");
 
-		let u_time = p.uniform_f32();
-		let u_size = p.uniform_uvec2();
+		let u_time = p.bind_f32();
+		let u_size = p.bind_uvec2();
 
 		let effect = p
 			.effect(shade)

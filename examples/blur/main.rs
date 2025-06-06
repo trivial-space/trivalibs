@@ -57,9 +57,9 @@ impl CanvasApp<()> for App {
 
 		let tri_shape = p.shape(tri_form, triangle_shade).create();
 
-		let size = p.uniform_vec2();
-		let horiz = p.uniform_const_vec2(vec2(1.0, 0.0));
-		let vertical = p.uniform_const_vec2(vec2(0.0, 1.0));
+		let size = p.bind_vec2();
+		let horiz = p.bind_const_vec2(vec2(1.0, 0.0));
+		let vertical = p.bind_const_vec2(vec2(0.0, 1.0));
 		let s = p.sampler_linear().binding();
 
 		let mut effects = vec![];
@@ -69,7 +69,7 @@ impl CanvasApp<()> for App {
 
 		let mut counter = BLUR_DIAMETER / 9.0; // Fixed diameter in shader is 9.0
 		while counter > 2.0 {
-			let diameter = p.uniform_const_f32(counter);
+			let diameter = p.bind_const_f32(counter);
 			effects.push(
 				p.effect(blur_shade)
 					.with_bindings(map! {

@@ -19,9 +19,9 @@ impl CanvasApp<()> for App {
 			.create();
 		load_fragment_shader!(image_shade, p, "./shader/image.spv");
 
-		let u_time = p.uniform_f32();
-		let u_size = p.uniform_uvec2();
-		let u_mip_levels = p.uniform_f32();
+		let u_time = p.bind_f32();
+		let u_size = p.bind_uvec2();
+		let u_mip_levels = p.bind_f32();
 
 		let image_effect = p
 			.effect(image_shade)
@@ -57,7 +57,7 @@ impl CanvasApp<()> for App {
 				1 => u_mip_levels.binding(),
 				2 => sampler.binding()
 			})
-			.with_layers(map! { 1 => image })
+			.with_layers(map! { 1 => image.binding() })
 			.create();
 
 		let effect_shade = p

@@ -42,17 +42,17 @@ impl CanvasApp<()> for App {
 			.with_uniforms(&[
 				BINDING_BUFFER_VERT,
 				BINDING_BUFFER_VERT,
-				UNIFORM_TEX2D_FRAG,
 				BINDING_SAMPLER_FRAG,
 			])
+			.with_layers(&[BINDING_LAYER_FRAG])
 			.create();
 		load_vertex_shader!(shade, p, "./shader/vertex.spv");
 		load_fragment_shader!(shade, p, "./shader/fragment.spv");
 
 		let form = p.form(&create_ball_geom()).create();
 
-		let mvp = p.uniform_mat4();
-		let norm = p.uniform_mat3();
+		let mvp = p.bind_mat4();
+		let norm = p.bind_mat3();
 
 		let s = p.sampler_linear().binding();
 		let shape = p
