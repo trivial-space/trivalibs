@@ -394,8 +394,8 @@ impl Layer {
 /// A builder for creating a new [`Layer`].
 ///
 /// # Default Configuration values:
-/// - `sampler`: Nearest / ClapToEdge
-/// - `layer_layout`: UNIFORM_LAYER_FRAG
+/// - `sampler`: Nearest / ClampToEdge
+/// - `layer_layout`: BINDING_LAYER_FRAG
 /// - `clear_color`: None
 /// - `depth_test`: false
 /// - `multisampled`: false

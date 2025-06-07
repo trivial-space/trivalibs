@@ -42,7 +42,7 @@ impl CanvasApp<()> for App {
 
 		let shade = p
 			.shade(&[Float32x3, Float32x2, Float32x3, Float32x3])
-			.with_uniforms(&[
+			.with_bindings(&[
 				BINDING_BUFFER_VERT,
 				BINDING_BUFFER_VERT,
 				BINDING_SAMPLER_FRAG,

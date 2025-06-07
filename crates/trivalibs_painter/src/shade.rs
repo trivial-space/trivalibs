@@ -34,13 +34,13 @@ fn layouts_from_props(
 	Option<BindGroupLayout>,
 	Option<BindGroupLayout>,
 ) {
-	let uniform_layout = BindGroupLayout::values(painter, bindings);
+	let bindings_layout = BindGroupLayout::values(painter, bindings);
 
 	let layer_layout = BindGroupLayout::layers(painter, layers);
 
 	let mut layouts = vec![];
 
-	if let Some(l) = &uniform_layout {
+	if let Some(l) = &bindings_layout {
 		layouts.push(&painter.bind_group_layouts[l.0]);
 	}
 
@@ -56,7 +56,7 @@ fn layouts_from_props(
 			push_constant_ranges: &[],
 		});
 
-	(pipeline_layout, uniform_layout, layer_layout)
+	(pipeline_layout, bindings_layout, layer_layout)
 }
 
 impl Default for ShadeProps<'_, AttribsFormat> {
@@ -280,8 +280,8 @@ where
 		Shade::new(self.painter, self.props)
 	}
 
-	pub fn with_uniforms(mut self, uniforms: &'a [BindingLayout]) -> Self {
-		self.props.bindings = uniforms;
+	pub fn with_bindings(mut self, bindings: &'a [BindingLayout]) -> Self {
+		self.props.bindings = bindings;
 		self
 	}
 
@@ -311,8 +311,8 @@ impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
 		Shade::new_effect(self.painter, self.props)
 	}
 
-	pub fn with_uniforms(mut self, uniforms: &'a [BindingLayout]) -> Self {
-		self.props.bindings = uniforms;
+	pub fn with_bindings(mut self, bindings: &'a [BindingLayout]) -> Self {
+		self.props.bindings = bindings;
 		self
 	}
 

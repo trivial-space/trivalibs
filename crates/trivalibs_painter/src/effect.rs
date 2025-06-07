@@ -144,7 +144,7 @@ impl<'a> EffectBuilder<'a> {
 		self
 	}
 
-	/// Repeatedly render this effect multiple times with different uniforms into the same target without target swapping.
+	/// Repeatedly render this effect multiple times with different bindings into the same target without target swapping.
 	/// This is useful for example for deferred lighting, where each light is rendered with custom blend state on top of the last.
 	pub fn with_instances(mut self, instances: Vec<InstanceBinding>) -> Self {
 		self.props.instances = instances;

@@ -128,7 +128,7 @@ impl Shape {
 /// # Example
 /// ```
 /// let shape = ShapeBuilder::new(painter, form, shade)
-///     .with_uniforms(bindings)
+///     .with_bindings(bindings)
 ///     .with_instances(instances)
 ///     .create();
 /// ```

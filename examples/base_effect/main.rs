@@ -12,7 +12,7 @@ impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let shade = p
 			.shade_effect()
-			.with_uniforms(&[BINDING_BUFFER_FRAG, BINDING_BUFFER_FRAG])
+			.with_bindings(&[BINDING_BUFFER_FRAG, BINDING_BUFFER_FRAG])
 			.create();
 		load_fragment_shader!(shade, p, "./shader/main.spv");
 

@@ -43,7 +43,7 @@ impl CanvasApp<()> for App {
 
 		let blur_shade = p
 			.shade_effect()
-			.with_uniforms(&[
+			.with_bindings(&[
 				BINDING_BUFFER_FRAG,
 				BINDING_BUFFER_FRAG,
 				BINDING_BUFFER_FRAG,
@@ -97,12 +97,12 @@ impl CanvasApp<()> for App {
 
 		// === This does all blurs in one pass ===
 
-		// let diameter = p.uniform_const_f32(BLUR_DIAMETER);
+		// let diameter = p.binding_const_f32(BLUR_DIAMETER);
 		// effects.push(
 		// 	p.effect(blur_shade)
-		// 		.with_uniforms(map! {
+		// 		.with_bindings(map! {
 		// 			0 => diameter,
-		// 			1 => size.uniform(),
+		// 			1 => size.binding(),
 		// 			2 => horiz,
 		// 			3 => s
 		// 		})
@@ -110,9 +110,9 @@ impl CanvasApp<()> for App {
 		// );
 		// effects.push(
 		// 	p.effect(blur_shade)
-		// 		.with_uniforms(map! {
+		// 		.with_bindings(map! {
 		// 			0 => diameter,
-		// 			1 => size.uniform(),
+		// 			1 => size.binding(),
 		// 			2 => vertical,
 		// 			3 => s
 		// 		})

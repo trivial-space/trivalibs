@@ -32,7 +32,7 @@ impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let scene_shade = p
 			.shade(&[Float32x3, Float32x3, Float32x3])
-			.with_uniforms(&[
+			.with_bindings(&[
 				BINDING_BUFFER_VERT,
 				BINDING_BUFFER_VERT,
 				BINDING_BUFFER_VERT,
@@ -88,7 +88,7 @@ impl CanvasApp<()> for App {
 
 		let canvas_shade = p
 			.shade_effect()
-			.with_uniforms(&[
+			.with_bindings(&[
 				BINDING_SAMPLER_FRAG,
 				BINDING_BUFFER_FRAG,
 				BINDING_BUFFER_FRAG,

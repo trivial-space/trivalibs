@@ -31,7 +31,7 @@ pub enum LayerBinding {
 pub struct Buffer(pub(crate) usize);
 
 impl Buffer {
-	pub fn uniform(&self) -> ValueBinding {
+	pub fn binding(&self) -> ValueBinding {
 		ValueBinding::Buffer(*self)
 	}
 }
