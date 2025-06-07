@@ -113,6 +113,10 @@ impl Effect {
 		let e = &painter.effects[self.0];
 		e.dst_mip_level.is_some()
 	}
+	pub fn has_mip_source(&self, painter: &Painter) -> bool {
+		let e = &painter.effects[self.0];
+		e.src_mip_level.is_some()
+	}
 }
 
 pub struct EffectBuilder<'a> {

@@ -126,7 +126,7 @@ impl Layer {
 		let swapping_effect_count = props
 			.effects
 			.iter()
-			.filter(|e| !e.has_mip_target(painter))
+			.filter(|e| !e.has_mip_target(painter) && !e.has_mip_source(painter))
 			.count();
 
 		let use_swap_targets = swapping_effect_count > 1

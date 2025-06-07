@@ -1,10 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet};
-
 use crate::{
-	bind_group::BindGroup,
 	texture_utils::{generate_mipmap_2d, num_mip_levels},
 	Painter,
 };
+use std::collections::BTreeMap;
 use trivalibs_core::utils::default;
 use wgpu::TextureViewDescriptor;
 
@@ -61,7 +59,6 @@ impl TexViewKey {
 pub(crate) struct TextureStorage {
 	pub texture: wgpu::Texture,
 	pub views: BTreeMap<TexViewKey, wgpu::TextureView>,
-	pub bindings: BTreeSet<BindGroup>,
 }
 
 impl TextureStorage {
@@ -148,7 +145,6 @@ impl Texture {
 		let mut storage = TextureStorage {
 			texture,
 			views: BTreeMap::new(),
-			bindings: BTreeSet::new(),
 		};
 
 		storage.prepare_view(TexViewKey::AtMipLevel(0));
@@ -174,7 +170,6 @@ impl Texture {
 		let mut storage = TextureStorage {
 			texture,
 			views: BTreeMap::new(),
-			bindings: old.bindings.clone(),
 		};
 
 		storage.prepare_view(TexViewKey::AtMipLevel(0));
@@ -198,7 +193,6 @@ impl Texture {
 		let mut storage = TextureStorage {
 			texture,
 			views: BTreeMap::new(),
-			bindings: BTreeSet::new(),
 		};
 
 		storage.prepare_view(TexViewKey::Default);
@@ -220,7 +214,6 @@ impl Texture {
 
 		let mut storage = TextureStorage {
 			texture,
-			bindings: old.bindings.clone(),
 			views: BTreeMap::new(),
 		};
 
