@@ -178,8 +178,6 @@ impl Texture {
 		old.texture.destroy();
 
 		painter.textures[self.0] = storage;
-
-		// self.rebuild_bindings(painter);
 	}
 
 	pub fn create_depth(
