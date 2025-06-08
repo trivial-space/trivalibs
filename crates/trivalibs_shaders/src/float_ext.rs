@@ -1,3 +1,6 @@
+#![allow(unexpected_cfgs)]
+
+#[cfg(target_arch = "spirv")]
 #[allow(unused_imports)]
 use spirv_std::num_traits::Float;
 

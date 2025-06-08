@@ -59,7 +59,7 @@ pub fn create_box(center: Vec3, size: Vec3) -> BufferedGeometry {
 
 struct App {
 	cam: PerspectiveCamera,
-	vp_mat: UniformBuffer<Mat4>,
+	vp_mat: BindingBuffer<Mat4>,
 	canvas: Layer,
 
 	input: InputState,
@@ -70,7 +70,7 @@ impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let shade = p
 			.shade(&[Float32x3, Float32x3, Float32x2])
-			.with_uniforms(&[UNIFORM_BUFFER_VERT])
+			.with_bindings(&[BINDING_BUFFER_VERT])
 			.create();
 		load_vertex_shader!(shade, p, "./shader/ground_vert.spv");
 		load_fragment_shader!(shade, p, "./shader/ground_frag.spv");
@@ -108,7 +108,7 @@ impl CanvasApp<()> for App {
 		let y_axis_shape = p.shape(y_axis_form, shade).with_cull_mode(None).create();
 		let z_axis_shape = p.shape(z_axis_form, shade).with_cull_mode(None).create();
 
-		let vp_mat = p.uniform_mat4();
+		let vp_mat = p.bind_mat4();
 
 		let canvas = p
 			.layer()
@@ -126,8 +126,8 @@ impl CanvasApp<()> for App {
 				b: 0.7,
 				a: 1.0,
 			})
-			.with_uniforms(map! {
-				0 => vp_mat.uniform(),
+			.with_bindings(map! {
+				0 => vp_mat.binding(),
 			})
 			.with_multisampling()
 			.with_depth_test()

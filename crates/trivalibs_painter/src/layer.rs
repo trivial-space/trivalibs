@@ -1,103 +1,56 @@
 use crate::{
-	binding::{Binding, BindingLayout},
+	binding::{LayerBinding, LayerLayout, ValueBinding},
 	effect::Effect,
-	prelude::{UNIFORM_LAYER_BOTH, UNIFORM_LAYER_FRAG, UNIFORM_LAYER_VERT},
+	prelude::{BINDING_LAYER_BOTH, BINDING_LAYER_FRAG, BINDING_LAYER_VERT},
 	shape::Shape,
 	texture::{MipMapCount, Texture, Texture2DProps},
-	uniform::{LayerLayout, Uniform},
+	texture_utils::map_format_to_u8,
 	Painter,
 };
 
-fn map_format_to_u8(format: wgpu::TextureFormat) -> u8 {
-	match format {
-		wgpu::TextureFormat::R8Unorm => 0,
-		wgpu::TextureFormat::R8Snorm => 1,
-		wgpu::TextureFormat::R8Uint => 2,
-		wgpu::TextureFormat::R8Sint => 3,
-		wgpu::TextureFormat::R16Uint => 4,
-		wgpu::TextureFormat::R16Sint => 5,
-		wgpu::TextureFormat::R16Float => 6,
-		wgpu::TextureFormat::Rg8Unorm => 7,
-		wgpu::TextureFormat::Rg8Snorm => 8,
-		wgpu::TextureFormat::Rg8Uint => 9,
-		wgpu::TextureFormat::Rg8Sint => 10,
-		wgpu::TextureFormat::R32Uint => 11,
-		wgpu::TextureFormat::R32Sint => 12,
-		wgpu::TextureFormat::R32Float => 13,
-		wgpu::TextureFormat::Rg16Uint => 14,
-		wgpu::TextureFormat::Rg16Sint => 15,
-		wgpu::TextureFormat::Rg16Float => 16,
-		wgpu::TextureFormat::Rgba8Unorm => 17,
-		wgpu::TextureFormat::Rgba8UnormSrgb => 18,
-		wgpu::TextureFormat::Rgba8Snorm => 19,
-		wgpu::TextureFormat::Rgba8Uint => 20,
-		wgpu::TextureFormat::Rgba8Sint => 21,
-		wgpu::TextureFormat::Bgra8Unorm => 22,
-		wgpu::TextureFormat::Bgra8UnormSrgb => 23,
-		wgpu::TextureFormat::Rgb10a2Unorm => 24,
-		wgpu::TextureFormat::Rg32Uint => 26,
-		wgpu::TextureFormat::Rg32Sint => 27,
-		wgpu::TextureFormat::Rg32Float => 28,
-		wgpu::TextureFormat::Rgba16Uint => 29,
-		wgpu::TextureFormat::Rgba16Sint => 30,
-		wgpu::TextureFormat::R16Unorm => 31,
-		wgpu::TextureFormat::R16Snorm => 32,
-		wgpu::TextureFormat::Rg16Unorm => 33,
-		wgpu::TextureFormat::Rg16Snorm => 34,
-		wgpu::TextureFormat::Rgb9e5Ufloat => 35,
-		wgpu::TextureFormat::Rgb10a2Uint => 36,
-		wgpu::TextureFormat::Rg11b10Ufloat => 37,
-		wgpu::TextureFormat::Rgba16Unorm => 38,
-		wgpu::TextureFormat::Rgba16Snorm => 39,
-		wgpu::TextureFormat::Rgba16Float => 40,
-		wgpu::TextureFormat::Rgba32Uint => 41,
-		wgpu::TextureFormat::Rgba32Sint => 42,
-		wgpu::TextureFormat::Rgba32Float => 43,
-		wgpu::TextureFormat::Stencil8 => 44,
-		wgpu::TextureFormat::Depth16Unorm => 45,
-		wgpu::TextureFormat::Depth24Plus => 46,
-		wgpu::TextureFormat::Depth24PlusStencil8 => 47,
-		wgpu::TextureFormat::Depth32Float => 48,
-		wgpu::TextureFormat::Depth32FloatStencil8 => 49,
-		wgpu::TextureFormat::NV12 => 50,
-		wgpu::TextureFormat::Bc1RgbaUnorm => 51,
-		wgpu::TextureFormat::Bc1RgbaUnormSrgb => 52,
-		wgpu::TextureFormat::Bc2RgbaUnorm => 53,
-		wgpu::TextureFormat::Bc2RgbaUnormSrgb => 54,
-		wgpu::TextureFormat::Bc3RgbaUnorm => 55,
-		wgpu::TextureFormat::Bc3RgbaUnormSrgb => 56,
-		wgpu::TextureFormat::Bc4RUnorm => 57,
-		wgpu::TextureFormat::Bc4RSnorm => 58,
-		wgpu::TextureFormat::Bc5RgUnorm => 59,
-		wgpu::TextureFormat::Bc5RgSnorm => 60,
-		wgpu::TextureFormat::Bc6hRgbUfloat => 61,
-		wgpu::TextureFormat::Bc6hRgbFloat => 62,
-		wgpu::TextureFormat::Bc7RgbaUnorm => 63,
-		wgpu::TextureFormat::Bc7RgbaUnormSrgb => 64,
-		wgpu::TextureFormat::Etc2Rgb8Unorm => 65,
-		wgpu::TextureFormat::Etc2Rgb8UnormSrgb => 66,
-		wgpu::TextureFormat::Etc2Rgb8A1Unorm => 67,
-		wgpu::TextureFormat::Etc2Rgb8A1UnormSrgb => 68,
-		wgpu::TextureFormat::Etc2Rgba8Unorm => 69,
-		wgpu::TextureFormat::Etc2Rgba8UnormSrgb => 70,
-		wgpu::TextureFormat::EacR11Unorm => 71,
-		wgpu::TextureFormat::EacR11Snorm => 72,
-		wgpu::TextureFormat::EacRg11Unorm => 73,
-		wgpu::TextureFormat::EacRg11Snorm => 74,
-		wgpu::TextureFormat::Astc {
-			block: _,
-			channel: _,
-		} => 75,
-		wgpu::TextureFormat::R64Uint => 76,
+#[derive(Clone)]
+pub struct LayerProps<'a> {
+	pub static_texture: bool,
+	pub static_texture_data: Option<&'a [u8]>,
+	pub shapes: Vec<Shape>,
+	pub effects: Vec<Effect>,
+	pub bindings: Vec<(u32, ValueBinding)>,
+	pub layers: Vec<(u32, LayerBinding)>,
+	pub width: u32,
+	pub height: u32,
+	pub formats: Vec<wgpu::TextureFormat>,
+	pub clear_color: Option<wgpu::Color>,
+	pub depth_test: bool,
+	pub layer_layout: LayerLayout,
+	pub multisampled: bool,
+	pub mips: Option<MipMapCount>,
+}
+
+impl Default for LayerProps<'_> {
+	fn default() -> Self {
+		LayerProps {
+			static_texture: false,
+			static_texture_data: None,
+			shapes: Vec::with_capacity(0),
+			effects: Vec::with_capacity(0),
+			bindings: Vec::with_capacity(0),
+			layers: Vec::with_capacity(0),
+			width: 0,
+			height: 0,
+			formats: Vec::with_capacity(1),
+			layer_layout: BINDING_LAYER_FRAG,
+			clear_color: None,
+			depth_test: false,
+			multisampled: false,
+			mips: None,
+		}
 	}
 }
 
 pub(crate) struct LayerStorage {
 	pub shapes: Vec<Shape>,
 	pub effects: Vec<Effect>,
-	pub binding_layout: BindingLayout,
 	pub target_textures: Vec<Texture>,
-	pub target_bindings: Vec<Binding>,
 	pub depth_texture: Option<Texture>,
 	pub width: u32,
 	pub height: u32,
@@ -109,8 +62,8 @@ pub(crate) struct LayerStorage {
 	pub current_target: usize,
 	pub texture_count: usize,
 	pub is_multi_target: bool,
-	pub uniforms: Vec<(u32, Uniform)>,
-	pub effect_layers: Vec<(u32, Layer)>,
+	pub bindings: Vec<(u32, ValueBinding)>,
+	pub layers: Vec<(u32, LayerBinding)>,
 	pub mips: Option<MipMapCount>,
 }
 
@@ -120,52 +73,17 @@ impl LayerStorage {
 		self.current_target = next;
 	}
 
-	pub(crate) fn current_target<'a>(&'a self) -> &'a Texture {
+	pub(crate) fn current_target_texture<'a>(&'a self) -> &'a Texture {
 		&self.target_textures[self.current_target]
 	}
 
-	pub(crate) fn current_source<'a>(&'a self) -> &'a Binding {
+	pub(crate) fn current_source_texture<'a>(&'a self) -> &'a Texture {
 		let mut idx = self.current_target;
 		if idx == 0 {
 			idx = self.texture_count;
 		}
 
-		&self.target_bindings[idx - 1]
-	}
-}
-
-#[derive(Clone)]
-pub struct LayerProps {
-	pub shapes: Vec<Shape>,
-	pub effects: Vec<Effect>,
-	pub uniforms: Vec<(u32, Uniform)>,
-	pub effect_layers: Vec<(u32, Layer)>,
-	pub width: u32,
-	pub height: u32,
-	pub formats: Vec<wgpu::TextureFormat>,
-	pub clear_color: Option<wgpu::Color>,
-	pub depth_test: bool,
-	pub layer_layout: LayerLayout,
-	pub multisampled: bool,
-	pub mips: Option<MipMapCount>,
-}
-
-impl Default for LayerProps {
-	fn default() -> Self {
-		LayerProps {
-			shapes: Vec::with_capacity(0),
-			effects: Vec::with_capacity(0),
-			uniforms: Vec::with_capacity(0),
-			effect_layers: Vec::with_capacity(0),
-			width: 0,
-			height: 0,
-			formats: Vec::with_capacity(1),
-			layer_layout: UNIFORM_LAYER_FRAG,
-			clear_color: None,
-			depth_test: false,
-			multisampled: false,
-			mips: None,
-		}
+		&self.target_textures[idx - 1]
 	}
 }
 
@@ -174,6 +92,10 @@ pub struct Layer(pub(crate) usize);
 
 impl Layer {
 	pub fn new(painter: &mut Painter, props: LayerProps) -> Self {
+		if props.static_texture && props.shapes.len() > 0 {
+			panic!("A layer can only either contain a static texture or render shapes, not both")
+		}
+
 		let use_window_size = props.width == 0 || props.height == 0;
 		let width = if use_window_size {
 			painter.config.width
@@ -201,8 +123,14 @@ impl Layer {
 
 		let layer = Layer(painter.layers.len());
 
-		let use_swap_targets =
-			props.effects.len() > 1 || (props.shapes.len() > 0 && props.effects.len() > 0);
+		let swapping_effect_count = props
+			.effects
+			.iter()
+			.filter(|e| !e.has_mip_target(painter) && !e.has_mip_source(painter))
+			.count();
+
+		let use_swap_targets = swapping_effect_count > 1
+			|| ((props.shapes.len() > 0 || props.static_texture) && swapping_effect_count > 0);
 
 		let format_len = props.formats.len();
 		let is_multi_target = format_len > 1;
@@ -218,11 +146,15 @@ impl Layer {
 		};
 
 		let mut target_textures = Vec::with_capacity(texture_count);
-		let mut target_bindings = Vec::with_capacity(texture_count);
 		let mut multisampled_textures =
 			Vec::with_capacity(if props.multisampled { texture_count } else { 0 });
 		let mut formats = Vec::with_capacity(texture_count);
-		let layout = BindingLayout::swapping_effect_layer(painter, props.layer_layout);
+
+		let mut usage =
+			wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING;
+		if props.static_texture {
+			usage |= wgpu::TextureUsages::COPY_DST;
+		}
 
 		if is_multi_target {
 			if use_swap_targets {
@@ -236,15 +168,12 @@ impl Layer {
 					height,
 					Texture2DProps {
 						format,
-						usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-							| wgpu::TextureUsages::TEXTURE_BINDING,
+						usage,
 						mips: props.mips,
 					},
 					false,
 				);
 				target_textures.push(tex);
-
-				target_bindings.push(Binding::layer(painter, layer, layout, tex));
 
 				if props.multisampled {
 					multisampled_textures.push(Texture::create_2d(
@@ -272,16 +201,13 @@ impl Layer {
 					height,
 					Texture2DProps {
 						format,
-						usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-							| wgpu::TextureUsages::TEXTURE_BINDING,
+						usage,
 						mips: props.mips,
 					},
 					false,
 				);
 
 				target_textures.push(tex);
-
-				target_bindings.push(Binding::layer(painter, layer, layout, tex));
 			}
 
 			if props.multisampled {
@@ -307,7 +233,6 @@ impl Layer {
 			width,
 			height,
 			target_textures,
-			target_bindings,
 			depth_texture,
 			multisampled_textures,
 			use_window_size,
@@ -317,19 +242,28 @@ impl Layer {
 			current_target: 0,
 			texture_count,
 			is_multi_target,
-			uniforms: props.uniforms,
-			effect_layers: props.effect_layers,
-			binding_layout: layout,
+			bindings: props.bindings,
+			layers: props.layers,
 			mips: props.mips,
 		};
 
 		painter.layers.push(storage);
 
 		for s in props.shapes {
-			s.prepare_uniforms(painter, layer);
+			s.prepare_bindings(painter, layer);
 		}
-		for e in props.effects {
-			e.prepare_uniforms(painter, layer);
+		for e in props.effects.iter() {
+			e.prepare_bindings(painter, layer);
+		}
+		if props.effects.iter().any(|e| e.has_mip_target(painter)) {
+			let textures = painter.layers[layer.0].target_textures.clone();
+			for t in textures {
+				t.prepare_mip_level_views(painter);
+			}
+		}
+
+		if let Some(data) = props.static_texture_data {
+			layer.update_static_data(painter, data);
 		}
 
 		layer
@@ -352,24 +286,26 @@ impl Layer {
 		}
 	}
 
-	pub fn uniform(&self, painter: &Painter) -> Uniform {
-		let l = &painter.layers[self.0];
-		if l.target_textures.len() > 1 {
-			panic!("This layer has more than one target textures. Please use effect layer uniforms in a separate bind group if this layer uses swapping effect buffers or `uniform_at` to get a specific target texture uniform.");
-		}
-		self.uniform_at(painter, 0)
-	}
-
-	pub fn uniform_at(&self, painter: &Painter, index: usize) -> Uniform {
-		painter.layers[self.0].target_textures[index].uniform()
-	}
-
-	pub fn depth_uniform(&self, painter: &Painter) -> Uniform {
+	pub fn update_static_data(&self, painter: &Painter, data: &[u8]) {
 		painter.layers[self.0]
-			.depth_texture
-			.as_ref()
-			.unwrap()
-			.uniform()
+			.current_source_texture()
+			.fill_2d(painter, data);
+	}
+
+	pub fn binding(&self) -> LayerBinding {
+		LayerBinding::Source(*self)
+	}
+
+	pub fn binding_at_mip_level(&self, mip_level: u32) -> LayerBinding {
+		LayerBinding::SourceAtMipLevel(*self, mip_level)
+	}
+
+	pub fn depth_binding(&self) -> LayerBinding {
+		LayerBinding::Depth(*self)
+	}
+
+	pub fn binding_at(&self, index: usize) -> LayerBinding {
+		LayerBinding::AtIndex(*self, index)
 	}
 
 	pub fn set_clear_color(&mut self, painter: &mut Painter, color: Option<wgpu::Color>) {
@@ -437,6 +373,16 @@ impl Layer {
 				true,
 			);
 		}
+
+		let effects = painter.layers[self.0].effects.clone();
+		let prepare_effect_mips = effects.iter().any(|e| e.has_mip_target(painter));
+
+		if prepare_effect_mips {
+			let textures = painter.layers[self.0].target_textures.clone();
+			for t in textures {
+				t.prepare_mip_level_views(painter);
+			}
+		}
 	}
 
 	pub fn get_mip_levels_count(&self, painter: &Painter) -> u32 {
@@ -448,8 +394,8 @@ impl Layer {
 /// A builder for creating a new [`Layer`].
 ///
 /// # Default Configuration values:
-/// - `sampler`: Nearest / ClapToEdge
-/// - `layer_layout`: UNIFORM_LAYER_FRAG
+/// - `sampler`: Nearest / ClampToEdge
+/// - `layer_layout`: BINDING_LAYER_FRAG
 /// - `clear_color`: None
 /// - `depth_test`: false
 /// - `multisampled`: false
@@ -463,12 +409,12 @@ impl Layer {
 ///     .create();
 /// ```
 ///
-pub struct LayerBuilder<'a> {
-	props: LayerProps,
+pub struct LayerBuilder<'a, 'b> {
+	props: LayerProps<'b>,
 	painter: &'a mut Painter,
 }
 
-impl<'a> LayerBuilder<'a> {
+impl<'a, 'b> LayerBuilder<'a, 'b> {
 	pub fn new(painter: &'a mut Painter) -> Self {
 		LayerBuilder {
 			props: LayerProps::default(),
@@ -492,6 +438,17 @@ impl<'a> LayerBuilder<'a> {
 		layer
 	}
 
+	pub fn with_static_texture(mut self) -> Self {
+		self.props.static_texture = true;
+		self
+	}
+
+	pub fn with_static_texture_data(mut self, data: &'b [u8]) -> Self {
+		self.props.static_texture = true;
+		self.props.static_texture_data = Some(data);
+		self
+	}
+
 	pub fn with_shapes(mut self, shapes: Vec<Shape>) -> Self {
 		self.props.shapes = shapes;
 		self
@@ -512,13 +469,13 @@ impl<'a> LayerBuilder<'a> {
 		self
 	}
 
-	pub fn with_uniforms(mut self, uniforms: Vec<(u32, Uniform)>) -> Self {
-		self.props.uniforms = uniforms;
+	pub fn with_bindings(mut self, bindings: Vec<(u32, ValueBinding)>) -> Self {
+		self.props.bindings = bindings;
 		self
 	}
 
-	pub fn with_effect_layers(mut self, effect_layers: Vec<(u32, Layer)>) -> Self {
-		self.props.effect_layers = effect_layers;
+	pub fn with_layers(mut self, layers: Vec<(u32, LayerBinding)>) -> Self {
+		self.props.layers = layers;
 		self
 	}
 
@@ -544,12 +501,12 @@ impl<'a> LayerBuilder<'a> {
 	}
 
 	pub fn with_layer_layout_vert(mut self) -> Self {
-		self.props.layer_layout = UNIFORM_LAYER_VERT;
+		self.props.layer_layout = BINDING_LAYER_VERT;
 		self
 	}
 
 	pub fn with_layer_layout_both(mut self) -> Self {
-		self.props.layer_layout = UNIFORM_LAYER_BOTH;
+		self.props.layer_layout = BINDING_LAYER_BOTH;
 		self
 	}
 

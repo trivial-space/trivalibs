@@ -46,13 +46,13 @@ pub fn scene_fs(
 #[spirv(fragment)]
 pub fn light_fs(
 	in_uv: Vec2,
-	#[spirv(descriptor_set = 0, binding = 0)] color_tex: &Image!(2D, type=f32, sampled),
-	#[spirv(descriptor_set = 0, binding = 1)] normal_tex: &Image!(2D, type=f32, sampled),
-	#[spirv(descriptor_set = 0, binding = 2)] pos_tex: &Image!(2D, type=f32, sampled),
-	#[spirv(descriptor_set = 0, binding = 3)] sampler: &Sampler,
-	#[spirv(uniform, descriptor_set = 0, binding = 4)] eye_pos: &Vec3,
-	#[spirv(uniform, descriptor_set = 0, binding = 5)] light_pos: &Vec3,
-	#[spirv(uniform, descriptor_set = 0, binding = 6)] light_color: &Vec3,
+	#[spirv(descriptor_set = 0, binding = 0)] sampler: &Sampler,
+	#[spirv(uniform, descriptor_set = 0, binding = 1)] eye_pos: &Vec3,
+	#[spirv(uniform, descriptor_set = 0, binding = 2)] light_pos: &Vec3,
+	#[spirv(uniform, descriptor_set = 0, binding = 3)] light_color: &Vec3,
+	#[spirv(descriptor_set = 1, binding = 0)] color_tex: &Image!(2D, type=f32, sampled),
+	#[spirv(descriptor_set = 1, binding = 1)] normal_tex: &Image!(2D, type=f32, sampled),
+	#[spirv(descriptor_set = 1, binding = 2)] pos_tex: &Image!(2D, type=f32, sampled),
 	frag_color: &mut Vec4,
 ) {
 	let color = color_tex.sample(*sampler, in_uv).xyz();

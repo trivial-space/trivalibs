@@ -1,5 +1,11 @@
+#![allow(unexpected_cfgs)]
+
 use crate::float_ext::FloatExt;
+#[cfg(not(target_arch = "spirv"))]
+use glam::{vec2, vec3, vec4, Vec2, Vec3, Vec4};
+#[cfg(target_arch = "spirv")]
 use spirv_std::glam::{vec2, vec3, vec4, Vec2, Vec3, Vec4};
+#[cfg(target_arch = "spirv")]
 #[allow(unused_imports)]
 use spirv_std::num_traits::Float;
 

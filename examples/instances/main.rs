@@ -21,8 +21,8 @@ struct App {
 	triangles: Vec<Triangle>,
 
 	canvas: Layer,
-	model_mats: Vec<UniformBuffer<Mat4>>,
-	vp_mat: UniformBuffer<Mat4>,
+	model_mats: Vec<BindingBuffer<Mat4>>,
+	vp_mat: BindingBuffer<Mat4>,
 }
 
 const TRIANGLE_COUNT: usize = 1100;
@@ -51,10 +51,10 @@ impl CanvasApp<()> for App {
 
 		let shade = p
 			.shade(&[Float32x3])
-			.with_uniforms(&[
-				UNIFORM_BUFFER_VERT,
-				UNIFORM_BUFFER_VERT,
-				UNIFORM_BUFFER_FRAG,
+			.with_bindings(&[
+				BINDING_BUFFER_VERT,
+				BINDING_BUFFER_VERT,
+				BINDING_BUFFER_FRAG,
 			])
 			.create();
 		load_vertex_shader!(shade, p, "./shader/vertex.spv");
@@ -63,17 +63,17 @@ impl CanvasApp<()> for App {
 		let form = p.form(VERTICES).create();
 
 		let model_mats = (0..triangles.len())
-			.map(|_| p.uniform_mat4())
+			.map(|_| p.bind_mat4())
 			.collect::<Vec<_>>();
 
-		let cam = p.uniform_mat4();
+		let cam = p.bind_mat4();
 
 		let instances = model_mats
 			.iter()
-			.map(|model| InstanceUniforms {
-				uniforms: map! {
-					1 => model.uniform(),
-					2 => p.uniform_const_vec4(rand_vec4())
+			.map(|model| InstanceBinding {
+				bindings: map! {
+					1 => model.binding(),
+					2 => p.bind_const_vec4(rand_vec4())
 				},
 				..default()
 			})
@@ -81,8 +81,8 @@ impl CanvasApp<()> for App {
 
 		let shape = p
 			.shape(form, shade)
-			.with_uniforms(map! {
-				0 => cam.uniform()
+			.with_bindings(map! {
+				0 => cam.binding()
 			})
 			.with_instances(instances)
 			.with_cull_mode(None)

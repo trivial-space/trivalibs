@@ -8,10 +8,5 @@
     "source_path": "mip_sampling.spv",
     "entry_point": "mip_sampling",
     "wgsl_entry_point": "mip_sampling"
-  },
-  {
-    "source_path": "wave_effect.spv",
-    "entry_point": "wave_effect",
-    "wgsl_entry_point": "wave_effect"
   }
 ]

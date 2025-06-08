@@ -1,9 +1,9 @@
 use crate::{
-	binding::Binding,
+	bind_group::{BindGroup, LayerBindGroupData},
+	binding::{InstanceBinding, LayerBinding, ValueBinding},
 	form::Form,
 	layer::Layer,
 	shade::Shade,
-	uniform::{InstanceUniforms, Uniform},
 	Painter,
 };
 
@@ -11,20 +11,21 @@ use crate::{
 pub(crate) struct ShapeStorage {
 	pub form: Form,
 	pub shade: Shade,
-	pub uniforms: Vec<(u32, Uniform)>,
-	pub effect_layers: Vec<(u32, Layer)>,
-	pub instances: Vec<InstanceUniforms>,
+	pub bindings: Vec<(u32, ValueBinding)>,
+	pub layers: Vec<(u32, LayerBinding)>,
+	pub instances: Vec<InstanceBinding>,
 	pub pipeline_key: Vec<u8>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
-	pub uniform_bindings: Vec<Binding>,
+	pub bind_groups: Vec<BindGroup>,
+	pub layer_bind_group_data: Option<LayerBindGroupData>,
 }
 
 #[derive(Clone)]
 pub struct ShapeProps {
-	pub uniforms: Vec<(u32, Uniform)>,
-	pub effect_layers: Vec<(u32, Layer)>,
-	pub instances: Vec<InstanceUniforms>,
+	pub bindings: Vec<(u32, ValueBinding)>,
+	pub layers: Vec<(u32, LayerBinding)>,
+	pub instances: Vec<InstanceBinding>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
 }
@@ -32,8 +33,8 @@ pub struct ShapeProps {
 impl Default for ShapeProps {
 	fn default() -> Self {
 		ShapeProps {
-			uniforms: Vec::with_capacity(0),
-			effect_layers: Vec::with_capacity(0),
+			bindings: Vec::with_capacity(0),
+			layers: Vec::with_capacity(0),
 			instances: Vec::with_capacity(0),
 			cull_mode: Some(wgpu::Face::Back),
 			blend_state: wgpu::BlendState::REPLACE,
@@ -74,12 +75,13 @@ impl Shape {
 			form,
 			shade,
 			pipeline_key,
-			uniforms: props.uniforms,
-			effect_layers: props.effect_layers,
+			bindings: props.bindings,
+			layers: props.layers,
 			instances: props.instances,
 			cull_mode: props.cull_mode,
 			blend_state: props.blend_state,
-			uniform_bindings: Vec::with_capacity(0),
+			bind_groups: Vec::with_capacity(0),
+			layer_bind_group_data: None,
 		};
 
 		painter.shapes.push(shape);
@@ -87,23 +89,33 @@ impl Shape {
 		Shape(painter.shapes.len() - 1)
 	}
 
-	pub(crate) fn prepare_uniforms(&self, painter: &mut Painter, layer: Layer) {
+	pub(crate) fn prepare_bindings(&self, painter: &mut Painter, layer: Layer) {
 		let sp = &painter.shapes[self.0];
 		let sd = &painter.shades[sp.shade.0];
-		let data = &sp.uniforms.clone();
-		let instances = &sp.instances.clone();
-		let layer_data = &painter.layers[layer.0].uniforms.clone();
+		let l = &painter.layers[layer.0];
 
-		let uniforms = Binding::uniforms(
-			painter,
-			sd.uniforms_length,
-			sd.uniform_layout,
-			data,
-			instances,
-			layer_data,
+		let value_bindings = &sp.bindings.clone();
+		let layer_bindings = &l.bindings.clone();
+		let instances = &sp.instances.clone();
+
+		let layer_bind_group_data = LayerBindGroupData::from_bindings(
+			sd.layer_bindings_length,
+			sd.layers_layout,
+			&sp.layers.clone(),
+			&l.layers.clone(),
 		);
 
-		painter.shapes[self.0].uniform_bindings = uniforms;
+		let bind_groups = BindGroup::values_bind_groups(
+			painter,
+			sd.value_bindings_length,
+			sd.binding_layout,
+			value_bindings,
+			instances,
+			layer_bindings,
+		);
+
+		painter.shapes[self.0].bind_groups = bind_groups;
+		painter.shapes[self.0].layer_bind_group_data = layer_bind_group_data;
 	}
 }
 
@@ -116,7 +128,7 @@ impl Shape {
 /// # Example
 /// ```
 /// let shape = ShapeBuilder::new(painter, form, shade)
-///     .with_uniforms(uniforms)
+///     .with_bindings(bindings)
 ///     .with_instances(instances)
 ///     .create();
 /// ```
@@ -141,17 +153,17 @@ impl<'a> ShapeBuilder<'a> {
 		Shape::new(self.painter, self.form, self.shade, self.props)
 	}
 
-	pub fn with_uniforms(mut self, uniforms: Vec<(u32, Uniform)>) -> Self {
-		self.props.uniforms = uniforms;
+	pub fn with_bindings(mut self, bindings: Vec<(u32, ValueBinding)>) -> Self {
+		self.props.bindings = bindings;
 		self
 	}
 
-	pub fn with_effect_layers(mut self, effect_layers: Vec<(u32, Layer)>) -> Self {
-		self.props.effect_layers = effect_layers;
+	pub fn with_layers(mut self, layers: Vec<(u32, LayerBinding)>) -> Self {
+		self.props.layers = layers;
 		self
 	}
 
-	pub fn with_instances(mut self, instances: Vec<InstanceUniforms>) -> Self {
+	pub fn with_instances(mut self, instances: Vec<InstanceBinding>) -> Self {
 		self.props.instances = instances;
 		self
 	}

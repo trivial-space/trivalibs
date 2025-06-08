@@ -3,8 +3,8 @@ use trivalibs::{map, painter::prelude::*, prelude::*};
 struct App {
 	time: f32,
 
-	u_time: UniformBuffer<f32>,
-	u_size: UniformBuffer<UVec2>,
+	u_time: BindingBuffer<f32>,
+	u_size: BindingBuffer<UVec2>,
 	canvas: Layer,
 }
 
@@ -12,18 +12,18 @@ impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let shade = p
 			.shade_effect()
-			.with_uniforms(&[UNIFORM_BUFFER_FRAG, UNIFORM_BUFFER_FRAG])
+			.with_bindings(&[BINDING_BUFFER_FRAG, BINDING_BUFFER_FRAG])
 			.create();
 		load_fragment_shader!(shade, p, "./shader/main.spv");
 
-		let u_time = p.uniform_f32();
-		let u_size = p.uniform_uvec2();
+		let u_time = p.bind_f32();
+		let u_size = p.bind_uvec2();
 
 		let effect = p
 			.effect(shade)
-			.with_uniforms(map! {
-				0 => u_size.uniform(),
-				1 => u_time.uniform()
+			.with_bindings(map! {
+				0 => u_size.binding(),
+				1 => u_time.binding()
 			})
 			.create();
 

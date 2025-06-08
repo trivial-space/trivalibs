@@ -1,10 +1,15 @@
-use core::f32::consts::PI;
+#![allow(unexpected_cfgs)]
 
 use crate::{
 	float_ext::{step, FloatExt},
 	vec_ext::VecExt,
 };
+use core::f32::consts::PI;
+#[cfg(not(target_arch = "spirv"))]
+use glam::{vec3, vec4, Vec3};
+#[cfg(target_arch = "spirv")]
 use spirv_std::glam::{vec3, vec4, Vec3};
+#[cfg(target_arch = "spirv")]
 #[allow(unused_imports)]
 use spirv_std::num_traits::Float;
 

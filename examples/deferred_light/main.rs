@@ -17,11 +17,11 @@ struct App {
 	ball_transform: Transform,
 	box_transform: Transform,
 
-	u_ball_model_mat: UniformBuffer<Mat4>,
-	u_ball_rot: UniformBuffer<Quat>,
-	u_box_model_mat: UniformBuffer<Mat4>,
-	u_box_rot: UniformBuffer<Quat>,
-	u_vp_mat: UniformBuffer<Mat4>,
+	u_ball_model_mat: BindingBuffer<Mat4>,
+	u_ball_rot: BindingBuffer<Quat>,
+	u_box_model_mat: BindingBuffer<Mat4>,
+	u_box_rot: BindingBuffer<Quat>,
+	u_vp_mat: BindingBuffer<Mat4>,
 	scene_layer: Layer,
 	canvas: Layer,
 }
@@ -32,10 +32,10 @@ impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let scene_shade = p
 			.shade(&[Float32x3, Float32x3, Float32x3])
-			.with_uniforms(&[
-				UNIFORM_BUFFER_VERT,
-				UNIFORM_BUFFER_VERT,
-				UNIFORM_BUFFER_VERT,
+			.with_bindings(&[
+				BINDING_BUFFER_VERT,
+				BINDING_BUFFER_VERT,
+				BINDING_BUFFER_VERT,
 			])
 			.create();
 		load_vertex_shader!(scene_shade, p, "./shader/scene_vs.spv");
@@ -43,29 +43,29 @@ impl CanvasApp<()> for App {
 
 		let ball_form = p.form(&create_ball_geom()).create();
 
-		let u_vp_mat = p.uniform_mat4();
+		let u_vp_mat = p.bind_mat4();
 
-		let u_ball_model_mat = p.uniform_mat4();
-		let u_ball_rot = p.uniform_quat();
+		let u_ball_model_mat = p.bind_mat4();
+		let u_ball_rot = p.bind_quat();
 
 		let ball_shape = p
 			.shape(ball_form, scene_shade)
-			.with_uniforms(map! {
-				0 => u_ball_model_mat.uniform(),
-				2 => u_ball_rot.uniform(),
+			.with_bindings(map! {
+				0 => u_ball_model_mat.binding(),
+				2 => u_ball_rot.binding(),
 			})
 			.create();
 
 		let box_form = p.form(&create_box_geom()).create();
 
-		let u_box_model_mat = p.uniform_mat4();
-		let u_box_rot = p.uniform_quat();
+		let u_box_model_mat = p.bind_mat4();
+		let u_box_rot = p.bind_quat();
 
 		let box_shape = p
 			.shape(box_form, scene_shade)
-			.with_uniforms(map! {
-				0 => u_box_model_mat.uniform(),
-				2 => u_box_rot.uniform(),
+			.with_bindings(map! {
+				0 => u_box_model_mat.binding(),
+				2 => u_box_rot.binding(),
 			})
 			.create();
 
@@ -79,8 +79,8 @@ impl CanvasApp<()> for App {
 			})
 			.with_shapes(vec![ball_shape, box_shape])
 			.with_formats(vec![Rgba8UnormSrgb, Rgba16Float, Rgba16Float])
-			.with_uniforms(map! {
-				1 => u_vp_mat.uniform(),
+			.with_bindings(map! {
+				1 => u_vp_mat.binding(),
 			})
 			.with_multisampling()
 			.with_depth_test()
@@ -88,33 +88,31 @@ impl CanvasApp<()> for App {
 
 		let canvas_shade = p
 			.shade_effect()
-			.with_uniforms(&[
-				UNIFORM_TEX2D_FRAG,
-				UNIFORM_TEX2D_FRAG,
-				UNIFORM_TEX2D_FRAG,
-				UNIFORM_SAMPLER_FRAG,
-				UNIFORM_BUFFER_FRAG,
-				UNIFORM_BUFFER_FRAG,
-				UNIFORM_BUFFER_FRAG,
+			.with_bindings(&[
+				BINDING_SAMPLER_FRAG,
+				BINDING_BUFFER_FRAG,
+				BINDING_BUFFER_FRAG,
+				BINDING_BUFFER_FRAG,
 			])
+			.with_layers(&[BINDING_LAYER_FRAG, BINDING_LAYER_FRAG, BINDING_LAYER_FRAG])
 			.create();
 		load_fragment_shader!(canvas_shade, p, "./shader/light_fs.spv");
 
-		let color_target = scene_layer.uniform_at(p, 0);
-		let normal_target = scene_layer.uniform_at(p, 1);
-		let position_target = scene_layer.uniform_at(p, 2);
+		let color_target = scene_layer.binding_at(0);
+		let normal_target = scene_layer.binding_at(1);
+		let position_target = scene_layer.binding_at(2);
 
 		let lights = (0..LIGHTS_COUNT)
 			.map(|_| {
 				let light_pos = rand_vec3_unit() * rand_range(10.0, 30.0);
-				let light_pos_u = p.uniform_const_vec3(light_pos);
+				let light_pos_u = p.bind_const_vec3(light_pos);
 
-				let light_color_u = p.uniform_const_vec3(rand_vec3());
+				let light_color_u = p.bind_const_vec3(rand_vec3());
 
-				InstanceUniforms {
-					uniforms: map! {
-						5 => light_pos_u,
-						6 => light_color_u,
+				InstanceBinding {
+					bindings: map! {
+						2 => light_pos_u,
+						3 => light_color_u,
 					},
 					..default()
 				}
@@ -122,18 +120,20 @@ impl CanvasApp<()> for App {
 			.collect::<Vec<_>>();
 
 		let cam_pos = vec3(0.0, 5.0, 0.0);
-		let cam_pos_u = p.uniform_const_vec3(cam_pos);
+		let cam_pos_u = p.bind_const_vec3(cam_pos);
 
-		let s = p.sampler_nearest().uniform();
+		let s = p.sampler_nearest().binding();
 
 		let canvas_effect = p
 			.effect(canvas_shade)
-			.with_uniforms(map! {
+			.with_bindings(map! {
+				0 => s,
+				1 => cam_pos_u,
+			})
+			.with_layers(map! {
 				0 => color_target,
 				1 => normal_target,
 				2 => position_target,
-				3 => s,
-				4 => cam_pos_u,
 			})
 			.with_instances(lights)
 			.with_blend_state(wgpu::BlendState {

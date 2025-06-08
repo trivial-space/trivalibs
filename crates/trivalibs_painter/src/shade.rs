@@ -1,7 +1,7 @@
 use crate::{
-	binding::BindingLayout,
-	prelude::UNIFORM_LAYER_FRAG,
-	uniform::{LayerLayout, UniformLayout},
+	bind_group::BindGroupLayout,
+	binding::{BindingLayout, LayerLayout},
+	prelude::BINDING_LAYER_FRAG,
 	Painter,
 };
 use std::fs;
@@ -13,36 +13,39 @@ pub(crate) struct ShadeStorage {
 	pub fragment_bytes: Option<Vec<u8>>,
 	pub attribs: AttribsFormat,
 	pub pipeline_layout: wgpu::PipelineLayout,
-	pub uniform_layout: Option<BindingLayout>,
-	pub uniforms_length: usize,
+	pub binding_layout: Option<BindGroupLayout>,
+	pub layers_layout: Option<BindGroupLayout>,
+	pub value_bindings_length: usize,
+	pub layer_bindings_length: usize,
 }
 
 pub struct ShadeProps<'a, Format: Into<AttribsFormat>> {
 	pub attributes: Format,
-	pub uniforms: &'a [UniformLayout],
-	pub effect_layers: &'a [LayerLayout],
+	pub bindings: &'a [BindingLayout],
+	pub layers: &'a [LayerLayout],
 }
 
 fn layouts_from_props(
 	painter: &mut Painter,
-	uniforms: &[UniformLayout],
-	effect_layers: &[LayerLayout],
-) -> (wgpu::PipelineLayout, Option<BindingLayout>) {
-	let uniform_layout = BindingLayout::uniforms(painter, uniforms);
+	bindings: &[BindingLayout],
+	layers: &[LayerLayout],
+) -> (
+	wgpu::PipelineLayout,
+	Option<BindGroupLayout>,
+	Option<BindGroupLayout>,
+) {
+	let bindings_layout = BindGroupLayout::values(painter, bindings);
 
-	let effect_layer_layouts = effect_layers
-		.iter()
-		.map(|l| BindingLayout::swapping_effect_layer(painter, *l))
-		.collect::<Vec<_>>();
+	let layer_layout = BindGroupLayout::layers(painter, layers);
 
 	let mut layouts = vec![];
 
-	if let Some(u) = &uniform_layout {
-		layouts.push(&painter.binding_layouts[u.0]);
+	if let Some(l) = &bindings_layout {
+		layouts.push(&painter.bind_group_layouts[l.0]);
 	}
 
-	for l in effect_layer_layouts.iter() {
-		layouts.push(&painter.binding_layouts[l.0]);
+	if let Some(l) = &layer_layout {
+		layouts.push(&painter.bind_group_layouts[l.0]);
 	}
 
 	let pipeline_layout = painter
@@ -53,7 +56,7 @@ fn layouts_from_props(
 			push_constant_ranges: &[],
 		});
 
-	(pipeline_layout, uniform_layout)
+	(pipeline_layout, bindings_layout, layer_layout)
 }
 
 impl Default for ShadeProps<'_, AttribsFormat> {
@@ -63,22 +66,22 @@ impl Default for ShadeProps<'_, AttribsFormat> {
 				attributes: vec![],
 				stride: 0,
 			},
-			uniforms: &[],
-			effect_layers: &[],
+			bindings: &[],
+			layers: &[],
 		}
 	}
 }
 
 pub struct ShadeEffectProps<'a> {
-	pub uniforms: &'a [UniformLayout],
-	pub effect_layers: &'a [LayerLayout],
+	pub bindings: &'a [BindingLayout],
+	pub layers: &'a [LayerLayout],
 }
 
 impl Default for ShadeEffectProps<'_> {
 	fn default() -> Self {
 		Self {
-			uniforms: &[],
-			effect_layers: &[],
+			bindings: &[],
+			layers: &[],
 		}
 	}
 }
@@ -166,8 +169,8 @@ impl Shade {
 	) -> Self {
 		let format = props.attributes.into();
 
-		let (pipeline_layout, uniform_layout) =
-			layouts_from_props(painter, props.uniforms, props.effect_layers);
+		let (pipeline_layout, binding_layout, layers_layout) =
+			layouts_from_props(painter, props.bindings, props.layers);
 
 		let s = ShadeStorage {
 			vertex_path: None,
@@ -176,8 +179,10 @@ impl Shade {
 			fragment_bytes: None,
 			attribs: format,
 			pipeline_layout,
-			uniform_layout,
-			uniforms_length: props.uniforms.len(),
+			binding_layout,
+			layers_layout,
+			value_bindings_length: props.bindings.len(),
+			layer_bindings_length: props.layers.len(),
 		};
 
 		let i = painter.shades.len();
@@ -187,8 +192,8 @@ impl Shade {
 	}
 
 	pub fn new_effect(painter: &mut Painter, props: ShadeEffectProps) -> Self {
-		let (pipeline_layout, uniform_layout) =
-			layouts_from_props(painter, props.uniforms, props.effect_layers);
+		let (pipeline_layout, binding_layout, layers_layout) =
+			layouts_from_props(painter, props.bindings, props.layers);
 
 		let format = vec![].into();
 
@@ -199,8 +204,10 @@ impl Shade {
 			fragment_bytes: None,
 			attribs: format,
 			pipeline_layout,
-			uniform_layout,
-			uniforms_length: props.uniforms.len(),
+			binding_layout,
+			layers_layout,
+			value_bindings_length: props.bindings.len(),
+			layer_bindings_length: props.layers.len(),
 		};
 
 		let i = painter.shades.len();
@@ -262,8 +269,8 @@ where
 		ShadeBuilder {
 			props: ShadeProps {
 				attributes,
-				uniforms: &[],
-				effect_layers: &[],
+				bindings: &[],
+				layers: &[],
 			},
 			painter,
 		}
@@ -273,13 +280,13 @@ where
 		Shade::new(self.painter, self.props)
 	}
 
-	pub fn with_uniforms(mut self, uniforms: &'a [UniformLayout]) -> Self {
-		self.props.uniforms = uniforms;
+	pub fn with_bindings(mut self, bindings: &'a [BindingLayout]) -> Self {
+		self.props.bindings = bindings;
 		self
 	}
 
-	pub fn with_effect_layers(mut self, effect_layers: &'a [LayerLayout]) -> Self {
-		self.props.effect_layers = effect_layers;
+	pub fn with_layers(mut self, layers: &'a [LayerLayout]) -> Self {
+		self.props.layers = layers;
 		self
 	}
 }
@@ -293,8 +300,8 @@ impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
 	pub fn new(painter: &'b mut Painter) -> Self {
 		ShadeEffectBuilder {
 			props: ShadeEffectProps {
-				uniforms: &[],
-				effect_layers: &[],
+				bindings: &[],
+				layers: &[],
 			},
 			painter,
 		}
@@ -304,18 +311,18 @@ impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
 		Shade::new_effect(self.painter, self.props)
 	}
 
-	pub fn with_uniforms(mut self, uniforms: &'a [UniformLayout]) -> Self {
-		self.props.uniforms = uniforms;
+	pub fn with_bindings(mut self, bindings: &'a [BindingLayout]) -> Self {
+		self.props.bindings = bindings;
 		self
 	}
 
-	pub fn with_effect_layers(mut self, layers: &'a [LayerLayout]) -> Self {
-		self.props.effect_layers = layers;
+	pub fn with_layers(mut self, layers: &'a [LayerLayout]) -> Self {
+		self.props.layers = layers;
 		self
 	}
 
-	pub fn with_effect_layer(mut self) -> Self {
-		self.props.effect_layers = &[UNIFORM_LAYER_FRAG];
+	pub fn with_layer(mut self) -> Self {
+		self.props.layers = &[BINDING_LAYER_FRAG];
 		self
 	}
 }
