@@ -490,6 +490,11 @@ impl<'a, 'b> LayerBuilder<'a, 'b> {
 		self
 	}
 
+	pub fn with_format(mut self, format: wgpu::TextureFormat) -> Self {
+		self.props.formats = vec![format];
+		self
+	}
+
 	pub fn with_clear_color(mut self, color: wgpu::Color) -> Self {
 		self.props.clear_color = Some(color);
 		self

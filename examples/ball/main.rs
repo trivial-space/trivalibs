@@ -38,6 +38,7 @@ impl CanvasApp<()> for App {
 			.layer()
 			.with_size(info.width, info.height)
 			.with_static_texture_data(tex_rgba)
+			.with_format(wgpu::TextureFormat::Rgba8UnormSrgb)
 			.create();
 
 		let shade = p
