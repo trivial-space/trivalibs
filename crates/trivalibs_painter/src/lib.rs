@@ -4,6 +4,7 @@ pub use winit;
 pub mod painter;
 pub use painter::Painter;
 pub mod app;
+pub mod app_state;
 pub mod bind_group;
 pub mod binding;
 pub mod binding_constants;
@@ -22,7 +23,8 @@ pub(crate) mod window_dimensions;
 
 pub mod prelude {
 	pub use crate::{
-		app::{AppConfig, CanvasApp, Event},
+		app::{AppConfig, CanvasApp, Event, TempDevStatePersistence},
+		app_state,
 		binding::{BindingBuffer, InstanceBinding, Mat3U, Vec3U},
 		binding_constants::*,
 		effect::EffectProps,

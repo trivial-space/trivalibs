@@ -3,6 +3,7 @@ use crate::window_dimensions::WindowDimensions;
 use crate::{painter::PainterConfig, Painter};
 #[cfg(debug_assertions)]
 use notify::Watcher;
+use serde::{de::DeserializeOwned, Serialize};
 use std::collections::BTreeMap;
 use std::{sync::Arc, time::Instant};
 use wgpu::SurfaceError;
@@ -21,6 +22,7 @@ pub enum Event<UserEvent> {
 	DeviceEvent(DeviceEvent),
 	UserEvent(UserEvent),
 	ShaderReloadEvent,
+	OnExit,
 }
 
 pub trait CanvasApp<UserEvent> {
@@ -29,7 +31,6 @@ pub trait CanvasApp<UserEvent> {
 	fn update(&mut self, painter: &mut Painter, tpf: f32);
 	fn render(&self, painter: &mut Painter) -> Result<(), SurfaceError>;
 	fn event(&mut self, event: Event<UserEvent>, painter: &mut Painter);
-
 	fn create() -> CanvasAppStarter<UserEvent, Self>
 	where
 		Self: Sized,
@@ -62,6 +63,18 @@ pub trait CanvasApp<UserEvent> {
 
 		CanvasAppStarter { runner, event_loop }
 	}
+}
+
+/// Optional trait for apps that want to persist development state across recompiles.
+/// This is intended for development use only (e.g., camera position).
+pub trait TempDevStatePersistence {
+	type TempDevState: Serialize + DeserializeOwned;
+
+	/// Save temporary development state (e.g., camera position).
+	fn save_dev_state(&self) -> Self::TempDevState;
+
+	/// Load previously saved temporary development state.
+	fn load_dev_state(&mut self, state: Self::TempDevState);
 }
 
 enum WindowState<UserEvent, App: CanvasApp<UserEvent>> {
@@ -133,6 +146,7 @@ pub struct AppConfig {
 	pub use_vsync: bool,
 	pub keep_window_dimensions: bool,
 	pub features: Option<wgpu::Features>,
+	pub dev_state_file_name: Option<String>,
 }
 
 impl Default for AppConfig {
@@ -142,6 +156,7 @@ impl Default for AppConfig {
 			use_vsync: true,
 			keep_window_dimensions: false,
 			features: None,
+			dev_state_file_name: None,
 		}
 	}
 }
@@ -334,6 +349,9 @@ where
 			CustomEvent::StateInitializationEvent(mut painter) => {
 				let mut app = App::init(&mut painter);
 
+				// Note: State loading should be handled by apps that implement TempDevStatePersistence
+				// in their init() method if desired
+
 				for i in 0..painter.layers.len() {
 					Layer(i).init_layer_gpu_pipelines(&mut painter);
 				}
@@ -456,7 +474,14 @@ where
 						}
 					}
 
-					WindowEvent::CloseRequested => event_loop.exit(),
+					WindowEvent::CloseRequested => {
+						app.event(Event::OnExit, painter);
+
+						// Note: State saving should be handled by apps that implement TempDevStatePersistence
+						// in their OnExit event handler if desired
+
+						event_loop.exit();
+					}
 
 					WindowEvent::KeyboardInput {
 						event:
@@ -485,6 +510,11 @@ where
 							},
 						..
 					} => {
+						app.event(Event::OnExit, painter);
+
+						// Note: State saving should be handled by apps that implement TempDevStatePersistence
+						// in their OnExit event handler if desired
+
 						event_loop.exit();
 					}
 
