@@ -330,7 +330,7 @@ impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
 #[macro_export]
 macro_rules! load_fragment_shader {
 	($shade:expr, $painter:expr, $path:expr) => {
-		#[cfg(debug_assertions)]
+		#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 		{
 			let current_file = file!();
 			let current_dir = std::path::Path::new(current_file).parent().unwrap();
@@ -344,13 +344,15 @@ macro_rules! load_fragment_shader {
 
 		#[cfg(not(debug_assertions))]
 		$shade.set_fragment_bytes($painter, include_bytes!($path).to_vec());
+		#[cfg(target_arch = "wasm32")]
+		$shade.set_fragment_bytes($painter, include_bytes!($path).to_vec());
 	};
 }
 
 #[macro_export]
 macro_rules! load_vertex_shader {
 	($shade:expr, $painter:expr, $path:expr) => {
-		#[cfg(debug_assertions)]
+		#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 		{
 			let current_file = file!();
 			let current_dir = std::path::Path::new(current_file).parent().unwrap();
@@ -362,6 +364,8 @@ macro_rules! load_vertex_shader {
 		}
 
 		#[cfg(not(debug_assertions))]
+		$shade.set_vertex_bytes($painter, include_bytes!($path).to_vec());
+		#[cfg(target_arch = "wasm32")]
 		$shade.set_vertex_bytes($painter, include_bytes!($path).to_vec());
 	};
 }

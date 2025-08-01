@@ -1,14 +1,21 @@
 use crate::layer::Layer;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::window_dimensions::WindowDimensions;
 use crate::{painter::PainterConfig, Painter};
-#[cfg(debug_assertions)]
+#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 use notify::Watcher;
+#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 use std::collections::BTreeMap;
-use std::{sync::Arc, time::Instant};
+use std::sync::Arc;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_futures::spawn_local;
+use web_time::Instant;
 use wgpu::SurfaceError;
+#[cfg(not(target_arch = "wasm32"))]
+use winit::dpi::PhysicalPosition;
 use winit::{
 	application::ApplicationHandler,
-	dpi::{PhysicalPosition, PhysicalSize},
+	dpi::PhysicalSize,
 	event::{DeviceEvent, DeviceId, ElementState, KeyEvent, WindowEvent},
 	event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
 	keyboard::{KeyCode, PhysicalKey},
@@ -40,7 +47,7 @@ pub trait CanvasApp<UserEvent> {
 		#[cfg(target_arch = "wasm32")]
 		{
 			std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-			console_log::init().expect("could not initialize logger");
+			let _ = console_log::init(); // Ignore error if already initialized
 		}
 
 		let event_loop = EventLoop::<CustomEvent<UserEvent>>::with_user_event()
@@ -133,6 +140,8 @@ pub struct AppConfig {
 	pub use_vsync: bool,
 	pub keep_window_dimensions: bool,
 	pub features: Option<wgpu::Features>,
+	#[cfg(target_arch = "wasm32")]
+	pub canvas: Option<web_sys::HtmlCanvasElement>,
 }
 
 impl Default for AppConfig {
@@ -142,6 +151,8 @@ impl Default for AppConfig {
 			use_vsync: true,
 			keep_window_dimensions: false,
 			features: None,
+			#[cfg(target_arch = "wasm32")]
+			canvas: None,
 		}
 	}
 }
@@ -169,27 +180,27 @@ where
 		let event_loop = self.event_loop;
 		let mut runner = self.runner;
 
-		#[cfg(debug_assertions)]
+		#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 		let (tx, rx) = std::sync::mpsc::channel::<notify::Result<notify::Event>>();
 
-		#[cfg(debug_assertions)]
+		#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 		let mut watcher = notify::recommended_watcher(tx).unwrap();
 
-		#[cfg(debug_assertions)]
+		#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 		let path = std::env::current_dir().unwrap();
 
-		#[cfg(debug_assertions)]
+		#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 		println!("Watching: {:?}", path);
 
-		#[cfg(debug_assertions)]
+		#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 		watcher
 			.watch(&path, notify::RecursiveMode::Recursive)
 			.unwrap();
 
-		#[cfg(debug_assertions)]
+		#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 		let proxy = runner.event_loop_proxy.clone();
 
-		#[cfg(debug_assertions)]
+		#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 		std::thread::spawn(move || {
 			let mut current_shaders = BTreeMap::new();
 			// Block forever, printing out events as they come in
@@ -254,7 +265,10 @@ where
 			WindowState::Uninitialized => {
 				self.state = WindowState::Initializing;
 
+				#[cfg(not(target_arch = "wasm32"))]
 				let mut window_attributes = Window::default_attributes();
+				#[cfg(target_arch = "wasm32")]
+				let window_attributes = Window::default_attributes();
 
 				// Load and apply saved window state
 				#[cfg(not(target_arch = "wasm32"))]
@@ -271,26 +285,58 @@ where
 					let _ = WindowDimensions::cleanup();
 				}
 
-				let window = event_loop.create_window(window_attributes).unwrap();
-				let window = Arc::new(window);
-
 				#[cfg(target_arch = "wasm32")]
-				{
-					// TODO: initialize canvas
-					// web_sys::window()
-					// 	.and_then(|win| win.document())
-					// 	.and_then(|doc| {
-					// 		let dst = doc.get_element_by_id("kloenk-wasm")?;
-					// 		let canvas = window.canvas()?;
-					// 		canvas
-					// 			.set_attribute("tabindex", "0")
-					// 			.expect("failed to set tabindex");
-					// 		dst.append_child(&canvas).ok()?;
-					// 		canvas.focus().expect("Unable to focus on canvas");
-					// 		Some(())
-					// 	})
-					// 	.expect("Couldn't append canvas to document body.");
-				}
+				let window = {
+					use winit::platform::web::WindowAttributesExtWebSys;
+					
+					if let Some(canvas) = &self.config.canvas {
+						// Use the provided canvas
+						let window = event_loop.create_window(
+							window_attributes.with_canvas(Some(canvas.clone()))
+						).unwrap();
+						let window = Arc::new(window);
+						
+						// Set canvas attributes even for provided canvas
+						canvas
+							.set_attribute("tabindex", "0")
+							.expect("failed to set tabindex");
+						canvas.focus().expect("Unable to focus on canvas");
+						
+						window
+					} else {
+						// Create a new canvas as before
+						let window = event_loop.create_window(window_attributes).unwrap();
+						let window = Arc::new(window);
+						
+						use winit::platform::web::WindowExtWebSys;
+						
+						web_sys::window()
+							.and_then(|win| win.document())
+							.and_then(|doc| {
+								let body = doc.body()?;
+								let canvas = window.canvas().expect("Failed to get canvas");
+								canvas
+									.set_attribute("tabindex", "0")
+									.expect("failed to set tabindex");
+								// Set canvas size to fill the window
+								canvas.style().set_property("width", "100%").ok();
+								canvas.style().set_property("height", "100%").ok();
+								canvas.style().set_property("display", "block").ok();
+								body.append_child(&canvas).ok()?;
+								canvas.focus().expect("Unable to focus on canvas");
+								Some(())
+							})
+							.expect("Couldn't append canvas to document body.");
+						
+						window
+					}
+				};
+				
+				#[cfg(not(target_arch = "wasm32"))]
+				let window = {
+					let window = event_loop.create_window(window_attributes).unwrap();
+					Arc::new(window)
+				};
 
 				let renderer_future = Painter::new(
 					window,
@@ -307,7 +353,7 @@ where
 						let painter = renderer_future.await;
 
 						event_loop_proxy
-							.send_event(CustomEvent(painter))
+							.send_event(CustomEvent::StateInitializationEvent(painter))
 							.unwrap_or_else(|_| {
 								panic!("Failed to send initialization event");
 							});
