@@ -288,28 +288,28 @@ where
 				#[cfg(target_arch = "wasm32")]
 				let window = {
 					use winit::platform::web::WindowAttributesExtWebSys;
-					
+
 					if let Some(canvas) = &self.config.canvas {
 						// Use the provided canvas
-						let window = event_loop.create_window(
-							window_attributes.with_canvas(Some(canvas.clone()))
-						).unwrap();
+						let window = event_loop
+							.create_window(window_attributes.with_canvas(Some(canvas.clone())))
+							.unwrap();
 						let window = Arc::new(window);
-						
+
 						// Set canvas attributes even for provided canvas
 						canvas
 							.set_attribute("tabindex", "0")
 							.expect("failed to set tabindex");
 						canvas.focus().expect("Unable to focus on canvas");
-						
+
 						window
 					} else {
 						// Create a new canvas as before
 						let window = event_loop.create_window(window_attributes).unwrap();
 						let window = Arc::new(window);
-						
+
 						use winit::platform::web::WindowExtWebSys;
-						
+
 						web_sys::window()
 							.and_then(|win| win.document())
 							.and_then(|doc| {
@@ -327,11 +327,11 @@ where
 								Some(())
 							})
 							.expect("Couldn't append canvas to document body.");
-						
+
 						window
 					}
 				};
-				
+
 				#[cfg(not(target_arch = "wasm32"))]
 				let window = {
 					let window = event_loop.create_window(window_attributes).unwrap();
