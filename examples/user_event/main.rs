@@ -88,6 +88,7 @@ impl CanvasApp<UserEvent> for App {
 						load: wgpu::LoadOp::Clear(self.color),
 						store: wgpu::StoreOp::Store,
 					},
+					depth_slice: None,
 				})],
 				depth_stencil_attachment: None,
 				timestamp_writes: None,
