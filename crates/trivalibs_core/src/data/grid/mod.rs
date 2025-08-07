@@ -167,7 +167,7 @@ where
 		self.vertices[x][y] = val;
 	}
 
-	pub fn vertex(&self, x: i32, y: i32) -> Vertex<T, A> {
+	pub fn vertex(&self, x: i32, y: i32) -> Vertex<'_, T, A> {
 		let (x, y) = self.coord_ops.adjust_coords(x, y, self.width, self.height);
 		let val = self.vertices[x][y].clone();
 		Vertex {

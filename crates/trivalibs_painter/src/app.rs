@@ -397,6 +397,9 @@ where
 				}
 			}
 			CustomEvent::ReloadShaders(path) => {
+				#[cfg(target_arch = "wasm32")]
+				let _ = path; // Use the path if needed
+				#[cfg(not(target_arch = "wasm32"))]
 				#[cfg(debug_assertions)]
 				{
 					if let WindowState::Initialized(painter, app) = &mut self.state {

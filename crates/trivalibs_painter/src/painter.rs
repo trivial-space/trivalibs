@@ -264,7 +264,7 @@ impl Painter {
 		ShapeBuilder::new(self, form, shade)
 	}
 
-	pub fn effect(&mut self, shade: Shade) -> EffectBuilder {
+	pub fn effect(&mut self, shade: Shade) -> EffectBuilder<'_> {
 		EffectBuilder::new(self, shade)
 	}
 
@@ -689,6 +689,7 @@ impl Painter {
 		self.show(layer)
 	}
 
+	#[cfg(not(target_arch = "wasm32"))]
 	pub(crate) fn reload_shader(&mut self, path: String) {
 		println!("Reloading shader: {}", path);
 		let shade_indices = self

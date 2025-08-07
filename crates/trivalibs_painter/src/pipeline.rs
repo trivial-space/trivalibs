@@ -5,8 +5,11 @@ use crate::{effect::Effect, layer::Layer, shape::Shape, Painter};
 
 pub(crate) struct PipelineStorage {
 	pub pipeline: wgpu::RenderPipeline,
+	#[allow(dead_code)] // not used in WASM builds
 	pub layer: Option<Layer>,
+	#[allow(dead_code)] // not used in WASM builds
 	pub shape: Option<Shape>,
+	#[allow(dead_code)] // not used in WASM builds
 	pub effect: Option<Effect>,
 }
 
@@ -173,6 +176,7 @@ impl PipelineStorage {
 		}
 	}
 
+	#[cfg(not(target_arch = "wasm32"))]
 	pub(crate) fn recreate(self, painter: &Painter) -> Self {
 		if let Some(layer) = self.layer {
 			if let Some(effect) = self.effect {
