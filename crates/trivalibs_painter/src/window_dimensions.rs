@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
+#[cfg(not(target_arch = "wasm32"))]
 use std::{fs, path::PathBuf};
+#[cfg(not(target_arch = "wasm32"))]
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -8,6 +10,7 @@ pub struct WindowDimensions {
 	pub position: (i32, i32),
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl WindowDimensions {
 	pub fn get_state_path() -> PathBuf {
 		let mut path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
