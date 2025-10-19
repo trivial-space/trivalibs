@@ -1,7 +1,7 @@
 #![no_std]
 #![allow(unexpected_cfgs)]
 
-use spirv_std::glam::{vec4, Mat3, Mat4, Vec2, Vec3, Vec4};
+use spirv_std::glam::{vec4, Mat3A, Mat4, Vec2, Vec3, Vec4};
 use spirv_std::{spirv, Image, Sampler};
 
 #[spirv(vertex)]
@@ -11,7 +11,7 @@ pub fn vertex(
 	color: Vec3,
 	normal: Vec3,
 	#[spirv(uniform, descriptor_set = 0, binding = 0)] mvp_mat: &Mat4,
-	#[spirv(uniform, descriptor_set = 0, binding = 1)] normal_mat: &Mat3,
+	#[spirv(uniform, descriptor_set = 0, binding = 1)] normal_mat: &Mat3A,
 	// #[spirv(descriptor_set = 0, binding = 2)] light_dir: &Vec3,
 	#[spirv(position)] clip_pos: &mut Vec4,
 	out_uv: &mut Vec2,
