@@ -23,7 +23,7 @@ trivalibs_shaders = { path = "crates/trivalibs_shaders" }
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 serde_bytes = "0.11"
-bytemuck = { version = "1.20", features = ["derive"] }
+bytemuck = { version = "1.24", features = ["derive"] }
 js-sys = "0.3"
 lerp = "0.5"
 approx = "0.5.1"
@@ -37,14 +37,14 @@ glam = { version = "0.30", features = [
 ] }
 winit = "0.30"
 wgpu = { version = "26.0", features = ["spirv"] }
-spirv-std = { git = "https://github.com/Rust-GPU/rust-gpu", rev = "1e4e468ccf7965d90a9748c7513f72e852fb5041" }
+spirv-std = { git = "https://github.com/Rust-GPU/rust-gpu", rev = "2aa4d4f8a8ba73103501562cfca17b8163e5a887" }
 log = "0.4"
 env_logger = "0.11"
-pollster = "0.4.0"
+pollster = "0.4"
 macro_rules_attribute = "0.2.0"
-png = "0.17.14"
-flume = "0.11.1"
-notify = "8.0.0"
+png = "0.18"
+flume = "0.11"
+notify = "8.2"
 
 [dependencies]
 

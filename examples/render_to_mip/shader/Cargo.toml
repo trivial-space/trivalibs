@@ -15,4 +15,4 @@ multimodule = true
 
 [package.metadata.rust-gpu.install]
 spirv_builder_source = "https://github.com/Rust-GPU/rust-gpu"
-spirv_builder_version = "1e4e468ccf7965d90a9748c7513f72e852fb5041"
+spirv_builder_version = "2aa4d4f8a8ba73103501562cfca17b8163e5a887"
