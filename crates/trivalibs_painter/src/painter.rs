@@ -70,17 +70,15 @@ impl Painter {
 
 		// Create the logical device and command queue
 		let (device, queue) = adapter
-			.request_device(
-				&wgpu::DeviceDescriptor {
-					label: None,
-					required_features: painter_config.features.unwrap_or(wgpu::Features::empty()),
-					// Make sure we use the texture resolution limits from the adapter, so we can support images the size of the swapchain.
-					required_limits: wgpu::Limits::downlevel_webgl2_defaults()
-						.using_resolution(adapter.limits()),
-					memory_hints: wgpu::MemoryHints::MemoryUsage,
-				},
-				None,
-			)
+			.request_device(&wgpu::DeviceDescriptor {
+				label: None,
+				required_features: painter_config.features.unwrap_or(wgpu::Features::empty()),
+				// Make sure we use the texture resolution limits from the adapter, so we can support images the size of the swapchain.
+				required_limits: wgpu::Limits::downlevel_webgl2_defaults()
+					.using_resolution(adapter.limits()),
+				memory_hints: wgpu::MemoryHints::MemoryUsage,
+				trace: wgpu::Trace::Off,
+			})
 			.await
 			.expect("Failed to create device");
 
@@ -266,7 +264,7 @@ impl Painter {
 		ShapeBuilder::new(self, form, shade)
 	}
 
-	pub fn effect(&mut self, shade: Shade) -> EffectBuilder {
+	pub fn effect(&mut self, shade: Shade) -> EffectBuilder<'_> {
 		EffectBuilder::new(self, shade)
 	}
 
@@ -475,6 +473,7 @@ impl Painter {
 							.map_or(wgpu::LoadOp::Load, |color| wgpu::LoadOp::Clear(color)),
 						store: wgpu::StoreOp::Store,
 					},
+					depth_slice: None,
 				})],
 				depth_stencil_attachment: None,
 				timestamp_writes: None,
@@ -538,6 +537,7 @@ impl Painter {
 								.map_or(wgpu::LoadOp::Load, |color| wgpu::LoadOp::Clear(color)),
 							store: wgpu::StoreOp::Store,
 						},
+						depth_slice: None,
 					})]
 				} else {
 					l.target_textures
@@ -560,6 +560,7 @@ impl Painter {
 									}),
 									store: wgpu::StoreOp::Store,
 								},
+								depth_slice: None,
 							})
 						})
 						.collect::<Vec<_>>()
@@ -661,6 +662,7 @@ impl Painter {
 						load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
 						store: wgpu::StoreOp::Store,
 					},
+					depth_slice: None,
 				})],
 				depth_stencil_attachment: None,
 				timestamp_writes: None,
@@ -687,6 +689,7 @@ impl Painter {
 		self.show(layer)
 	}
 
+	#[cfg(not(target_arch = "wasm32"))]
 	pub(crate) fn reload_shader(&mut self, path: String) {
 		println!("Reloading shader: {}", path);
 		let shade_indices = self

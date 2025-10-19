@@ -55,6 +55,7 @@ pub fn generate_mipmap_2d(painter: &Painter, texture: &wgpu::Texture) {
 						load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
 						store: StoreOp::Store,
 					},
+					depth_slice: None,
 				})],
 				..Default::default()
 			});

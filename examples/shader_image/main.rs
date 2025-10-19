@@ -32,15 +32,13 @@ async fn run(_path: Option<String>) {
 		.await
 		.unwrap();
 	let (device, queue) = adapter
-		.request_device(
-			&wgpu::DeviceDescriptor {
-				label: None,
-				required_features: wgpu::Features::empty(),
-				required_limits: wgpu::Limits::downlevel_defaults(),
-				memory_hints: wgpu::MemoryHints::MemoryUsage,
-			},
-			None,
-		)
+		.request_device(&wgpu::DeviceDescriptor {
+			label: None,
+			required_features: wgpu::Features::empty(),
+			required_limits: wgpu::Limits::downlevel_defaults(),
+			memory_hints: wgpu::MemoryHints::MemoryUsage,
+			trace: wgpu::Trace::Off,
+		})
 		.await
 		.unwrap();
 
@@ -109,6 +107,7 @@ async fn run(_path: Option<String>) {
 					load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
 					store: wgpu::StoreOp::Store,
 				},
+				depth_slice: None,
 			})],
 			depth_stencil_attachment: None,
 			occlusion_query_set: None,
@@ -150,7 +149,7 @@ async fn run(_path: Option<String>) {
 	let buffer_slice = output_staging_buffer.slice(..);
 	let (sender, receiver) = flume::bounded(1);
 	buffer_slice.map_async(wgpu::MapMode::Read, move |r| sender.send(r).unwrap());
-	device.poll(wgpu::Maintain::wait()).panic_on_timeout();
+	device.poll(wgpu::PollType::Wait).unwrap();
 	receiver.recv_async().await.unwrap().unwrap();
 	log::info!("Output buffer mapped.");
 	{
