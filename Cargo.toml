@@ -1,8 +1,7 @@
 [package]
 name = "trivalibs_examples"
 version = "0.1.0"
-edition = "2021"
-rust-version = "1.82" # Prevent Cargo.lock version 4, cargo gpu does not support it yet
+edition = "2024"
 
 [workspace]
 resolver = "2"
@@ -13,7 +12,7 @@ members = [
 ]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 
 [workspace.dependencies]
 trivalibs = { path = "crates/trivalibs" }
@@ -58,3 +57,10 @@ log.workspace = true
 pollster.workspace = true
 env_logger.workspace = true
 flume.workspace = true
+
+[workspace.metadata.rust-gpu.build]
+multimodule = true
+
+[workspace.metadata.rust-gpu.install]
+spirv_builder_source = "https://github.com/Rust-GPU/rust-gpu"
+spirv_builder_version = "2aa4d4f8a8ba73103501562cfca17b8163e5a887"

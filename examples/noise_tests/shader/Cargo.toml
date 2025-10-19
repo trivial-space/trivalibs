@@ -10,6 +10,3 @@ crate-type = ["rlib", "cdylib"]
 [dependencies]
 spirv-std.workspace = true
 trivalibs_shaders.workspace = true
-
-[package.metadata.rust-gpu.build]
-multimodule = true
