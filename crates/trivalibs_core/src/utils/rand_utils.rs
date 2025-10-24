@@ -1,4 +1,4 @@
-use glam::{vec3, vec4, Vec3, Vec4};
+use glam::{Vec3, Vec4, vec3, vec4};
 use rand::random;
 
 pub fn rand_range(min: f32, max: f32) -> f32 {
@@ -7,6 +7,18 @@ pub fn rand_range(min: f32, max: f32) -> f32 {
 
 pub fn rand_usize(max: usize) -> usize {
 	(random::<f32>() * max as f32).floor() as usize
+}
+
+pub fn rand_u32(max: u32) -> u32 {
+	(random::<f32>() * max as f32).floor() as u32
+}
+
+pub fn rand_range_u32(min: u32, max: u32) -> u32 {
+	min + (random::<f32>() * (max - min) as f32).floor() as u32
+}
+
+pub fn rand_range_i32(min: i32, max: i32) -> i32 {
+	min + (random::<f32>() * (max - min) as f32).floor() as i32
 }
 
 pub fn rand_f32() -> f32 {
@@ -22,11 +34,7 @@ pub fn rand_bool() -> bool {
 }
 
 pub fn rand_sign() -> f32 {
-	if rand_f32() < 0.5 {
-		1.0
-	} else {
-		-1.0
-	}
+	if rand_f32() < 0.5 { 1.0 } else { -1.0 }
 }
 
 pub fn rand_vec3() -> Vec3 {
