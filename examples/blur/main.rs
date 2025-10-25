@@ -149,7 +149,7 @@ pub fn main() {
 		.config(AppConfig {
 			show_fps: true,
 			use_vsync: false,
-			keep_window_dimensions: true,
+			remember_window_dimensions: true,
 			..default()
 		})
 		.start();

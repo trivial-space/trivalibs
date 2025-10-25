@@ -1,7 +1,7 @@
 use crate::layer::Layer;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::window_dimensions::WindowDimensions;
-use crate::{painter::PainterConfig, Painter};
+use crate::{Painter, painter::PainterConfig};
 #[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 use notify::Watcher;
 #[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
@@ -138,7 +138,7 @@ impl<UserEvent> CanvasHandle<UserEvent> {
 pub struct AppConfig {
 	pub show_fps: bool,
 	pub use_vsync: bool,
-	pub keep_window_dimensions: bool,
+	pub remember_window_dimensions: bool,
 	pub features: Option<wgpu::Features>,
 	#[cfg(target_arch = "wasm32")]
 	pub canvas: Option<web_sys::HtmlCanvasElement>,
@@ -149,7 +149,7 @@ impl Default for AppConfig {
 		Self {
 			show_fps: false,
 			use_vsync: true,
-			keep_window_dimensions: false,
+			remember_window_dimensions: false,
 			features: None,
 			#[cfg(target_arch = "wasm32")]
 			canvas: None,
@@ -272,7 +272,7 @@ where
 
 				// Load and apply saved window state
 				#[cfg(not(target_arch = "wasm32"))]
-				if self.config.keep_window_dimensions {
+				if self.config.remember_window_dimensions {
 					if let Some(state) = WindowDimensions::load() {
 						window_attributes = window_attributes
 							.with_inner_size(PhysicalSize::new(state.size.0, state.size.1));
@@ -431,7 +431,7 @@ where
 						#[cfg(not(target_arch = "wasm32"))]
 						{
 							let window = painter.window();
-							if self.config.keep_window_dimensions {
+							if self.config.remember_window_dimensions {
 								let dim = WindowDimensions::from_window(
 									new_size,
 									window.outer_position().unwrap_or_default(),
@@ -444,7 +444,7 @@ where
 					#[cfg(not(target_arch = "wasm32"))]
 					WindowEvent::Moved(new_position) => {
 						let window = painter.window();
-						if self.config.keep_window_dimensions {
+						if self.config.remember_window_dimensions {
 							let dim =
 								WindowDimensions::from_window(window.inner_size(), new_position);
 							let _ = dim.save();

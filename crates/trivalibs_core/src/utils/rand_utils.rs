@@ -1,6 +1,8 @@
 use glam::{Vec3, Vec4, vec3, vec4};
 use rand::random;
 
+use crate::math::fit::Fit;
+
 pub fn rand_range(min: f32, max: f32) -> f32 {
 	min + (max - min) * random::<f32>()
 }
@@ -94,6 +96,10 @@ pub fn rand_normal() -> f32 {
 /// Returns a random number in the range [0, 1] with normal distribution arround 0.5.
 pub fn rand_normal_01() -> f32 {
 	(random::<f32>() + random::<f32>() + random::<f32>()) / 3.
+}
+
+pub fn rand_normal_11() -> f32 {
+	rand_normal_01().fit0111()
 }
 
 pub trait Pick<T> {

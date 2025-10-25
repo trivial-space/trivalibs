@@ -16,6 +16,7 @@ pub mod prelude {
 	pub use crate::utils::*;
 	pub use glam::*;
 	pub use lerp::*;
+	pub use rand;
 	pub use rand::prelude::*;
 	pub use rand::random;
 }

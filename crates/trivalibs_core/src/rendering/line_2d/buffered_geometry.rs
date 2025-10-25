@@ -2,17 +2,18 @@ use super::{Line, LineData};
 use crate::{
 	data::neighbour_list::traits::{NeighbourMapTransform, WithNeighboursTransform},
 	rendering::{
-		webgl_buffered_geometry::{
-			create_buffered_geometry_layout, vert_type, RenderingPrimitive,
-			VertexFormat::{Float32, Float32x2},
-			VertexType, WebglBufferedGeometry, WebglVertexData,
-		},
 		BufferedGeometry,
+		webgl_buffered_geometry::{
+			RenderingPrimitive,
+			VertexFormat::{Float32, Float32x2},
+			VertexType, WebglBufferedGeometry, WebglVertexData, create_buffered_geometry_layout,
+			vert_type,
+		},
 	},
 	utils::default,
 };
 use bytemuck::{Pod, Zeroable};
-use glam::{bool, Vec2};
+use glam::{Vec2, bool};
 
 #[repr(C)]
 #[derive(Pod, Copy, Clone, Zeroable)]
