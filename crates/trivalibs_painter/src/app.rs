@@ -405,6 +405,7 @@ where
 					if let WindowState::Initialized(painter, app) = &mut self.state {
 						painter.reload_shader(path);
 						app.event(Event::ShaderReloadEvent, painter);
+						let _ = app.render(painter);
 					}
 				}
 			}
