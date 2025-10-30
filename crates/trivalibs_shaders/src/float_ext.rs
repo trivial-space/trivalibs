@@ -13,11 +13,7 @@ pub fn fit0111(x: f32) -> f32 {
 }
 
 pub fn step(edge: f32, x: f32) -> f32 {
-	if x < edge {
-		0.0
-	} else {
-		1.0
-	}
+	if x < edge { 0.0 } else { 1.0 }
 }
 
 /// Third order polynomial interpolation of values between 0 and 1.
@@ -53,6 +49,10 @@ where
 
 	fn lerp(self, other: Self, t: f32) -> Self;
 	fn step(self, edge: Self) -> Self;
+	fn gtf(self, edge: Self) -> Self;
+	fn ltf(self, edge: Self) -> Self;
+	fn gtef(self, edge: Self) -> Self;
+	fn ltef(self, edge: Self) -> Self;
 
 	/// Third order polynomial interpolation of values between 0 and 1.
 	/// Make sure to clamp the input to [0, 1] before using this function.
@@ -81,11 +81,7 @@ impl FloatExt for f32 {
 	}
 	fn rem(self, other: Self) -> Self {
 		let r = self % other;
-		if r < 0.0 {
-			r + other.abs()
-		} else {
-			r
-		}
+		if r < 0.0 { r + other.abs() } else { r }
 	}
 
 	fn lerp(self, other: Self, t: f32) -> Self {
@@ -93,6 +89,18 @@ impl FloatExt for f32 {
 	}
 	fn step(self, edge: Self) -> Self {
 		step(edge, self)
+	}
+	fn gtf(self, edge: Self) -> Self {
+		if self > edge { 1.0 } else { 0.0 }
+	}
+	fn ltf(self, edge: Self) -> Self {
+		if self < edge { 1.0 } else { 0.0 }
+	}
+	fn gtef(self, edge: Self) -> Self {
+		if self >= edge { 1.0 } else { 0.0 }
+	}
+	fn ltef(self, edge: Self) -> Self {
+		if self <= edge { 1.0 } else { 0.0 }
 	}
 	fn step_fn<F: Fn(Self) -> Self>(self, edge0: Self, edge1: Self, f: F) -> Self {
 		let t = (self - edge0) / (edge1 - edge0);

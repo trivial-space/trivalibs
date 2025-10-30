@@ -2,9 +2,9 @@
 
 use crate::float_ext::FloatExt;
 #[cfg(not(target_arch = "spirv"))]
-use glam::{vec2, vec3, vec4, Vec2, Vec3, Vec4};
+use glam::{Vec2, Vec3, Vec4, vec2, vec3, vec4};
 #[cfg(target_arch = "spirv")]
-use spirv_std::glam::{vec2, vec3, vec4, Vec2, Vec3, Vec4};
+use spirv_std::glam::{Vec2, Vec3, Vec4, vec2, vec3, vec4};
 #[cfg(target_arch = "spirv")]
 #[allow(unused_imports)]
 use spirv_std::num_traits::Float;
@@ -16,6 +16,9 @@ where
 	fn sin(self) -> Self;
 	fn cos(self) -> Self;
 	fn sqrt(self) -> Self;
+	/// Fractional part of each vector component. It is defined as `x - floor(x)`.
+	/// In contrast, rust std implementation fract is defined as `x - trunc(x)`, which inverts direction when negative.
+	/// Same as glam's fract_gl.
 	fn frct(self) -> Self;
 
 	fn fit0111(self) -> Self;
@@ -25,6 +28,15 @@ where
 	fn step(self, edge: Self) -> Self;
 	fn step_f32(self, edge: f32) -> Self;
 	fn step_fn<F: Fn(f32) -> f32>(self, edge0: Self, edge1: Self, f: F) -> Self;
+	fn gt(self, other: Self) -> Self;
+	fn lt(self, other: Self) -> Self;
+	fn gte(self, other: Self) -> Self;
+	fn lte(self, other: Self) -> Self;
+
+	fn gt_f32(self, other: f32) -> Self;
+	fn lt_f32(self, other: f32) -> Self;
+	fn gte_f32(self, other: f32) -> Self;
+	fn lte_f32(self, other: f32) -> Self;
 
 	fn smoothen(self) -> Self;
 	fn smoothen_more(self) -> Self;
@@ -68,6 +80,32 @@ impl VecExt for Vec2 {
 			self.x.step_fn(edge0.x, edge1.x, &f),
 			self.y.step_fn(edge0.y, edge1.y, &f),
 		)
+	}
+
+	fn gt(self, other: Self) -> Self {
+		vec2(self.x.gtf(other.x), self.y.gtf(other.y))
+	}
+	fn lt(self, other: Self) -> Self {
+		vec2(self.x.ltf(other.x), self.y.ltf(other.y))
+	}
+	fn gte(self, other: Self) -> Self {
+		vec2(self.x.gtef(other.x), self.y.gtef(other.y))
+	}
+	fn lte(self, other: Self) -> Self {
+		vec2(self.x.ltef(other.x), self.y.ltef(other.y))
+	}
+
+	fn gt_f32(self, other: f32) -> Self {
+		vec2(self.x.gtf(other), self.y.gtf(other))
+	}
+	fn lt_f32(self, other: f32) -> Self {
+		vec2(self.x.ltf(other), self.y.ltf(other))
+	}
+	fn gte_f32(self, other: f32) -> Self {
+		vec2(self.x.gtef(other), self.y.gtef(other))
+	}
+	fn lte_f32(self, other: f32) -> Self {
+		vec2(self.x.ltef(other), self.y.ltef(other))
 	}
 
 	fn smoothen(self) -> Self {
@@ -128,6 +166,48 @@ impl VecExt for Vec3 {
 			self.y.step_fn(edge0.y, edge1.y, &f),
 			self.z.step_fn(edge0.z, edge1.z, &f),
 		)
+	}
+
+	fn gt(self, other: Self) -> Self {
+		vec3(
+			self.x.gtf(other.x),
+			self.y.gtf(other.y),
+			self.z.gtf(other.z),
+		)
+	}
+	fn lt(self, other: Self) -> Self {
+		vec3(
+			self.x.ltf(other.x),
+			self.y.ltf(other.y),
+			self.z.ltf(other.z),
+		)
+	}
+	fn gte(self, other: Self) -> Self {
+		vec3(
+			self.x.gtef(other.x),
+			self.y.gtef(other.y),
+			self.z.gtef(other.z),
+		)
+	}
+	fn lte(self, other: Self) -> Self {
+		vec3(
+			self.x.ltef(other.x),
+			self.y.ltef(other.y),
+			self.z.ltef(other.z),
+		)
+	}
+
+	fn gt_f32(self, other: f32) -> Self {
+		vec3(self.x.gtf(other), self.y.gtf(other), self.z.gtf(other))
+	}
+	fn lt_f32(self, other: f32) -> Self {
+		vec3(self.x.ltf(other), self.y.ltf(other), self.z.ltf(other))
+	}
+	fn gte_f32(self, other: f32) -> Self {
+		vec3(self.x.gtef(other), self.y.gtef(other), self.z.gtef(other))
+	}
+	fn lte_f32(self, other: f32) -> Self {
+		vec3(self.x.ltef(other), self.y.ltef(other), self.z.ltef(other))
 	}
 
 	fn smoothen(self) -> Self {
@@ -213,6 +293,72 @@ impl VecExt for Vec4 {
 			self.y.step_fn(edge0.y, edge1.y, &f),
 			self.z.step_fn(edge0.z, edge1.z, &f),
 			self.w.step_fn(edge0.w, edge1.w, &f),
+		)
+	}
+
+	fn gt(self, other: Self) -> Self {
+		vec4(
+			self.x.gtf(other.x),
+			self.y.gtf(other.y),
+			self.z.gtf(other.z),
+			self.w.gtf(other.w),
+		)
+	}
+	fn lt(self, other: Self) -> Self {
+		vec4(
+			self.x.ltf(other.x),
+			self.y.ltf(other.y),
+			self.z.ltf(other.z),
+			self.w.ltf(other.w),
+		)
+	}
+	fn gte(self, other: Self) -> Self {
+		vec4(
+			self.x.gtef(other.x),
+			self.y.gtef(other.y),
+			self.z.gtef(other.z),
+			self.w.gtef(other.w),
+		)
+	}
+	fn lte(self, other: Self) -> Self {
+		vec4(
+			self.x.ltef(other.x),
+			self.y.ltef(other.y),
+			self.z.ltef(other.z),
+			self.w.ltef(other.w),
+		)
+	}
+
+	fn gt_f32(self, other: f32) -> Self {
+		vec4(
+			self.x.gtf(other),
+			self.y.gtf(other),
+			self.z.gtf(other),
+			self.w.gtf(other),
+		)
+	}
+	fn lt_f32(self, other: f32) -> Self {
+		vec4(
+			self.x.ltf(other),
+			self.y.ltf(other),
+			self.z.ltf(other),
+			self.w.ltf(other),
+		)
+	}
+	fn gte_f32(self, other: f32) -> Self {
+		vec4(
+			self.x.gtef(other),
+			self.y.gtef(other),
+			self.z.gtef(other),
+			self.w.gtef(other),
+		)
+	}
+	fn lte_f32(self, other: f32) -> Self {
+		vec4(
+			self.x.ltef(other),
+			self.y.ltef(other),
+			self.z.ltef(other),
+			self.w.ltef(other),
 		)
 	}
 

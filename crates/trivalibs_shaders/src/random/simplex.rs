@@ -6,45 +6,39 @@
 use crate::{float_ext::FloatExt, vec_ext::VecExt};
 use core::f32::consts::TAU;
 use spirv_std::glam::{
-	mat3, vec2, vec3, vec4, Mat3, Vec2, Vec2Swizzles, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles,
+	Mat3, Vec2, Vec2Swizzles, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles, mat3, vec2, vec3, vec4,
 };
 #[allow(unused_imports)]
 use spirv_std::num_traits::Float;
 
+/// Permutation polynomial for pseudo-random hashing (scalar version).
 fn permute_1(x: f32) -> f32 {
 	((x * 34.0) + 10.0) * x % 289.0
 }
 
+/// Permutation polynomial for pseudo-random hashing (Vec3 version).
 fn permute_3(x: Vec3) -> Vec3 {
 	((x * 34.0) + 10.0) * x % Vec3::splat(289.0)
 }
 
+/// Permutation polynomial for pseudo-random hashing (Vec4 version).
 fn permute_4(x: Vec4) -> Vec4 {
 	((x * 34.0) + 10.0) * x % Vec4::splat(289.0)
 }
 
+/// Taylor series approximation of inverse square root (scalar version).
 fn taylor_inv_sqrt_1(r: f32) -> f32 {
 	1.79284291400159 - 0.85373472095314 * r
 }
 
+/// Taylor series approximation of inverse square root (Vec4 version).
 fn taylor_inv_sqrt_4(r: Vec4) -> Vec4 {
 	1.79284291400159 - 0.85373472095314 * r
 }
 
-// vec4 grad4(float j, vec4 ip)
-//   {
-//   const vec4 ones = vec4(1.0, 1.0, 1.0, -1.0);
-//   vec4 p,s;
-
-//   p.xyz = floor( fract (vec3(j) * ip.xyz) * 7.0) * ip.z - 1.0;
-//   p.w = 1.5 - dot(abs(p.xyz), ones.xyz);
-//   s = vec4(lessThan(p, vec4(0.0)));
-//   p.xyz = p.xyz + (s.xyz*2.0 - 1.0) * s.www;
-
-//   return p;
-//   }
+/// Computes gradient vector for 4D simplex noise.
 fn grad_4(j: f32, ip: Vec4) -> Vec4 {
-	let tmp = ((j * ip.xyz()).fract() * 7.0).floor() * ip.z - 1.0;
+	let tmp = ((j * ip.xyz()).frct() * 7.0).floor() * ip.z - 1.0;
 	let mut p = vec4(tmp.x, tmp.y, tmp.z, 1.5 - tmp.abs().dot(Vec3::ONE));
 
 	let s = Vec4::ZERO.step(p);
@@ -57,6 +51,15 @@ fn grad_4(j: f32, ip: Vec4) -> Vec4 {
 	p
 }
 
+/// 2D simplex noise.
+///
+/// # Parameters
+///
+/// * `pos` - Input position coordinates
+///
+/// # Returns
+///
+/// Noise value in approximate range [-1.0, 1.0]
 pub fn simplex_noise_2d(pos: Vec2) -> f32 {
 	let c = vec4(
 		0.211324865405187,  // (3.0 - sqrt(3.0)) / 6.0
@@ -104,6 +107,15 @@ pub fn simplex_noise_2d(pos: Vec2) -> f32 {
 	130.0 * m.dot(g)
 }
 
+/// 3D simplex noise.
+///
+/// # Parameters
+///
+/// * `pos` - Input position coordinates
+///
+/// # Returns
+///
+/// Noise value in approximate range [-1.0, 1.0]
 pub fn simplex_noise_3d(pos: Vec3) -> f32 {
 	let c = vec2(1.0 / 6.0, 1.0 / 3.0);
 	let d = vec4(0.0, 0.5, 1.0, 2.0);
@@ -173,34 +185,63 @@ pub fn simplex_noise_3d(pos: Vec3) -> f32 {
 	42.0 * m.dot(vec4(p0.dot(x0), p1.dot(x1), p2.dot(x2), p3.dot(x3)))
 }
 
-pub fn fbm_simplex_2d(pos: Vec2, octaves: i32, lacunarity: f32, gain: f32) -> f32 {
+/// Fractal Brownian Motion using 2D simplex noise.
+///
+/// # Parameters
+///
+/// * `pos` - Input position
+/// * `octaves` - Number of noise layers
+/// * `freq_factor` - Frequency multiplier per octave
+/// * `amplitude_factor` - Amplitude multiplier per octave
+pub fn fbm_simplex_2d(pos: Vec2, octaves: i32, freq_factor: f32, amplitude_factor: f32) -> f32 {
 	let mut sum = 0.0;
 	let mut amplitude = 1.0;
 	let mut frequency = 1.0;
 
 	for _ in 0..octaves {
 		sum += simplex_noise_2d(pos * frequency) * amplitude;
-		amplitude *= gain;
-		frequency *= lacunarity;
+		amplitude *= amplitude_factor;
+		frequency *= freq_factor;
 	}
 
 	sum
 }
 
-pub fn fbm_simplex_3d(pos: Vec3, octaves: i32, lacunarity: f32, gain: f32) -> f32 {
+/// Fractal Brownian Motion using 3D simplex noise.
+///
+/// # Parameters
+///
+/// * `pos` - Input position coordinates
+/// * `octaves` - Number of noise layers to combine
+/// * `freq_factor` - Frequency multiplier per octave (typically 2.0)
+/// * `amplitude_factor` - Amplitude multiplier per octave (typically 0.5)
+///
+/// # Returns
+///
+/// Combined noise value. Range depends on octaves and amplitude_factor parameters.
+pub fn fbm_simplex_3d(pos: Vec3, octaves: i32, freq_factor: f32, amplitude_factor: f32) -> f32 {
 	let mut sum = 0.0;
 	let mut amplitude = 1.0;
 	let mut frequency = 1.0;
 
 	for _ in 0..octaves {
 		sum += simplex_noise_3d(pos * frequency) * amplitude;
-		amplitude *= gain;
-		frequency *= lacunarity;
+		amplitude *= amplitude_factor;
+		frequency *= freq_factor;
 	}
 
 	sum
 }
 
+/// 4D simplex noise.
+///
+/// # Parameters
+///
+/// * `pos` - Input position coordinates (4D)
+///
+/// # Returns
+///
+/// Noise value in approximate range [-1.0, 1.0]
 pub fn simplex_noise_4d(pos: Vec4) -> f32 {
 	let c = vec4(
 		0.138196601125011,  // (5 - sqrt(5))/20  G4
@@ -276,6 +317,16 @@ pub fn simplex_noise_4d(pos: Vec4) -> f32 {
 		+ m1.dot(m1 * vec2(p3.dot(x3), p4.dot(x4))))
 }
 
+/// Seamlessly tiling 2D simplex noise using 4D noise mapped to a torus.
+///
+/// # Parameters
+///
+/// * `pos` - Input position coordinates (should be in range [0.0, 1.0] for seamless tiling)
+/// * `scale` - Scale factor for the noise
+///
+/// # Returns
+///
+/// Noise value in approximate range [-1.0, 1.0]
 pub fn tiling_simplex_noise_2d(pos: Vec2, scale: f32) -> f32 {
 	// Map coordinates to circle for seamless wrapping
 	let angle_x = pos.x * TAU;
@@ -290,29 +341,27 @@ pub fn tiling_simplex_noise_2d(pos: Vec2, scale: f32) -> f32 {
 	simplex_noise_4d(vec4(nx, ny, nz, nw))
 }
 
-// psrdnoise (c) Stefan Gustavson and Ian McEwan,
-// ver. 2021-12-02, published under the MIT license:
-// https://github.com/stegu/psrdnoise/
-//
-// 2-D tiling simplex noise with rotating gradients and analytical derivative.
-// "vec2 x" is the point (x,y) to evaluate,
-// "vec2 period" is the desired periods along x and y, and
-// "float alpha" is the rotation (in radians) for the swirling gradients.
-// "float norm_rot" is the normalized rotation for the swirling gradients, where 1.0 is TAU.
-// The "float" return value is the noise value, and
-// the "out vec2 gradient" argument returns the x,y partial derivatives.
-//
-// Setting either period to 0.0 or a negative value will skip the wrapping
-// along that dimension. Setting both periods to 0.0 makes the function
-// execute about 15% faster.
-//
-// Not using the return value for the gradient will make the compiler
-// eliminate the code for computing it. This speeds up the function
-// by 10-15%.
-//
-// The rotation by alpha uses one single addition. Unlike the 3-D version
-// of psrdnoise(), setting alpha == 0.0 gives no speedup. (Hopefully, this was the case in GLSL, maybe not in RUST.)
-//
+/// 2D tiling simplex noise with rotating gradients and analytical derivative.
+///
+/// Implementation based on psrdnoise by Stefan Gustavson and Ian McEwan.
+/// See <https://github.com/stegu/psrdnoise/>
+///
+/// # Parameters
+///
+/// * `pos` - Point (x,y) to evaluate
+/// * `period` - Desired periods along x and y. Set to 0.0 or negative to skip wrapping along that dimension.
+/// * `norm_rot` - Normalized rotation for swirling gradients, where 1.0 is TAU (2π radians)
+///
+/// # Returns
+///
+/// A tuple containing:
+/// * Noise value in approximate range [-1.0, 1.0]
+/// * Gradient vector (x,y partial derivatives)
+///
+/// # Performance Notes
+///
+/// * Setting both periods to 0.0 makes the function execute ~15% faster
+/// * Not using the gradient return value allows compiler optimization for 10-15% speedup
 pub fn tiling_rot_noise_2d(pos: Vec2, period: Vec2, norm_rot: f32) -> (f32, Vec2) {
 	// Transform to simplex space (axis-aligned hexagonal grid)
 	let uv = vec2(pos.x + pos.y * 0.5, pos.y);
@@ -386,66 +435,69 @@ pub fn tiling_rot_noise_2d(pos: Vec2, period: Vec2, norm_rot: f32) -> (f32, Vec2
 	(10.9 * n, 10.9 * (dn0 + dn1 + dn2))
 }
 
-//
-// 2-D tiling simplex noise with fixed gradients,
-// without the analytical derivative.
-// This function is implemented as a wrapper to "psrnoise",
-// at the minimal cost of three extra additions.
-//
+/// 2D tiling simplex noise with fixed gradients and analytical derivative.
+///
+/// Wrapper around `tiling_rot_noise_2d` with no rotation.
+///
+/// # Parameters
+///
+/// * `pos` - Point (x,y) to evaluate
+/// * `period` - Desired periods along x and y. Set to 0.0 or negative to skip wrapping along that dimension.
+///
+/// # Returns
+///
+/// A tuple containing:
+/// * Noise value in approximate range [-1.0, 1.0]
+/// * Gradient vector (x,y partial derivatives)
 pub fn tiling_noise_2d(pos: Vec2, period: Vec2) -> (f32, Vec2) {
 	tiling_rot_noise_2d(pos, period, 0.0)
 }
 
+/// 2D simplex noise with rotating gradients and analytical derivative (no tiling).
+///
+/// Wrapper around `tiling_rot_noise_2d` with no period wrapping.
+///
+/// # Parameters
+///
+/// * `pos` - Point (x,y) to evaluate
+/// * `norm_rot` - Normalized rotation for swirling gradients, where 1.0 is TAU (2π radians)
+///
+/// # Returns
+///
+/// A tuple containing:
+/// * Noise value in approximate range [-1.0, 1.0]
+/// * Gradient vector (x,y partial derivatives)
 pub fn rot_noise_2d(pos: Vec2, norm_rot: f32) -> (f32, Vec2) {
 	tiling_rot_noise_2d(pos, Vec2::ZERO, norm_rot)
 }
 
-// psrdnoise (c) Stefan Gustavson and Ian McEwan,
-// ver. 2021-12-02, published under the MIT license:
-// https://github.com/stegu/psrdnoise/
-// Version 2021-12-02, published under the MIT license (see below)
-//
-// Periodic (tiling) 3-D simplex noise (tetrahedral lattice gradient noise)
-// with rotating gradients and analytic derivatives.
-//
-// This is (yet) another variation on simplex noise. Unlike previous
-// implementations, the grid is axis-aligned to permit rectangular tiling.
-// The noise pattern can be made to tile seamlessly to any integer periods
-// up to 289 units in the x, y and z directions. Specifying a longer
-// period than 289 will result in errors in the noise field.
-//
-// This particular version of 3-D noise also implements animation by rotating
-// the generating gradient at each lattice point around a pseudo-random axis.
-// The rotating gradients give the appearance of a swirling motion, and
-// can serve a similar purpose for animation as motion along the fourth
-// dimension in 4-D noise.
-//
-// The rotating gradients in conjunction with the built-in ability to
-// compute exact analytic derivatives allow for "flow noise" effects
-// as presented by Ken Perlin and Fabrice Neyret.
-//
-// 3-D tiling simplex noise with rotating gradients and first order
-// analytical derivatives.
-// "vec3 x" is the point (x,y,z) to evaluate
-// "vec3 period" is the desired periods along x,y,z, up to 289.
-// (If Perlin's grid is used, multiples of 3 up to 288 are allowed.)
-// "float alpha" is the rotation (in radians) for the swirling gradients.
-// "float norm_rot" is the normalized rotation for the swirling gradients, where 1.0 is TAU.
-// The "float" return value is the noise value, and
-// the "out vec3 gradient" argument returns the x,y,z partial derivatives.
-//
-// The function executes 15-20% faster if alpha is constant == 0.0
-// across all fragments being executed in parallel.
-//
-// Setting any period to 0.0 or a negative value will skip the periodic
-// wrap for that dimension. Setting all periods to 0.0 makes the function
-// execute 10-15% faster.
-//
-// Not using the return value for the gradient will make the compiler
-// eliminate the code for computing it. This speeds up the function by
-// around 10%. (Hopefully, this is the case in GLSL, but maybe not here)
-//
-
+/// 3D tiling simplex noise with rotating gradients and analytical derivatives.
+///
+/// Implementation based on psrdnoise by Stefan Gustavson and Ian McEwan.
+/// See <https://github.com/stegu/psrdnoise/>
+///
+/// This implementation uses an axis-aligned grid to permit rectangular tiling.
+/// The noise pattern can tile seamlessly to any integer periods up to 289 units
+/// in the x, y and z directions. The rotating gradients create a swirling motion
+/// effect, useful for animation without needing a 4th dimension.
+///
+/// # Parameters
+///
+/// * `pos` - Point (x,y,z) to evaluate
+/// * `period` - Desired periods along x,y,z (up to 289). Set to 0.0 or negative to skip wrapping along that dimension.
+/// * `norm_rot` - Normalized rotation for swirling gradients, where 1.0 is TAU (2π radians)
+///
+/// # Returns
+///
+/// A tuple containing:
+/// * Noise value in approximate range [-1.0, 1.0]
+/// * Gradient vector (x,y,z partial derivatives)
+///
+/// # Performance Notes
+///
+/// * Function executes 15-20% faster if `norm_rot` is constant 0.0
+/// * Setting all periods to 0.0 makes the function execute 10-15% faster
+/// * Not using the gradient return value allows compiler optimization for ~10% speedup
 pub fn tiling_rot_noise_3d(pos: Vec3, period: Vec3, norm_rot: f32) -> (f32, Vec3) {
 	const M: Mat3 = mat3(
 		vec3(0.0, 1.0, 1.0),
@@ -589,10 +641,38 @@ pub fn tiling_rot_noise_3d(pos: Vec3, period: Vec3, norm_rot: f32) -> (f32, Vec3
 	(39.5 * n, gradient)
 }
 
+/// 3D tiling simplex noise with fixed gradients and analytical derivatives.
+///
+/// Wrapper around `tiling_rot_noise_3d` with no rotation.
+///
+/// # Parameters
+///
+/// * `pos` - Point (x,y,z) to evaluate
+/// * `period` - Desired periods along x,y,z (up to 289). Set to 0.0 or negative to skip wrapping along that dimension.
+///
+/// # Returns
+///
+/// A tuple containing:
+/// * Noise value in approximate range [-1.0, 1.0]
+/// * Gradient vector (x,y,z partial derivatives)
 pub fn tiling_noise_3d(pos: Vec3, period: Vec3) -> (f32, Vec3) {
 	tiling_rot_noise_3d(pos, period, 0.0)
 }
 
+/// 3D simplex noise with rotating gradients and analytical derivatives (no tiling).
+///
+/// Wrapper around `tiling_rot_noise_3d` with no period wrapping.
+///
+/// # Parameters
+///
+/// * `pos` - Point (x,y,z) to evaluate
+/// * `norm_rot` - Normalized rotation for swirling gradients, where 1.0 is TAU (2π radians)
+///
+/// # Returns
+///
+/// A tuple containing:
+/// * Noise value in approximate range [-1.0, 1.0]
+/// * Gradient vector (x,y,z partial derivatives)
 pub fn rot_noise_3d(pos: Vec3, norm_rot: f32) -> (f32, Vec3) {
 	tiling_rot_noise_3d(pos, Vec3::ZERO, norm_rot)
 }
