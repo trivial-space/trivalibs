@@ -5,7 +5,7 @@ use spirv_std::glam::{vec2, vec4, UVec2, Vec2, Vec4};
 #[allow(unused_imports)]
 use spirv_std::num_traits::Float;
 use spirv_std::spirv;
-use trivalibs_shaders::{float_ext::FloatExt, vec_ext::VecExt};
+use trivalibs_nostd::{float_ext::FloatExt, vec_ext::VecExt};
 
 #[spirv(fragment)]
 pub fn main(

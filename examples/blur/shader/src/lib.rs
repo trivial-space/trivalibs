@@ -4,7 +4,7 @@
 use spirv_std::glam::{vec4, Vec2, Vec4};
 use spirv_std::{spirv, Image, Sampler};
 #[allow(unused_imports)]
-use trivalibs_shaders::blur::{gaussian_blur, gaussian_blur_13, gaussian_blur_9};
+use trivalibs_nostd::blur::{gaussian_blur, gaussian_blur_13, gaussian_blur_9};
 
 #[spirv(vertex)]
 pub fn triangle_vs(pos: Vec2, uv: Vec2, #[spirv(position)] out_pos: &mut Vec4, out_uv: &mut Vec2) {

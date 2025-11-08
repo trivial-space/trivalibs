@@ -1,5 +1,5 @@
 use trivalibs::{map, painter::prelude::*, prelude::*};
-use trivalibs_shaders::color::hsv2rgb;
+use trivalibs_nostd::color::hsv2rgb;
 
 struct App {
 	time: f32,

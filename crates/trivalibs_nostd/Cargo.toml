@@ -1,5 +1,5 @@
 [package]
-name = "trivalibs_shaders"
+name = "trivalibs_nostd"
 version = "0.1.0"
 edition.workspace = true
 

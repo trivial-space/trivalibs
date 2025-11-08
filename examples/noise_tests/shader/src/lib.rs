@@ -7,7 +7,7 @@ use spirv_std::{
 	glam::{uvec2, vec2, vec3, UVec2, Vec2, Vec3, Vec4},
 	spirv,
 };
-use trivalibs_shaders::{
+use trivalibs_nostd::{
 	bits::FloatBits,
 	float_ext::FloatExt,
 	random::{

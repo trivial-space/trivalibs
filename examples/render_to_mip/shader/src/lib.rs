@@ -9,8 +9,8 @@ use spirv_std::{
 	glam::{swizzles::*, vec2, UVec2, Vec2, Vec4},
 	Image, Sampler,
 };
-use trivalibs_shaders::float_ext::FloatExt;
-use trivalibs_shaders::vec_ext::VecExt;
+use trivalibs_nostd::float_ext::FloatExt;
+use trivalibs_nostd::vec_ext::VecExt;
 
 pub fn aspect_preserving_uv(uv: Vec2, size: UVec2) -> Vec2 {
 	let aspect = size.x as f32 / size.y as f32;
