@@ -6,4 +6,5 @@ rust-version = "1.82" # Prevent Cargo.lock version 4, cargo gpu does not support
 
 [dependencies]
 trivalibs_core.workspace = true
+trivalibs_nostd.workspace = true
 trivalibs_painter.workspace = true

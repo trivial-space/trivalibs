@@ -5,10 +5,10 @@
 use spirv_std::num_traits::Float;
 use spirv_std::spirv;
 use spirv_std::{
-	glam::{vec2, vec3, Mat2, UVec2, Vec2, Vec4},
 	Image, Sampler,
+	glam::{Mat2, UVec2, Vec2, Vec4, vec2, vec3},
 };
-use trivalibs_nostd::float_ext::FloatExt;
+use trivalibs_nostd::num_ext::NumExt;
 use trivalibs_nostd::{color::hsv2rgb, random::hash::hash, vec_ext::VecExt};
 
 pub fn aspect_preserving_uv(uv: Vec2, size: UVec2) -> Vec2 {

@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 trivalibs_macros = { path = "../trivalibs_macros" }
+trivalibs_nostd.workspace = true
 serde.workspace = true
 serde_repr.workspace = true
 serde_bytes.workspace = true

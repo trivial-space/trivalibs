@@ -3,7 +3,7 @@
 // Ported from https://github.com/johanhelsing/noisy_bevy from WGSL To Rust-GPU
 // Original code at https://github.com/stegu/webgl-noise by Stefan Gustavson
 
-use crate::{float_ext::FloatExt, vec_ext::VecExt};
+use crate::{num_ext::NumExt, vec_ext::VecExt};
 use core::f32::consts::TAU;
 use spirv_std::glam::{
 	Mat3, Vec2, Vec2Swizzles, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles, mat3, vec2, vec3, vec4,

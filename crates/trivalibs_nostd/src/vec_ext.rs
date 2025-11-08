@@ -1,6 +1,6 @@
 #![allow(unexpected_cfgs)]
 
-use crate::float_ext::FloatExt;
+use crate::num_ext::NumExt;
 #[cfg(not(target_arch = "spirv"))]
 use glam::{Vec2, Vec3, Vec4, vec2, vec3, vec4};
 #[cfg(target_arch = "spirv")]

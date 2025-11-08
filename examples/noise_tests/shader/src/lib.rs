@@ -4,14 +4,14 @@
 #[allow(unused_imports)]
 use spirv_std::num_traits::Float;
 use spirv_std::{
-	glam::{uvec2, vec2, vec3, UVec2, Vec2, Vec3, Vec4},
+	glam::{UVec2, Vec2, Vec3, Vec4, uvec2, vec2, vec3},
 	spirv,
 };
 use trivalibs_nostd::{
 	bits::FloatBits,
-	float_ext::FloatExt,
+	num_ext::NumExt,
 	random::{
-		hash::{hash, hash21, hash2d, hash3d, hashi},
+		hash::{hash, hash2d, hash3d, hash21, hashi},
 		simplex::{
 			simplex_noise_2d, simplex_noise_3d, simplex_noise_4d, tiling_rot_noise_2d,
 			tiling_rot_noise_3d, tiling_simplex_noise_2d,

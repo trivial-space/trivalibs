@@ -2263,6 +2263,7 @@ name = "trivalibs"
 version = "0.1.0"
 dependencies = [
  "trivalibs_core",
+ "trivalibs_nostd",
  "trivalibs_painter",
 ]
 
@@ -2284,6 +2285,7 @@ dependencies = [
  "serde_bytes",
  "serde_repr",
  "trivalibs_macros",
+ "trivalibs_nostd",
 ]
 
 [[package]]

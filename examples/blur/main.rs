@@ -1,11 +1,4 @@
-use trivalibs::{
-	glam::{vec2, Vec2},
-	gpu_data,
-	macros::apply,
-	map,
-	painter::prelude::*,
-	utils::default,
-};
+use trivalibs::{painter::prelude::*, prelude::*};
 
 const BLUR_DIAMETER: f32 = 400.0;
 

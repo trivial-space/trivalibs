@@ -1,3 +1,8 @@
+#![allow(unexpected_cfgs)]
+
+#[cfg(not(target_arch = "spirv"))]
+use glam::{UVec2, UVec3, UVec4, Vec2, Vec3, Vec4};
+#[cfg(target_arch = "spirv")]
 use spirv_std::glam::{UVec2, UVec3, UVec4, Vec2, Vec3, Vec4};
 
 pub trait FloatBits<T> {
