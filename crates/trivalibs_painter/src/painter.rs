@@ -689,6 +689,16 @@ impl Painter {
 		self.show(layer)
 	}
 
+	/// Initializes GPU pipelines for the layer and then renders it.
+	/// Pipelines need to be initialized only once per layer, so this is a convenient method for the first paint.
+	///
+	/// Only needed if the layer was created outsite of CanvasApp::init, or if the layer should be rendered immediately after creation.
+	/// Otherwise, all layers are initialized automatically after CanvasApp::init and before the first CanvasApp::render call.
+	pub fn init_and_paint(&mut self, layer: Layer) -> Result<(), wgpu::SurfaceError> {
+		layer.init_gpu_pipelines(self);
+		self.paint(layer)
+	}
+
 	#[cfg(not(target_arch = "wasm32"))]
 	pub(crate) fn reload_shader(&mut self, path: String) {
 		println!("Reloading shader: {}", path);

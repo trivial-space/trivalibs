@@ -270,8 +270,11 @@ impl Layer {
 	/// This function is called by after the CanvasApp::init function automatically.
 	///
 	/// If Layers are created dynamically during App runtime,
-	/// or if the need to be rendered directly inside CanvasApp::init,
+	/// or if they need to be rendered directly inside CanvasApp::init,
 	/// this method must to be called manually after all shaders are loaded.
+	///
+	/// Alternatively, LayerBuilder::create_and_init can be used to create and initialize.
+	/// Or Painter::init_and_paint can be used to initialize and paint in one call.
 	pub fn init_gpu_pipelines(&self, painter: &mut Painter) {
 		let shapes = (&painter.layers[self.0]).shapes.clone();
 		let effects = (&painter.layers[self.0]).effects.clone();
@@ -432,6 +435,7 @@ impl<'a, 'b> LayerBuilder<'a, 'b> {
 	/// They can use `create` method to create the layer.
 	///
 	/// Layers created during runtime must be initialized manually.
+	/// Alternatively, use Painter::init_and_paint method to initialize and paint in one call.
 	pub fn create_and_init(self) -> Layer {
 		let layer = Layer::new(self.painter, self.props);
 		layer.init_gpu_pipelines(self.painter);
