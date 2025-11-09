@@ -1,11 +1,11 @@
 use crate::{
+	Painter,
 	binding::{LayerBinding, LayerLayout, ValueBinding},
 	effect::Effect,
 	prelude::{BINDING_LAYER_BOTH, BINDING_LAYER_FRAG, BINDING_LAYER_VERT},
 	shape::Shape,
 	texture::{MipMapCount, Texture, Texture2DProps},
 	texture_utils::map_format_to_u8,
-	Painter,
 };
 
 #[derive(Clone)]
@@ -138,11 +138,7 @@ impl Layer {
 		let texture_count = if is_multi_target {
 			format_len
 		} else {
-			if use_swap_targets {
-				2
-			} else {
-				1
-			}
+			if use_swap_targets { 2 } else { 1 }
 		};
 
 		let mut target_textures = Vec::with_capacity(texture_count);
@@ -158,7 +154,9 @@ impl Layer {
 
 		if is_multi_target {
 			if use_swap_targets {
-				panic!("Postprocessing is not supported with multiple targets. Only sketches or one effect can be used.");
+				panic!(
+					"Postprocessing is not supported with multiple targets. Only sketches or one effect can be used."
+				);
 			}
 
 			for format in props.formats {
@@ -270,9 +268,11 @@ impl Layer {
 	}
 
 	/// This function is called by after the CanvasApp::init function automatically.
-	/// If Layers are created dynamically during App runtime, this
-	/// method must to be called manually after all shaders are created.
-	pub fn init_layer_gpu_pipelines(&self, painter: &mut Painter) {
+	///
+	/// If Layers are created dynamically during App runtime,
+	/// or if the need to be rendered directly inside CanvasApp::init,
+	/// this method must to be called manually after all shaders are loaded.
+	pub fn init_gpu_pipelines(&self, painter: &mut Painter) {
 		let shapes = (&painter.layers[self.0]).shapes.clone();
 		let effects = (&painter.layers[self.0]).effects.clone();
 
@@ -434,7 +434,7 @@ impl<'a, 'b> LayerBuilder<'a, 'b> {
 	/// Layers created during runtime must be initialized manually.
 	pub fn create_and_init(self) -> Layer {
 		let layer = Layer::new(self.painter, self.props);
-		layer.init_layer_gpu_pipelines(self.painter);
+		layer.init_gpu_pipelines(self.painter);
 		layer
 	}
 

@@ -1,11 +1,11 @@
 [package]
-name = "trivalibs_core"
+name = "trivalibs-core"
 version = "0.1.0"
 edition.workspace = true
 
 [dependencies]
-trivalibs_macros = { path = "../trivalibs_macros" }
-trivalibs_nostd.workspace = true
+trivalibs-macros = { path = "../trivalibs_macros" }
+trivalibs-nostd.workspace = true
 serde.workspace = true
 serde_repr.workspace = true
 serde_bytes.workspace = true

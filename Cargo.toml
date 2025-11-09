@@ -17,8 +17,8 @@ edition = "2024"
 [workspace.dependencies]
 trivalibs = { path = "crates/trivalibs" }
 trivalibs_core = { path = "crates/trivalibs_core" }
-trivalibs_painter = { path = "crates/trivalibs_painter" }
-trivalibs_nostd = { path = "crates/trivalibs_nostd" }
+trivalibs-painter = { path = "crates/trivalibs_painter" }
+trivalibs-nostd = { path = "crates/trivalibs_nostd" }
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 serde_bytes = "0.11"
@@ -48,9 +48,9 @@ notify = "8.2"
 [dependencies]
 
 trivalibs = { path = "crates/trivalibs" }
-trivalibs_core = { path = "crates/trivalibs_core" }
-trivalibs_painter = { path = "crates/trivalibs_painter" }
-trivalibs_nostd = { path = "crates/trivalibs_nostd" }
+trivalibs-core = { path = "crates/trivalibs_core" }
+trivalibs-painter = { path = "crates/trivalibs_painter" }
+trivalibs-nostd = { path = "crates/trivalibs_nostd" }
 png.workspace = true
 bytemuck.workspace = true
 log.workspace = true

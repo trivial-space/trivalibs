@@ -381,7 +381,7 @@ where
 				let mut app = App::init(&mut painter);
 
 				for i in 0..painter.layers.len() {
-					Layer(i).init_layer_gpu_pipelines(&mut painter);
+					Layer(i).init_gpu_pipelines(&mut painter);
 				}
 
 				let size = painter.canvas_size();
