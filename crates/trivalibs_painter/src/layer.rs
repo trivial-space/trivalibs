@@ -1,8 +1,9 @@
 use crate::{
 	Painter,
-	binding::{LayerBinding, LayerLayout, ValueBinding},
+	binding::{InstanceBinding, LayerBinding, LayerLayout, ValueBinding},
 	effect::Effect,
 	prelude::{BINDING_LAYER_BOTH, BINDING_LAYER_FRAG, BINDING_LAYER_VERT},
+	shade::Shade,
 	shape::Shape,
 	texture::{MipMapCount, Texture, Texture2DProps},
 	texture_utils::map_format_to_u8,
@@ -531,6 +532,166 @@ impl<'a, 'b> LayerBuilder<'a, 'b> {
 
 	pub fn with_mips_max(mut self, max: u32) -> Self {
 		self.props.mips = Some(MipMapCount::Max(max));
+		self
+	}
+}
+
+/// A builder for creating a new [`Layer`] with a single [`Effect`].
+///
+/// This builder merges the functionality of [`LayerBuilder`] and [`EffectBuilder`]
+/// for the common case of creating a layer with exactly one effect.
+///
+/// # Default Configuration values:
+/// - `blend_state`: wgpu::BlendState::REPLACE
+/// - `clear_color`: None
+///
+/// # Example
+/// ```
+/// let layer = SingleEffectBuilder::new(painter, shade)
+///     .with_size(800, 600)
+///     .with_bindings(vec![(0, some_binding)])
+///     .with_clear_color(wgpu::Color::BLACK)
+///     .create();
+/// ```
+///
+pub struct SingleEffectLayerBuilder<'a> {
+	painter: &'a mut Painter,
+	shade: Shade,
+
+	// Effect properties
+	effect_bindings: Vec<(u32, ValueBinding)>,
+	effect_layers: Vec<(u32, LayerBinding)>,
+	effect_instances: Vec<InstanceBinding>,
+	blend_state: wgpu::BlendState,
+	dst_mip_level: Option<u32>,
+	src_mip_level: Option<u32>,
+
+	// Layer properties
+	width: u32,
+	height: u32,
+	format: Option<wgpu::TextureFormat>,
+	clear_color: Option<wgpu::Color>,
+	mips: Option<MipMapCount>,
+}
+
+impl<'a> SingleEffectLayerBuilder<'a> {
+	pub fn new(painter: &'a mut Painter, shade: Shade) -> Self {
+		SingleEffectLayerBuilder {
+			painter,
+			shade,
+			effect_bindings: Vec::with_capacity(0),
+			effect_layers: Vec::with_capacity(0),
+			effect_instances: Vec::with_capacity(0),
+			blend_state: wgpu::BlendState::REPLACE,
+			dst_mip_level: None,
+			src_mip_level: None,
+			width: 0,
+			height: 0,
+			format: None,
+			clear_color: None,
+			mips: None,
+		}
+	}
+
+	pub fn create(self) -> Layer {
+		let effect = Effect::new(
+			self.painter,
+			self.shade,
+			crate::effect::EffectProps {
+				bindings: self.effect_bindings,
+				layers: self.effect_layers,
+				instances: self.effect_instances,
+				blend_state: self.blend_state,
+				dst_mip_level: self.dst_mip_level,
+				src_mip_level: self.src_mip_level,
+			},
+		);
+
+		let mut formats = Vec::with_capacity(1);
+		if let Some(format) = self.format {
+			formats.push(format);
+		}
+
+		Layer::new(
+			self.painter,
+			LayerProps {
+				static_texture: false,
+				static_texture_data: None,
+				shapes: Vec::with_capacity(0),
+				effects: vec![effect],
+				bindings: Vec::with_capacity(0),
+				layers: Vec::with_capacity(0),
+				width: self.width,
+				height: self.height,
+				formats,
+				clear_color: self.clear_color,
+				depth_test: false,
+				layer_layout: BINDING_LAYER_FRAG,
+				multisampled: false,
+				mips: self.mips,
+			},
+		)
+	}
+
+	// Effect builder methods
+
+	pub fn with_bindings(mut self, bindings: Vec<(u32, ValueBinding)>) -> Self {
+		self.effect_bindings = bindings;
+		self
+	}
+
+	pub fn with_layers(mut self, layers: Vec<(u32, LayerBinding)>) -> Self {
+		self.effect_layers = layers;
+		self
+	}
+
+	/// Repeatedly render this effect multiple times with different bindings into the same target without target swapping.
+	/// This is useful for example for deferred lighting, where each light is rendered with custom blend state on top of the last.
+	pub fn with_instances(mut self, instances: Vec<InstanceBinding>) -> Self {
+		self.effect_instances = instances;
+		self
+	}
+
+	pub fn with_blend_state(mut self, blend_state: wgpu::BlendState) -> Self {
+		self.blend_state = blend_state;
+		self
+	}
+
+	pub fn with_mip_target(mut self, dst_mip_level: u32) -> Self {
+		self.dst_mip_level = Some(dst_mip_level);
+		self
+	}
+
+	pub fn with_mip_source(mut self, src_mip_level: u32) -> Self {
+		self.src_mip_level = Some(src_mip_level);
+		self
+	}
+
+	// Layer builder methods
+
+	pub fn with_size(mut self, width: u32, height: u32) -> Self {
+		self.width = width;
+		self.height = height;
+		self
+	}
+
+	pub fn with_format(mut self, format: wgpu::TextureFormat) -> Self {
+		self.format = Some(format);
+		self
+	}
+
+	pub fn with_clear_color(mut self, color: wgpu::Color) -> Self {
+		self.clear_color = Some(color);
+		self
+	}
+
+	pub fn with_mips(mut self) -> Self {
+		self.mips = Some(MipMapCount::Full);
+		self
+	}
+
+	pub fn with_mips_max(mut self, max: u32) -> Self {
+		self.mips = Some(MipMapCount::Max(max));
 		self
 	}
 }

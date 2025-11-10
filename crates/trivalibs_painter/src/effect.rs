@@ -1,9 +1,9 @@
 use crate::{
+	Painter,
 	bind_group::{BindGroup, LayerBindGroupData},
 	binding::{InstanceBinding, LayerBinding, ValueBinding},
 	layer::Layer,
 	shade::Shade,
-	Painter,
 };
 
 #[derive(Clone)]

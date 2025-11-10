@@ -3,7 +3,7 @@ use crate::{
 	binding::{BindingBuffer, Mat3U, ValueBinding, Vec3U},
 	effect::{Effect, EffectBuilder, EffectStorage},
 	form::{Form, FormBuffers, FormBuilder, FormStorage},
-	layer::{Layer, LayerBuilder, LayerStorage},
+	layer::{Layer, LayerBuilder, LayerStorage, SingleEffectLayerBuilder},
 	pipeline::PipelineStorage,
 	prelude::{BINDING_LAYER_FRAG, BINDING_SAMPLER_FRAG},
 	sampler::{Sampler, SamplerBuilder, SamplerProps},
@@ -272,6 +272,10 @@ impl Painter {
 
 	pub fn layer<'b>(&mut self) -> LayerBuilder<'_, 'b> {
 		LayerBuilder::new(self)
+	}
+
+	pub fn single_effect_layer(&mut self, shade: Shade) -> SingleEffectLayerBuilder<'_> {
+		SingleEffectLayerBuilder::new(self, shade)
 	}
 
 	// binding utils

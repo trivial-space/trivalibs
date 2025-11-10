@@ -1,4 +1,4 @@
-use crate::{painter::get_padded_size, Painter};
+use crate::{Painter, painter::get_padded_size};
 use trivalibs_core::rendering::BufferedGeometry;
 
 #[derive(Clone, Copy)]

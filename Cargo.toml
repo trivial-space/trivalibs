@@ -16,7 +16,7 @@ edition = "2024"
 
 [workspace.dependencies]
 trivalibs = { path = "crates/trivalibs" }
-trivalibs_core = { path = "crates/trivalibs_core" }
+trivalibs-core = { path = "crates/trivalibs_core" }
 trivalibs-painter = { path = "crates/trivalibs_painter" }
 trivalibs-nostd = { path = "crates/trivalibs_nostd" }
 serde = { version = "1.0", features = ["derive"] }

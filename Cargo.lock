@@ -198,7 +198,7 @@ name = "base_effect_shader"
 version = "0.1.0"
 dependencies = [
  "spirv-std",
- "trivalibs_nostd",
+ "trivalibs-nostd",
 ]
 
 [[package]]
@@ -251,7 +251,7 @@ name = "blur_shader"
 version = "0.1.0"
 dependencies = [
  "spirv-std",
- "trivalibs_nostd",
+ "trivalibs-nostd",
 ]
 
 [[package]]
@@ -1157,7 +1157,7 @@ name = "mipmap_shader"
 version = "0.1.0"
 dependencies = [
  "spirv-std",
- "trivalibs_nostd",
+ "trivalibs-nostd",
 ]
 
 [[package]]
@@ -1231,7 +1231,7 @@ name = "noise_tests_shader"
 version = "0.1.0"
 dependencies = [
  "spirv-std",
- "trivalibs_nostd",
+ "trivalibs-nostd",
 ]
 
 [[package]]
@@ -1834,7 +1834,7 @@ name = "render_to_mip_shader"
 version = "0.1.0"
 dependencies = [
  "spirv-std",
- "trivalibs_nostd",
+ "trivalibs-nostd",
 ]
 
 [[package]]
@@ -1848,7 +1848,7 @@ name = "room_shader"
 version = "0.1.0"
 dependencies = [
  "spirv-std",
- "trivalibs_nostd",
+ "trivalibs-nostd",
 ]
 
 [[package]]
@@ -2262,13 +2262,13 @@ checksum = "e672c95779cf947c5311f83787af4fa8fffd12fb27e4993211a84bdfd9610f9c"
 name = "trivalibs"
 version = "0.1.0"
 dependencies = [
- "trivalibs_core",
- "trivalibs_nostd",
- "trivalibs_painter",
+ "trivalibs-core",
+ "trivalibs-nostd",
+ "trivalibs-painter",
 ]
 
 [[package]]
-name = "trivalibs_core"
+name = "trivalibs-core"
 version = "0.1.0"
 dependencies = [
  "approx",
@@ -2284,8 +2284,46 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_repr",
- "trivalibs_macros",
- "trivalibs_nostd",
+ "trivalibs-macros",
+ "trivalibs-nostd",
+]
+
+[[package]]
+name = "trivalibs-macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "trivalibs-nostd"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "spirv-std",
+]
+
+[[package]]
+name = "trivalibs-painter"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "console_error_panic_hook",
+ "console_log",
+ "dirs",
+ "env_logger",
+ "log",
+ "notify",
+ "pollster",
+ "serde",
+ "serde_json",
+ "trivalibs-core",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
+ "wgpu",
+ "winit",
 ]
 
 [[package]]
@@ -2299,47 +2337,9 @@ dependencies = [
  "png",
  "pollster",
  "trivalibs",
- "trivalibs_core",
- "trivalibs_nostd",
- "trivalibs_painter",
-]
-
-[[package]]
-name = "trivalibs_macros"
-version = "0.1.0"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
-name = "trivalibs_nostd"
-version = "0.1.0"
-dependencies = [
- "glam",
- "spirv-std",
-]
-
-[[package]]
-name = "trivalibs_painter"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "console_error_panic_hook",
- "console_log",
- "dirs",
- "env_logger",
- "log",
- "notify",
- "pollster",
- "serde",
- "serde_json",
- "trivalibs_core",
- "wasm-bindgen-futures",
- "web-sys",
- "web-time",
- "wgpu",
- "winit",
+ "trivalibs-core",
+ "trivalibs-nostd",
+ "trivalibs-painter",
 ]
 
 [[package]]
