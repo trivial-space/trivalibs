@@ -249,10 +249,12 @@ impl Layer {
 		painter.layers.push(storage);
 
 		for s in props.shapes {
-			s.prepare_bindings(painter, layer);
+			s.prepare_value_bindings(painter, layer);
+			s.prepare_layer_bindings(painter, layer);
 		}
 		for e in props.effects.iter() {
-			e.prepare_bindings(painter, layer);
+			e.prepare_value_bindings(painter, layer);
+			e.prepare_layer_bindings(painter, layer);
 		}
 		if props.effects.iter().any(|e| e.has_mip_target(painter)) {
 			let textures = painter.layers[layer.0].target_textures.clone();
@@ -314,6 +316,72 @@ impl Layer {
 
 	pub fn set_clear_color(&mut self, painter: &mut Painter, color: Option<wgpu::Color>) {
 		painter.layers[self.0].clear_color = color;
+	}
+
+	/// Updates all layer-level bindings at once.
+	///
+	/// Layer-level bindings serve as defaults for all shapes and effects in this layer.
+	/// These bindings are merged with shape/effect-specific bindings during rendering,
+	/// with shape/effect bindings taking precedence.
+	///
+	/// This method automatically re-prepares all shapes and effects in the layer
+	/// to reflect the new bindings.
+	///
+	/// # Arguments
+	/// * `painter` - The painter instance
+	/// * `layers` - Vector of (slot_index, LayerBinding) pairs
+	///
+	/// # Example
+	/// ```
+	/// layer.set_layer_bindings(&mut painter, vec![
+	///     (0, texture_layer_a.binding()),
+	///     (1, texture_layer_b.binding_at_mip_level(2)),
+	/// ]);
+	/// ```
+	pub fn set_layer_bindings(&self, painter: &mut Painter, layers: Vec<(u32, LayerBinding)>) {
+		painter.layers[self.0].layers = layers;
+
+		// Only re-prepare layer bindings (cheap texture descriptor updates)
+		// No need to regenerate expensive GPU bind groups for value bindings
+		let shapes = painter.layers[self.0].shapes.clone();
+		for shape in shapes {
+			shape.prepare_layer_bindings(painter, *self);
+		}
+
+		let effects = painter.layers[self.0].effects.clone();
+		for effect in effects {
+			effect.prepare_layer_bindings(painter, *self);
+		}
+	}
+
+	/// Updates a single layer-level binding by slot index.
+	///
+	/// This is a convenience method for updating just one binding without
+	/// replacing the entire bindings vector. If the slot doesn't exist,
+	/// it will be added. If it exists, it will be updated.
+	///
+	/// # Arguments
+	/// * `painter` - The painter instance
+	/// * `slot` - The binding slot index
+	/// * `binding` - The new LayerBinding for this slot
+	///
+	/// # Example
+	/// ```
+	/// // Switch the texture at binding slot 0
+	/// layer.set_layer_binding(&mut painter, 0, new_texture_layer.binding());
+	/// ```
+	pub fn set_layer_binding(&self, painter: &mut Painter, slot: u32, binding: LayerBinding) {
+		let mut layers = painter.layers[self.0].layers.clone();
+
+		// Find and update or insert
+		if let Some(pos) = layers.iter().position(|(i, _)| *i == slot) {
+			layers[pos].1 = binding;
+		} else {
+			layers.push((slot, binding));
+			layers.sort_by_key(|(s, _)| *s);
+		}
+
+		self.set_layer_bindings(painter, layers);
 	}
 
 	pub fn resize(&mut self, painter: &mut Painter, width: u32, height: u32) {
@@ -598,8 +666,8 @@ impl<'a> SingleEffectLayerBuilder<'a> {
 			self.painter,
 			self.shade,
 			crate::effect::EffectProps {
-				bindings: self.effect_bindings,
-				layers: self.effect_layers,
+				bindings: Vec::with_capacity(0),
+				layers: Vec::with_capacity(0),
 				instances: self.effect_instances,
 				blend_state: self.blend_state,
 				dst_mip_level: self.dst_mip_level,
@@ -619,8 +687,8 @@ impl<'a> SingleEffectLayerBuilder<'a> {
 				static_texture_data: None,
 				shapes: Vec::with_capacity(0),
 				effects: vec![effect],
-				bindings: Vec::with_capacity(0),
-				layers: Vec::with_capacity(0),
+				bindings: self.effect_bindings,
+				layers: self.effect_layers,
 				width: self.width,
 				height: self.height,
 				formats,

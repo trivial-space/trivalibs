@@ -1,0 +1,12 @@
+[
+  {
+    "source_path": "col_fs.spv",
+    "entry_point": "col_fs",
+    "wgsl_entry_point": "col_fs"
+  },
+  {
+    "source_path": "tex_fs.spv",
+    "entry_point": "tex_fs",
+    "wgsl_entry_point": "tex_fs"
+  }
+]

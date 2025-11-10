@@ -80,7 +80,14 @@ impl Effect {
 		Self(painter.effects.len() - 1)
 	}
 
-	pub(crate) fn prepare_bindings(&self, painter: &mut Painter, layer: Layer) {
+	/// Prepares GPU bind groups for value bindings (buffers and samplers).
+	///
+	/// This is an expensive operation that creates GPU resources and should only
+	/// be called during initialization or when value bindings change.
+	///
+	/// This method merges effect-level value bindings with layer-level value binding
+	/// defaults to create the final GPU bind groups.
+	pub(crate) fn prepare_value_bindings(&self, painter: &mut Painter, layer: Layer) {
 		let e = &painter.effects[self.0];
 		let s = &painter.shades[e.shade.0];
 		let l = &painter.layers[layer.0];
@@ -88,13 +95,6 @@ impl Effect {
 		let value_bindings = &e.bindings.clone();
 		let instance_bindings = &e.instances.clone();
 		let layer_bindings = &l.bindings.clone();
-
-		let layer_bind_group_data = LayerBindGroupData::from_bindings(
-			s.layer_bindings_length,
-			s.layers_layout,
-			&e.layers.clone(),
-			&l.layers.clone(),
-		);
 
 		let bind_groups = BindGroup::values_bind_groups(
 			painter,
@@ -106,6 +106,27 @@ impl Effect {
 		);
 
 		painter.effects[self.0].bind_groups = bind_groups;
+	}
+
+	/// Prepares layer binding data for texture bindings.
+	///
+	/// This is a cheap operation that only updates binding descriptors without
+	/// creating GPU resources. Can be called frequently when texture bindings change.
+	///
+	/// This method merges effect-level layer bindings with layer-level layer bindings
+	/// to create the final texture binding descriptors.
+	pub(crate) fn prepare_layer_bindings(&self, painter: &mut Painter, layer: Layer) {
+		let e = &painter.effects[self.0];
+		let s = &painter.shades[e.shade.0];
+		let l = &painter.layers[layer.0];
+
+		let layer_bind_group_data = LayerBindGroupData::from_bindings(
+			s.layer_bindings_length,
+			s.layers_layout,
+			&e.layers.clone(),
+			&l.layers.clone(),
+		);
+
 		painter.effects[self.0].layer_bind_group_data = layer_bind_group_data;
 	}
 
