@@ -2,7 +2,7 @@ use crate::{
 	bind_group::{BindGroup, BindGroupLayout, BindGroupStorage},
 	binding::{BindingBuffer, Mat3U, ValueBinding, Vec3U},
 	effect::{Effect, EffectBuilder, EffectStorage},
-	form::{Form, FormBuffers, FormBuilder, FormStorage},
+	form::{Form, FormBuffer, FormBuilder, FormStorage},
 	layer::{Layer, LayerBuilder, LayerStorage, SingleEffectLayerBuilder},
 	pipeline::PipelineStorage,
 	prelude::{BINDING_LAYER_FRAG, BINDING_SAMPLER_FRAG},
@@ -223,12 +223,16 @@ impl Painter {
 
 	// form helpers
 
-	pub fn form<'a>(&mut self, buffer: impl Into<FormBuffers<'a>>) -> FormBuilder<'_, 'a> {
-		FormBuilder::new(self, buffer)
+	pub fn form<'a>(&mut self, buffer: impl Into<FormBuffer<'a>>) -> FormBuilder<'_, 'a> {
+		FormBuilder::new(self).with_buffer(buffer)
 	}
 
-	pub fn form_update<'a>(&mut self, form: Form, buffers: impl Into<FormBuffers<'a>>) {
-		form.update(self, &buffers.into());
+	pub fn form_builder(&mut self) -> FormBuilder<'_, '_> {
+		FormBuilder::new(self)
+	}
+
+	pub fn form_update<'a>(&mut self, form: Form, buffer: impl Into<FormBuffer<'a>>) {
+		form.update(self, buffer);
 	}
 
 	// shade helpers
@@ -418,12 +422,20 @@ impl Painter {
 				pass.set_bind_group(0, &self.bind_groups[binding.0].bind_group, &[]);
 			}
 
-			pass.set_vertex_buffer(0, f.vertex_buffer.slice(..));
-			if let Some(index_buffer) = &f.index_buffer {
-				pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-				pass.draw_indexed(0..f.index_count, 0, 0..1);
-			} else {
-				pass.draw(0..f.vertex_count, 0..1);
+			for i in 0..f.currently_active_buffers {
+				let b = &f.buffers[i];
+				pass.set_vertex_buffer(0, b.vertex_buffer.slice(..b.vertex_buffer_current_size));
+				if let Some(index_buffer) = &b.index_buffer
+					&& b.index_count > 0
+				{
+					pass.set_index_buffer(
+						index_buffer.slice(..b.index_buffer_current_size),
+						wgpu::IndexFormat::Uint32,
+					);
+					pass.draw_indexed(0..b.index_count, 0, 0..1);
+				} else {
+					pass.draw(0..b.vertex_count, 0..1);
+				}
 			}
 		};
 
