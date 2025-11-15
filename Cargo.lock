@@ -1767,6 +1767,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "random_lines_shader"
+version = "0.1.0"
+dependencies = [
+ "spirv-std",
+]
+
+[[package]]
 name = "range-alloc"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
