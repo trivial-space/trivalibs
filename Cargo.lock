@@ -554,6 +554,7 @@ name = "dynamic_shapes_shader"
 version = "0.1.0"
 dependencies = [
  "spirv-std",
+ "trivalibs-nostd",
 ]
 
 [[package]]

@@ -1,5 +1,10 @@
 [
   {
+    "source_path": "effect_fragment.spv",
+    "entry_point": "effect_fragment",
+    "wgsl_entry_point": "effect_fragment"
+  },
+  {
     "source_path": "fragment.spv",
     "entry_point": "fragment",
     "wgsl_entry_point": "fragment"

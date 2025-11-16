@@ -15,8 +15,22 @@ fn generate_square(pos: Vec2, size: f32) -> Vec<Vec2> {
 	]
 }
 
+// Pick a random selection of shapes from the pool
+// Randomly selects a count between 0 and POOL_SIZE
+fn pick_random_shapes(shape_pool: &[Shape]) -> Vec<Shape> {
+	let count = rand_range(0.0, POOL_SIZE as f32) as usize;
+	let mut selected_shapes = Vec::new();
+	for _ in 0..count {
+		let idx = rand_range(0.0, shape_pool.len() as f32) as usize % shape_pool.len();
+		selected_shapes.push(shape_pool[idx]);
+	}
+	selected_shapes
+}
+
 struct App {
 	canvas: Layer,
+	layer1: Layer,
+	layer2: Layer,
 	shape_pool: Vec<Shape>,
 	timer: f32,
 }
@@ -28,7 +42,7 @@ impl CanvasApp<()> for App {
 		// Create a single shade that all shapes will share
 		let shade = p
 			.shade(&[Float32x2])
-			.with_bindings(&[BINDING_BUFFER_FRAG])
+			.with_bindings(&[BINDING_BUFFER_FRAG, BINDING_BUFFER_FRAG])
 			.create();
 		load_vertex_shader!(shade, p, "./shader/vertex.spv");
 		load_fragment_shader!(shade, p, "./shader/fragment.spv");
@@ -67,9 +81,67 @@ impl CanvasApp<()> for App {
 			);
 		}
 
-		// Create the canvas layer with no shapes initially
+		let is_vertical = p.bind_const_u32(1);
+		let is_horizontal = p.bind_const_u32(0);
+
+		// Create two intermediate layers with distinct random shapes
+		let layer1 = p
+			.layer()
+			.with_bindings(vec![(1, is_vertical)])
+			.with_clear_color(wgpu::Color::TRANSPARENT)
+			.with_multisampling()
+			.create();
+
+		let layer2 = p
+			.layer()
+			.with_bindings(vec![(1, is_horizontal)])
+			.with_clear_color(wgpu::Color::TRANSPARENT)
+			.with_multisampling()
+			.create();
+
+		// Pick distinct sets of shapes for each layer
+		let shapes1 = pick_random_shapes(&shape_pool);
+		let shapes2 = pick_random_shapes(&shape_pool);
+
+		layer1.set_shapes(p, shapes1.clone());
+		layer2.set_shapes(p, shapes2.clone());
+
+		println!("\nLayer 1: {} shapes", shapes1.len());
+		println!("Layer 2: {} shapes", shapes2.len());
+
+		// Create effect shader for rendering textures
+		let effect_shade = p
+			.shade_effect()
+			.with_bindings(&[BINDING_SAMPLER_FRAG])
+			.with_layer()
+			.create();
+		load_fragment_shader!(effect_shade, p, "./shader/effect_fragment.spv");
+
+		// Create a default sampler
+		let sampler = p.sampler_linear();
+
+		// Create effect with two instances for the two layers
+		let effect = p
+			.effect(effect_shade)
+			.with_instances(vec![
+				InstanceBinding {
+					layers: vec![(0, layer1.binding())],
+					..default()
+				},
+				InstanceBinding {
+					layers: vec![(0, layer2.binding())],
+					..default()
+				},
+			])
+			// .with_layers(vec![(0, layer1.binding())])
+			.with_blend_state(wgpu::BlendState::ALPHA_BLENDING)
+			.create();
+
+		// Create the canvas layer with the effect instances
 		let canvas = p
 			.layer()
+			.with_effect(effect)
+			.with_bindings(vec![(0, sampler.binding())])
 			.with_clear_color(wgpu::Color {
 				r: 0.1,
 				g: 0.1,
@@ -79,19 +151,10 @@ impl CanvasApp<()> for App {
 			.with_multisampling()
 			.create();
 
-		// Start with a random selection of shapes
-		let initial_count = rand_range(1.0, POOL_SIZE as f32) as usize;
-		let mut initial_shapes = Vec::new();
-		for _ in 0..initial_count {
-			let idx = rand_range(0.0, POOL_SIZE as f32) as usize % POOL_SIZE;
-			initial_shapes.push(shape_pool[idx]);
-		}
-		canvas.set_shapes(p, initial_shapes.clone());
-
-		println!("\nInitial render: {} shapes", initial_shapes.len());
-
 		Self {
 			canvas,
+			layer1,
+			layer2,
 			shape_pool,
 			timer: 0.0,
 		}
@@ -102,24 +165,23 @@ impl CanvasApp<()> for App {
 	fn update(&mut self, p: &mut Painter, tpf: f32) {
 		self.timer += tpf;
 
-		// Every second, pick a random selection of shapes from the pool
+		// Every second, pick a random selection of shapes from the pool for both layers
 		if self.timer >= 1.0 {
 			self.timer -= 1.0;
 
-			// Pick random count of shapes to display
-			let count = rand_range(0.0, POOL_SIZE as f32) as usize;
+			// Randomly select shapes from the pool for each layer
+			let shapes1 = pick_random_shapes(&self.shape_pool);
+			let shapes2 = pick_random_shapes(&self.shape_pool);
 
-			// Randomly select shapes from the pool (can include duplicates)
-			let mut selected_shapes = Vec::new();
-			for _ in 0..count {
-				let idx = rand_range(0.0, POOL_SIZE as f32) as usize % POOL_SIZE;
-				selected_shapes.push(self.shape_pool[idx]);
-			}
+			// Update both layers with new selections
+			self.layer1.set_shapes(p, shapes1.clone());
+			self.layer2.set_shapes(p, shapes2.clone());
 
-			// Update the layer with the new selection
-			self.canvas.set_shapes(p, selected_shapes.clone());
-
-			println!("Frame update: {} shapes selected from pool", count);
+			println!(
+				"Frame update: layer1={} shapes, layer2={} shapes",
+				shapes1.len(),
+				shapes2.len()
+			);
 		}
 
 		// Request continuous rendering
@@ -127,6 +189,8 @@ impl CanvasApp<()> for App {
 	}
 
 	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
+		p.paint(self.layer1)?;
+		p.paint(self.layer2)?;
 		p.paint_and_show(self.canvas)
 	}
 

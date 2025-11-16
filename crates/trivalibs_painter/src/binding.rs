@@ -1,4 +1,4 @@
-use crate::{layer::Layer, painter::get_padded_size, sampler::Sampler, Painter};
+use crate::{Painter, layer::Layer, painter::get_padded_size, sampler::Sampler};
 use trivalibs_core::glam::{Mat3, Mat3A, Vec3, Vec3A};
 use wgpu::{BindingType, ShaderStages};
 
@@ -112,12 +112,14 @@ impl BindingBuffer<Vec3U> {
 #[derive(Clone)]
 pub struct InstanceBinding {
 	pub bindings: Vec<(u32, ValueBinding)>,
+	pub layers: Vec<(u32, LayerBinding)>,
 }
 
 impl Default for InstanceBinding {
 	fn default() -> Self {
 		Self {
 			bindings: Vec::with_capacity(0),
+			layers: Vec::with_capacity(0),
 		}
 	}
 }
