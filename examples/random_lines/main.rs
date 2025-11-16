@@ -12,7 +12,7 @@ struct App {
 }
 
 // Generate a single line made of multiple quad segments
-fn generate_line_geometry(start: Vec2, end: Vec2, width: f32, segments: usize) -> Vec<Vec3> {
+fn generate_line_geometry(start: Vec2, end: Vec2, width: f32, segments: usize) -> Vec<Vec2> {
 	let mut vertices = Vec::new();
 
 	let dir = (end - start).normalize();
@@ -27,21 +27,21 @@ fn generate_line_geometry(start: Vec2, end: Vec2, width: f32, segments: usize) -
 
 		// Create quad for this segment (two triangles)
 		// Triangle 1
-		vertices.push(vec3(p0.x - perp.x, p0.y - perp.y, 0.0));
-		vertices.push(vec3(p0.x + perp.x, p0.y + perp.y, 0.0));
-		vertices.push(vec3(p1.x + perp.x, p1.y + perp.y, 0.0));
+		vertices.push(vec2(p0.x - perp.x, p0.y - perp.y));
+		vertices.push(vec2(p1.x + perp.x, p1.y + perp.y));
+		vertices.push(vec2(p0.x + perp.x, p0.y + perp.y));
 
 		// Triangle 2
-		vertices.push(vec3(p0.x - perp.x, p0.y - perp.y, 0.0));
-		vertices.push(vec3(p1.x + perp.x, p1.y + perp.y, 0.0));
-		vertices.push(vec3(p1.x - perp.x, p1.y - perp.y, 0.0));
+		vertices.push(vec2(p0.x - perp.x, p0.y - perp.y));
+		vertices.push(vec2(p1.x - perp.x, p1.y - perp.y));
+		vertices.push(vec2(p1.x + perp.x, p1.y + perp.y));
 	}
 
 	vertices
 }
 
 // Generate random lines with varying segment counts - each line as separate vector
-fn generate_all_lines() -> Vec<Vec<Vec3>> {
+fn generate_all_lines() -> Vec<Vec<Vec2>> {
 	let line_count = rand_range(1.0, 10.0) as usize;
 	let mut all_lines = Vec::new();
 
@@ -71,7 +71,7 @@ impl CanvasApp<()> for App {
 
 		// Create shade with vec3 position and vec3 color uniform
 		let shade = p
-			.shade(&[Float32x3])
+			.shade(&[Float32x2])
 			.with_bindings(&[BINDING_BUFFER_FRAG])
 			.create();
 
@@ -89,14 +89,13 @@ impl CanvasApp<()> for App {
 			.with_bindings(map! {
 				0 => color_binding.binding(),
 			})
-			.with_cull_mode(None)
 			.create();
 
-		// Create layer WITHOUT clearing (to accumulate renders)
 		let canvas = p
 			.layer()
 			.with_shape(shape)
 			.with_clear_color(wgpu::Color::WHITE)
+			.with_multisampling()
 			.create();
 
 		Self {
@@ -120,7 +119,7 @@ impl CanvasApp<()> for App {
 			let new_lines = generate_all_lines();
 
 			// Update form with all new geometries using update_all
-			// Pass the Vec directly - each Vec<Vec3> converts to FormBuffer automatically
+			// Pass the Vec directly - each Vec<Vec2> converts to FormBuffer automatically
 			self.form.update_all(p, &new_lines);
 
 			// Update color with new random color

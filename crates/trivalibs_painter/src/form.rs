@@ -30,9 +30,6 @@ pub(crate) struct FormGPUBuffers {
 
 pub(crate) struct FormStorage {
 	pub buffers: Vec<FormGPUBuffers>,
-	/// Number of buffers that contain valid data and should be rendered.
-	/// May be less than buffers.len() if the form was resized to fewer geometries.
-	/// Buffers beyond this index remain allocated but are not rendered.
 	pub currently_active_buffers: usize,
 	pub props: FormProps,
 }
@@ -149,6 +146,7 @@ impl Form {
 
 			// If the new data is larger than max_size, recreate the vertex buffer
 			if f_buf.vertex_buffer_max_size < padded_vertex_size {
+				f_buf.vertex_buffer.destroy();
 				f_buf.vertex_buffer = painter.device.create_buffer(&wgpu::BufferDescriptor {
 					label: None,
 					usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
@@ -172,6 +170,7 @@ impl Form {
 
 				// If buffer doesn't exist yet (lazy init) or new data is larger, (re)create it
 				if f_buf.index_buffer.is_none() || f_buf.index_buffer_max_size < padded_index_size {
+					f_buf.index_buffer.as_ref().map(|b| b.destroy());
 					f_buf.index_buffer =
 						Some(painter.device.create_buffer(&wgpu::BufferDescriptor {
 							label: None,
@@ -219,17 +218,12 @@ impl Form {
 		return Form(i);
 	}
 
-	pub fn new<'a>(
-		painter: &mut Painter,
-		buffers: impl Into<Vec<FormBuffer<'a>>>,
-		props: FormProps,
-	) -> Self {
-		let buffers = buffers.into();
-		let sizes = buffers
-			.iter()
-			.map(|b| b.vertex_buffer.len() as u64)
-			.collect::<Vec<u64>>();
-		let form = Form::new_with_sizes(painter, sizes.as_slice(), props);
+	pub fn new<'a, I, B>(painter: &mut Painter, buffers: I, props: FormProps) -> Self
+	where
+		I: IntoIterator<Item = B>,
+		B: Into<FormBuffer<'a>>,
+	{
+		let form = Form::new_with_sizes(painter, &[], props);
 
 		form.update_all(painter, buffers);
 

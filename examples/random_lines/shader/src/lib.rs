@@ -1,12 +1,12 @@
 #![no_std]
 #![allow(unexpected_cfgs)]
 
-use spirv_std::glam::{Vec3, Vec4};
+use spirv_std::glam::{Vec2, Vec3, Vec4};
 use spirv_std::spirv;
 
 #[spirv(vertex)]
-pub fn vertex(position: Vec3, #[spirv(position)] clip_pos: &mut Vec4) {
-	*clip_pos = position.extend(1.0);
+pub fn vertex(position: Vec2, #[spirv(position)] clip_pos: &mut Vec4) {
+	*clip_pos = position.extend(0.0).extend(1.0);
 }
 
 #[spirv(fragment)]
