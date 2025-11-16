@@ -104,13 +104,13 @@ impl CanvasApp<ResizeEvent> for App {
 		load_vertex_shader!(color_shade, p, "./shader/color_vs.spv");
 		load_fragment_shader!(color_shade, p, "./shader/color_fs.spv");
 
-		let tex_shader = p
+		let tex_shade = p
 			.shade(&[Float32x3, Float32x2])
 			.with_bindings(&[BINDING_BUFFER_VERT, BINDING_SAMPLER_FRAG])
 			.with_layers(&[BINDING_LAYER_FRAG])
 			.create();
-		load_vertex_shader!(tex_shader, p, "./shader/texture_vs.spv");
-		load_fragment_shader!(tex_shader, p, "./shader/texture_fs.spv");
+		load_vertex_shader!(tex_shade, p, "./shader/texture_vs.spv");
+		load_fragment_shader!(tex_shade, p, "./shader/texture_fs.spv");
 
 		let quad_form = p.form(QUAD).create();
 		let triangle_form = p.form(TRIANGLE).create();
@@ -161,7 +161,7 @@ impl CanvasApp<ResizeEvent> for App {
 		let tex_quad_mvp = p.bind_mat4();
 
 		let tex_quad_shape = p
-			.shape(quad_form, tex_shader)
+			.shape(quad_form, tex_shade)
 			.with_cull_mode(None)
 			.with_bindings(map! {
 				0 => tex_quad_mvp.binding(),
@@ -173,7 +173,7 @@ impl CanvasApp<ResizeEvent> for App {
 			.create();
 
 		let tex_triangle_shape = p
-			.shape(triangle_form, tex_shader)
+			.shape(triangle_form, tex_shade)
 			.with_bindings(map! {
 				0 => tex_triangle_mvp.binding(),
 				1 => sl.binding(),
@@ -288,9 +288,11 @@ pub fn main() {
 
 	let handle = app.get_handle();
 
-	std::thread::spawn(move || loop {
-		std::thread::sleep(std::time::Duration::from_secs(2));
-		let _ = handle.send_event(ResizeEvent);
+	std::thread::spawn(move || {
+		loop {
+			std::thread::sleep(std::time::Duration::from_secs(2));
+			let _ = handle.send_event(ResizeEvent);
+		}
 	});
 
 	app.start();
