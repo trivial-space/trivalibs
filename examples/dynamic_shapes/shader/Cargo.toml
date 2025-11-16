@@ -1,0 +1,10 @@
+[package]
+name = "dynamic_shapes_shader"
+edition.workspace = true
+version = "0.1.0"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+spirv-std.workspace = true
