@@ -557,13 +557,6 @@ impl Layer {
 	/// * `painter` - The painter instance
 	/// * `layers` - Vector of (slot_index, LayerBinding) pairs
 	///
-	/// # Example
-	/// ```
-	/// layer.set_layer_bindings(&mut painter, vec![
-	///     (0, texture_layer_a.binding()),
-	///     (1, texture_layer_b.binding_at_mip_level(2)),
-	/// ]);
-	/// ```
 	pub fn set_layer_bindings(&self, painter: &mut Painter, layers: Vec<(u32, LayerBinding)>) {
 		let layer_bindings = painter.layers[self.0].bindings.clone();
 		painter.layers[self.0].layers = layers.clone();
@@ -598,11 +591,6 @@ impl Layer {
 	/// * `slot` - The binding slot index
 	/// * `binding` - The new LayerBinding for this slot
 	///
-	/// # Example
-	/// ```
-	/// // Switch the texture at binding slot 0
-	/// layer.set_layer_binding(&mut painter, 0, new_texture_layer.binding());
-	/// ```
 	pub fn set_layer_binding(&self, painter: &mut Painter, slot: u32, binding: LayerBinding) {
 		let mut layers = painter.layers[self.0].layers.clone();
 
@@ -624,15 +612,6 @@ impl Layer {
 	/// Pipelines are cached and reused, so adding shapes that share configurations with existing
 	/// shapes is efficient.
 	///
-	/// # Arguments
-	/// * `painter` - The painter instance
-	/// * `shapes` - Vector of Shape instances to render in this layer
-	///
-	/// # Example
-	/// ```
-	/// // Switch from rendering one set of shapes to another
-	/// layer.set_shapes(&mut painter, vec![shape_a, shape_b, shape_c]);
-	/// ```
 	pub fn set_shapes(&self, painter: &mut Painter, shapes: Vec<Shape>) {
 		let layer_bindings = painter.layers[self.0].bindings.clone();
 		let layer_layers = painter.layers[self.0].layers.clone();
@@ -654,15 +633,6 @@ impl Layer {
 	/// This is a convenience method for appending a shape to the existing shapes vector.
 	/// If you need to replace all shapes or add multiple shapes at once, use `set_shapes()` instead.
 	///
-	/// # Arguments
-	/// * `painter` - The painter instance
-	/// * `shape` - The Shape to add to this layer
-	///
-	/// # Example
-	/// ```
-	/// // Add a new shape to the layer dynamically
-	/// layer.add_shape(&mut painter, new_shape);
-	/// ```
 	pub fn add_shape(&self, painter: &mut Painter, shape: Shape) {
 		let layer_bindings = painter.layers[self.0].bindings.clone();
 		let layer_layers = painter.layers[self.0].layers.clone();
@@ -680,15 +650,6 @@ impl Layer {
 	/// This filters out all occurrences of the given shape from the layer's shape list.
 	/// If the shape appears multiple times, all instances will be removed.
 	///
-	/// # Arguments
-	/// * `painter` - The painter instance
-	/// * `shape` - The Shape to remove from this layer
-	///
-	/// # Example
-	/// ```
-	/// // Remove a shape from the layer dynamically
-	/// layer.remove_shape(&mut painter, old_shape);
-	/// ```
 	pub fn remove_shape(&self, painter: &mut Painter, shape: Shape) {
 		painter.layers[self.0]
 			.shapes
@@ -790,7 +751,16 @@ impl Layer {
 /// let layer = LayerBuilder::new(painter)
 ///     .with_size(800, 600)
 ///     .with_shape(rectangle)
-///     .with_clear_color(wgpu::Color::BLACK)
+///     .with_clear_color(wgps
+	/// * `painter` - The painter instance
+	/// * `shape` - The Shape to remove from this layer
+	///
+	/// # Example
+	/// ```
+	/// // Remove a shape from the layer dynamically
+	/// layer.remove_shape(&mut painter, old_shape);
+	/// ```
+u::Color::BLACK)
 ///     .create();
 /// ```
 ///

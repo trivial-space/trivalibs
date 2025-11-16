@@ -414,8 +414,7 @@ impl Painter {
 	}
 
 	fn render_shape(&self, pass: &mut wgpu::RenderPass<'_>, shape_index: usize, layer: Layer) {
-		let l = &self.layers[layer.0];
-		let shape_data = &l.shapes[shape_index];
+		let shape_data = &self.layers[layer.0].shapes[shape_index];
 		let shape = shape_data.shape;
 		let s = &self.shapes[shape.0];
 		let f = &self.forms[s.form.0];
