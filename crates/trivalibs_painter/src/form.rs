@@ -16,12 +16,43 @@ impl Default for FormProps {
 	}
 }
 
-pub(crate) struct FormStorage {
+pub(crate) struct FormGPUBuffers {
 	pub vertex_buffer: wgpu::Buffer,
-	pub index_buffer: Option<wgpu::Buffer>,
+	pub vertex_buffer_max_size: u64,
+	pub vertex_buffer_current_size: u64,
 	pub vertex_count: u32,
+
+	pub index_buffer: Option<wgpu::Buffer>,
+	pub index_buffer_max_size: u64,
+	pub index_buffer_current_size: u64,
 	pub index_count: u32,
+}
+
+pub(crate) struct FormStorage {
+	pub buffers: Vec<FormGPUBuffers>,
+	pub currently_active_buffers: usize,
 	pub props: FormProps,
+}
+
+fn create_form_gpu_buffers(device: &wgpu::Device, vertex_size: u64) -> FormGPUBuffers {
+	let padded_size = get_padded_size(vertex_size);
+	let vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+		label: None,
+		usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+		size: padded_size,
+		mapped_at_creation: false,
+	});
+
+	FormGPUBuffers {
+		vertex_buffer,
+		vertex_buffer_max_size: padded_size,
+		vertex_buffer_current_size: 0,
+		vertex_count: 0,
+		index_buffer: None,
+		index_buffer_max_size: 0,
+		index_buffer_current_size: 0,
+		index_count: 0,
+	}
 }
 
 pub struct FormData<'a, T>
@@ -32,19 +63,19 @@ where
 	pub index_buffer: Option<&'a [u32]>,
 }
 
-pub struct FormBuffers<'a> {
+pub struct FormBuffer<'a> {
 	vertex_buffer: &'a [u8],
 	vertex_count: u32,
 	index_buffer: Option<&'a [u8]>,
 	index_count: u32,
 }
 
-impl<'a, T> Into<FormBuffers<'a>> for FormData<'a, T>
+impl<'a, T> Into<FormBuffer<'a>> for FormData<'a, T>
 where
 	T: bytemuck::Pod + bytemuck::Zeroable,
 {
-	fn into(self) -> FormBuffers<'a> {
-		FormBuffers {
+	fn into(self) -> FormBuffer<'a> {
+		FormBuffer {
 			vertex_buffer: bytemuck::cast_slice(self.vertex_buffer),
 			vertex_count: self.vertex_buffer.len() as u32,
 			index_buffer: self.index_buffer.map(|i| bytemuck::cast_slice(i)),
@@ -53,9 +84,9 @@ where
 	}
 }
 
-impl<'a> Into<FormBuffers<'a>> for &'a BufferedGeometry {
-	fn into(self) -> FormBuffers<'a> {
-		FormBuffers {
+impl<'a> Into<FormBuffer<'a>> for &'a BufferedGeometry {
+	fn into(self) -> FormBuffer<'a> {
+		FormBuffer {
 			vertex_buffer: self.vertex_buffer.as_slice(),
 			vertex_count: self.vertex_count,
 			index_buffer: self.index_buffer.as_deref(),
@@ -64,10 +95,21 @@ impl<'a> Into<FormBuffers<'a>> for &'a BufferedGeometry {
 	}
 }
 
-impl<'a, T: bytemuck::Pod> Into<FormBuffers<'a>> for &'a [T] {
-	fn into(self) -> FormBuffers<'a> {
-		FormBuffers {
+impl<'a, T: bytemuck::Pod> Into<FormBuffer<'a>> for &'a [T] {
+	fn into(self) -> FormBuffer<'a> {
+		FormBuffer {
 			vertex_buffer: bytemuck::cast_slice(self),
+			index_buffer: None,
+			vertex_count: self.len() as u32,
+			index_count: 0,
+		}
+	}
+}
+
+impl<'a, T: bytemuck::Pod> Into<FormBuffer<'a>> for &'a Vec<T> {
+	fn into(self) -> FormBuffer<'a> {
+		FormBuffer {
+			vertex_buffer: bytemuck::cast_slice(self.as_slice()),
 			index_buffer: None,
 			vertex_count: self.len() as u32,
 			index_count: 0,
@@ -79,46 +121,94 @@ impl<'a, T: bytemuck::Pod> Into<FormBuffers<'a>> for &'a [T] {
 pub struct Form(pub(crate) usize);
 
 impl Form {
-	pub fn update<'a>(&self, painter: &mut Painter, buffers: &'a FormBuffers<'a>) {
+	pub fn update_all<'a, I, B>(&self, painter: &mut Painter, buffers: I)
+	where
+		I: IntoIterator<Item = B>,
+		B: Into<FormBuffer<'a>>,
+	{
 		let f = &mut painter.forms[self.0];
+		let buffers: Vec<FormBuffer<'a>> = buffers.into_iter().map(|b| b.into()).collect();
 
-		f.vertex_count = buffers.vertex_count;
-
-		painter
-			.queue
-			.write_buffer(&f.vertex_buffer, 0, &buffers.vertex_buffer);
-
-		if let Some(index_data) = buffers.index_buffer {
-			f.index_count = buffers.index_count;
-
-			let index_buffer = f.index_buffer.get_or_insert(painter.device.create_buffer(
-				&wgpu::BufferDescriptor {
-					label: None,
-					usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-					size: get_padded_size(
-						buffers.index_count as u64 * std::mem::size_of::<u32>() as u64,
-					),
-					mapped_at_creation: false,
-				},
-			));
-
-			painter.queue.write_buffer(index_buffer, 0, &index_data);
+		// Allocate new buffers if we need more than we currently have
+		while f.buffers.len() < buffers.len() {
+			let buf_index = f.buffers.len();
+			let vertex_size = buffers[buf_index].vertex_buffer.len() as u64;
+			f.buffers
+				.push(create_form_gpu_buffers(&painter.device, vertex_size));
 		}
+
+		for (i, buf) in buffers.iter().enumerate() {
+			let f_buf = &mut f.buffers[i];
+
+			// Handle vertex buffer
+			let vertex_size = buf.vertex_buffer.len() as u64;
+			let padded_vertex_size = get_padded_size(vertex_size);
+
+			// If the new data is larger than max_size, recreate the vertex buffer
+			if f_buf.vertex_buffer_max_size < padded_vertex_size {
+				f_buf.vertex_buffer.destroy();
+				f_buf.vertex_buffer = painter.device.create_buffer(&wgpu::BufferDescriptor {
+					label: None,
+					usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+					size: padded_vertex_size,
+					mapped_at_creation: false,
+				});
+				f_buf.vertex_buffer_max_size = padded_vertex_size;
+			}
+
+			f_buf.vertex_count = buf.vertex_count;
+			f_buf.vertex_buffer_current_size = vertex_size;
+
+			painter
+				.queue
+				.write_buffer(&f_buf.vertex_buffer, 0, &buf.vertex_buffer);
+
+			// Handle index buffer
+			if let Some(index_data) = buf.index_buffer {
+				let index_size = index_data.len() as u64;
+				let padded_index_size = get_padded_size(index_size);
+
+				// If buffer doesn't exist yet (lazy init) or new data is larger, (re)create it
+				if f_buf.index_buffer.is_none() || f_buf.index_buffer_max_size < padded_index_size {
+					f_buf.index_buffer.as_ref().map(|b| b.destroy());
+					f_buf.index_buffer =
+						Some(painter.device.create_buffer(&wgpu::BufferDescriptor {
+							label: None,
+							usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+							size: padded_index_size,
+							mapped_at_creation: false,
+						}));
+					f_buf.index_buffer_max_size = padded_index_size;
+				}
+
+				f_buf.index_count = buf.index_count;
+				f_buf.index_buffer_current_size = index_size;
+
+				let index_buffer = f_buf.index_buffer.as_ref().unwrap();
+				painter.queue.write_buffer(index_buffer, 0, &index_data);
+			} else {
+				f_buf.index_count = 0;
+				f_buf.index_buffer_current_size = 0;
+			}
+		}
+
+		// Update the count of buffers that contain valid data
+		f.currently_active_buffers = buffers.len();
 	}
 
-	pub fn new_with_size(painter: &mut Painter, size: u64, props: FormProps) -> Self {
-		let vertex_buffer = painter.device.create_buffer(&wgpu::BufferDescriptor {
-			label: None,
-			usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-			size: get_padded_size(size),
-			mapped_at_creation: false,
-		});
+	pub fn update<'a>(&self, painter: &mut Painter, buffer: impl Into<FormBuffer<'a>>) {
+		self.update_all(painter, vec![buffer.into()]);
+	}
+
+	pub fn new_with_sizes(painter: &mut Painter, sizes: &[u64], props: FormProps) -> Self {
+		let mut buffers = Vec::with_capacity(sizes.len());
+		for size in sizes {
+			buffers.push(create_form_gpu_buffers(&painter.device, *size));
+		}
 
 		let f = FormStorage {
-			vertex_buffer,
-			vertex_count: 0,
-			index_buffer: None,
-			index_count: 0,
+			buffers,
+			currently_active_buffers: 0, // No data yet - will be set by update_all
 			props,
 		};
 
@@ -128,10 +218,14 @@ impl Form {
 		return Form(i);
 	}
 
-	pub fn new<'a>(painter: &mut Painter, buffer: &'a FormBuffers<'a>, props: FormProps) -> Self {
-		let form = Form::new_with_size(painter, buffer.vertex_buffer.len() as u64, props);
+	pub fn new<'a, I, B>(painter: &mut Painter, buffers: I, props: FormProps) -> Self
+	where
+		I: IntoIterator<Item = B>,
+		B: Into<FormBuffer<'a>>,
+	{
+		let form = Form::new_with_sizes(painter, &[], props);
 
-		form.update(painter, buffer);
+		form.update_all(painter, buffers);
 
 		form
 	}
@@ -139,21 +233,52 @@ impl Form {
 
 pub struct FormBuilder<'a, 'b> {
 	painter: &'a mut Painter,
-	buffer: FormBuffers<'b>,
+	buffers: Vec<FormBuffer<'b>>,
+	sizes: Vec<u64>,
 	props: FormProps,
 }
 
 impl<'a, 'b> FormBuilder<'a, 'b> {
-	pub fn new(painter: &'a mut Painter, buffer: impl Into<FormBuffers<'b>>) -> Self {
+	pub fn new(painter: &'a mut Painter) -> Self {
 		FormBuilder {
-			buffer: buffer.into(),
 			painter,
+			buffers: Vec::with_capacity(1),
+			sizes: Vec::with_capacity(1),
 			props: FormProps::default(),
 		}
 	}
 
 	pub fn create(self) -> Form {
-		Form::new(self.painter, &self.buffer, self.props)
+		if self.sizes.len() == 0 {
+			return Form::new(self.painter, self.buffers, self.props);
+		}
+		let f = Form::new_with_sizes(self.painter, &self.sizes, self.props);
+		f.update_all(self.painter, self.buffers);
+		f
+	}
+
+	pub fn with_sizes(mut self, sizes: Vec<u64>) -> Self {
+		self.sizes = sizes;
+		self
+	}
+
+	pub fn with_size(mut self, size: u64) -> Self {
+		self.sizes.push(size);
+		self
+	}
+
+	pub fn with_buffer(mut self, buffer: impl Into<FormBuffer<'b>>) -> Self {
+		self.buffers.push(buffer.into());
+		self
+	}
+
+	pub fn with_buffers<I, B>(mut self, buffers: I) -> Self
+	where
+		I: IntoIterator<Item = B>,
+		B: Into<FormBuffer<'b>>,
+	{
+		self.buffers = buffers.into_iter().map(|b| b.into()).collect();
+		self
 	}
 
 	pub fn with_topology(mut self, topology: wgpu::PrimitiveTopology) -> Self {
