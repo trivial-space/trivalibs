@@ -384,6 +384,78 @@ impl Layer {
 		self.set_layer_bindings(painter, layers);
 	}
 
+	/// Replaces all shapes in the layer with a new list of shapes.
+	///
+	/// This is useful for dynamically changing which shapes are rendered in a layer at runtime.
+	/// The method will prepare bindings for the new shapes and ensure their GPU pipelines exist.
+	/// Pipelines are cached and reused, so adding shapes that share configurations with existing
+	/// shapes is efficient.
+	///
+	/// # Arguments
+	/// * `painter` - The painter instance
+	/// * `shapes` - Vector of Shape instances to render in this layer
+	///
+	/// # Example
+	/// ```
+	/// // Switch from rendering one set of shapes to another
+	/// layer.set_shapes(&mut painter, vec![shape_a, shape_b, shape_c]);
+	/// ```
+	pub fn set_shapes(&self, painter: &mut Painter, shapes: Vec<Shape>) {
+		painter.layers[self.0].shapes = shapes.clone();
+
+		// Prepare bindings for all new shapes
+		// prepare_value_bindings creates GPU bind groups (expensive)
+		// prepare_layer_bindings updates texture descriptors (cheap)
+		for shape in shapes {
+			shape.prepare_value_bindings(painter, *self);
+			shape.prepare_layer_bindings(painter, *self);
+
+			// Ensure pipeline exists for this shape (will reuse cached if available)
+			let key = painter.get_shape_pipeline_key(shape, *self);
+			painter.ensure_shape_pipeline(&key, shape, *self);
+		}
+	}
+
+	/// Adds a single shape to the layer.
+	///
+	/// This is a convenience method for appending a shape to the existing shapes vector.
+	/// If you need to replace all shapes or add multiple shapes at once, use `set_shapes()` instead.
+	///
+	/// # Arguments
+	/// * `painter` - The painter instance
+	/// * `shape` - The Shape to add to this layer
+	///
+	/// # Example
+	/// ```
+	/// // Add a new shape to the layer dynamically
+	/// layer.add_shape(&mut painter, new_shape);
+	/// ```
+	pub fn add_shape(&self, painter: &mut Painter, shape: Shape) {
+		let mut shapes = painter.layers[self.0].shapes.clone();
+		shapes.push(shape);
+		self.set_shapes(painter, shapes);
+	}
+
+	/// Removes a specific shape from the layer.
+	///
+	/// This filters out all occurrences of the given shape from the layer's shape list.
+	/// If the shape appears multiple times, all instances will be removed.
+	///
+	/// # Arguments
+	/// * `painter` - The painter instance
+	/// * `shape` - The Shape to remove from this layer
+	///
+	/// # Example
+	/// ```
+	/// // Remove a shape from the layer dynamically
+	/// layer.remove_shape(&mut painter, old_shape);
+	/// ```
+	pub fn remove_shape(&self, painter: &mut Painter, shape: Shape) {
+		let shapes = painter.layers[self.0].shapes.clone();
+		let filtered_shapes: Vec<Shape> = shapes.into_iter().filter(|s| s.0 != shape.0).collect();
+		self.set_shapes(painter, filtered_shapes);
+	}
+
 	pub fn resize(&mut self, painter: &mut Painter, width: u32, height: u32) {
 		let use_window_size = width == 0 || height == 0;
 		let width = if use_window_size {
