@@ -65,73 +65,50 @@ impl ShapeData {
 		layer_bindings: &[(u32, ValueBinding)],
 		layer_layers: &[(u32, LayerBinding)],
 	) -> Self {
-		// Extract necessary data from storage to avoid cloning non-Clone types
-		let sp = &painter.shapes[shape.0];
-		let shade_idx = sp.shade.0;
-		let value_bindings = sp.bindings.clone();
-		let shape_layers = sp.layers.clone();
-		let instances = sp.instances.clone();
-
-		let sd = &painter.shades[shade_idx];
-		let value_bindings_length = sd.value_bindings_length;
-		let binding_layout = sd.binding_layout;
-		let layer_bindings_length = sd.layer_bindings_length;
-		let layers_layout = sd.layers_layout;
-
-		// Convert slices to Vec for API compatibility
-		let layer_bindings_vec = layer_bindings.to_vec();
-		let layer_layers_vec = layer_layers.to_vec();
-
-		// Prepare value bindings (expensive - creates GPU resources)
-		let bind_groups = BindGroup::values_bind_groups(
-			painter,
-			value_bindings_length,
-			binding_layout,
-			&value_bindings,
-			&instances,
-			&layer_bindings_vec,
-		);
-
-		// Prepare layer bindings (cheap - only descriptors)
-		let layer_bind_group_data = LayerBindGroupData::from_bindings(
-			layer_bindings_length,
-			layers_layout,
-			&shape_layers,
-			&layer_layers_vec,
-		);
-
-		ShapeData {
+		let mut shape_data = ShapeData {
 			shape,
-			bind_groups,
-			layer_bind_group_data,
-		}
+			bind_groups: Vec::new(),
+			layer_bind_group_data: None,
+		};
+
+		// Delegate to private helpers (single source of truth)
+		shape_data.prepare_value_bindings(painter, layer_bindings);
+		shape_data.prepare_layer_bindings(painter, layer_layers);
+
+		shape_data
 	}
 
-	/// Updates bindings for this shape with new layer bindings.
-	pub(crate) fn update_bindings(
+	/// Updates only layer bindings (cheap operation - only descriptors).
+	/// Use this when only layer texture references change, not value bindings.
+	pub(crate) fn update_layer_bindings(
+		&mut self,
+		painter: &Painter,
+		layer_layers: &[(u32, LayerBinding)],
+	) {
+		self.prepare_layer_bindings(painter, layer_layers);
+	}
+
+	/// Prepares value bindings (expensive - creates GPU resources).
+	/// This is the single source of truth for value binding creation.
+	fn prepare_value_bindings(
 		&mut self,
 		painter: &mut Painter,
 		layer_bindings: &[(u32, ValueBinding)],
-		layer_layers: &[(u32, LayerBinding)],
 	) {
 		// Extract necessary data from storage
 		let sp = &painter.shapes[self.shape.0];
 		let shade_idx = sp.shade.0;
 		let value_bindings = sp.bindings.clone();
-		let shape_layers = sp.layers.clone();
 		let instances = sp.instances.clone();
 
 		let sd = &painter.shades[shade_idx];
 		let value_bindings_length = sd.value_bindings_length;
 		let binding_layout = sd.binding_layout;
-		let layer_bindings_length = sd.layer_bindings_length;
-		let layers_layout = sd.layers_layout;
 
-		// Convert slices to Vec for API compatibility
+		// Convert slice to Vec for API compatibility
 		let layer_bindings_vec = layer_bindings.to_vec();
-		let layer_layers_vec = layer_layers.to_vec();
 
-		// Prepare value bindings (expensive - creates GPU resources)
+		// Create GPU bind groups (expensive operation)
 		self.bind_groups = BindGroup::values_bind_groups(
 			painter,
 			value_bindings_length,
@@ -140,8 +117,24 @@ impl ShapeData {
 			&instances,
 			&layer_bindings_vec,
 		);
+	}
 
-		// Prepare layer bindings (cheap - only descriptors)
+	/// Prepares layer bindings (cheap - only descriptors).
+	/// This is the single source of truth for layer binding creation.
+	fn prepare_layer_bindings(&mut self, painter: &Painter, layer_layers: &[(u32, LayerBinding)]) {
+		// Extract necessary data from storage
+		let sp = &painter.shapes[self.shape.0];
+		let shade_idx = sp.shade.0;
+		let shape_layers = sp.layers.clone();
+
+		let sd = &painter.shades[shade_idx];
+		let layer_bindings_length = sd.layer_bindings_length;
+		let layers_layout = sd.layers_layout;
+
+		// Convert slice to Vec for API compatibility
+		let layer_layers_vec = layer_layers.to_vec();
+
+		// Create layer bind group data (cheap operation)
 		self.layer_bind_group_data = LayerBindGroupData::from_bindings(
 			layer_bindings_length,
 			layers_layout,
@@ -167,73 +160,50 @@ impl EffectData {
 		layer_bindings: &[(u32, ValueBinding)],
 		layer_layers: &[(u32, LayerBinding)],
 	) -> Self {
-		// Extract necessary data from storage to avoid cloning non-Clone types
-		let ep = &painter.effects[effect.0];
-		let shade_idx = ep.shade.0;
-		let value_bindings = ep.bindings.clone();
-		let effect_layers = ep.layers.clone();
-		let instances = ep.instances.clone();
-
-		let sd = &painter.shades[shade_idx];
-		let value_bindings_length = sd.value_bindings_length;
-		let binding_layout = sd.binding_layout;
-		let layer_bindings_length = sd.layer_bindings_length;
-		let layers_layout = sd.layers_layout;
-
-		// Convert slices to Vec for API compatibility
-		let layer_bindings_vec = layer_bindings.to_vec();
-		let layer_layers_vec = layer_layers.to_vec();
-
-		// Prepare value bindings (expensive - creates GPU resources)
-		let bind_groups = BindGroup::values_bind_groups(
-			painter,
-			value_bindings_length,
-			binding_layout,
-			&value_bindings,
-			&instances,
-			&layer_bindings_vec,
-		);
-
-		// Prepare layer bindings (cheap - only descriptors)
-		let layer_bind_group_data = LayerBindGroupData::from_bindings(
-			layer_bindings_length,
-			layers_layout,
-			&effect_layers,
-			&layer_layers_vec,
-		);
-
-		EffectData {
+		let mut effect_data = EffectData {
 			effect,
-			bind_groups,
-			layer_bind_group_data,
-		}
+			bind_groups: Vec::new(),
+			layer_bind_group_data: None,
+		};
+
+		// Delegate to private helpers (single source of truth)
+		effect_data.prepare_value_bindings(painter, layer_bindings);
+		effect_data.prepare_layer_bindings(painter, layer_layers);
+
+		effect_data
 	}
 
-	/// Updates bindings for this effect with new layer bindings.
-	pub(crate) fn update_bindings(
+	/// Updates only layer bindings (cheap operation - only descriptors).
+	/// Use this when only layer texture references change, not value bindings.
+	pub(crate) fn update_layer_bindings(
+		&mut self,
+		painter: &Painter,
+		layer_layers: &[(u32, LayerBinding)],
+	) {
+		self.prepare_layer_bindings(painter, layer_layers);
+	}
+
+	/// Prepares value bindings (expensive - creates GPU resources).
+	/// This is the single source of truth for value binding creation.
+	fn prepare_value_bindings(
 		&mut self,
 		painter: &mut Painter,
 		layer_bindings: &[(u32, ValueBinding)],
-		layer_layers: &[(u32, LayerBinding)],
 	) {
 		// Extract necessary data from storage
 		let ep = &painter.effects[self.effect.0];
 		let shade_idx = ep.shade.0;
 		let value_bindings = ep.bindings.clone();
-		let effect_layers = ep.layers.clone();
 		let instances = ep.instances.clone();
 
 		let sd = &painter.shades[shade_idx];
 		let value_bindings_length = sd.value_bindings_length;
 		let binding_layout = sd.binding_layout;
-		let layer_bindings_length = sd.layer_bindings_length;
-		let layers_layout = sd.layers_layout;
 
-		// Convert slices to Vec for API compatibility
+		// Convert slice to Vec for API compatibility
 		let layer_bindings_vec = layer_bindings.to_vec();
-		let layer_layers_vec = layer_layers.to_vec();
 
-		// Prepare value bindings (expensive - creates GPU resources)
+		// Create GPU bind groups (expensive operation)
 		self.bind_groups = BindGroup::values_bind_groups(
 			painter,
 			value_bindings_length,
@@ -242,8 +212,24 @@ impl EffectData {
 			&instances,
 			&layer_bindings_vec,
 		);
+	}
 
-		// Prepare layer bindings (cheap - only descriptors)
+	/// Prepares layer bindings (cheap - only descriptors).
+	/// This is the single source of truth for layer binding creation.
+	fn prepare_layer_bindings(&mut self, painter: &Painter, layer_layers: &[(u32, LayerBinding)]) {
+		// Extract necessary data from storage
+		let ep = &painter.effects[self.effect.0];
+		let shade_idx = ep.shade.0;
+		let effect_layers = ep.layers.clone();
+
+		let sd = &painter.shades[shade_idx];
+		let layer_bindings_length = sd.layer_bindings_length;
+		let layers_layout = sd.layers_layout;
+
+		// Convert slice to Vec for API compatibility
+		let layer_layers_vec = layer_layers.to_vec();
+
+		// Create layer bind group data (cheap operation)
 		self.layer_bind_group_data = LayerBindGroupData::from_bindings(
 			layer_bindings_length,
 			layers_layout,
@@ -558,26 +544,25 @@ impl Layer {
 	/// * `layers` - Vector of (slot_index, LayerBinding) pairs
 	///
 	pub fn set_layer_bindings(&self, painter: &mut Painter, layers: Vec<(u32, LayerBinding)>) {
-		let layer_bindings = painter.layers[self.0].bindings.clone();
 		painter.layers[self.0].layers = layers.clone();
 
-		// Clone the shape_data and effect_data to avoid borrow conflicts
-		let mut shape_data = painter.layers[self.0].shapes.clone();
-		let mut effect_data = painter.layers[self.0].effects.clone();
+		// Clone the shapes and effects to avoid borrow conflicts
+		let mut shapes = painter.layers[self.0].shapes.clone();
+		let mut effects = painter.layers[self.0].effects.clone();
 
-		// Update bindings for all shapes
-		for sd in &mut shape_data {
-			sd.update_bindings(painter, &layer_bindings, &layers);
+		// Update ONLY layer bindings (cheap operation - no GPU resource regeneration)
+		for sd in &mut shapes {
+			sd.update_layer_bindings(painter, &layers);
 		}
 
-		// Update bindings for all effects
-		for ed in &mut effect_data {
-			ed.update_bindings(painter, &layer_bindings, &layers);
+		// Update ONLY layer bindings for effects
+		for ed in &mut effects {
+			ed.update_layer_bindings(painter, &layers);
 		}
 
 		// Write back
-		painter.layers[self.0].shapes = shape_data;
-		painter.layers[self.0].effects = effect_data;
+		painter.layers[self.0].shapes = shapes;
+		painter.layers[self.0].effects = effects;
 	}
 
 	/// Updates a single layer-level binding by slot index.
@@ -751,16 +736,7 @@ impl Layer {
 /// let layer = LayerBuilder::new(painter)
 ///     .with_size(800, 600)
 ///     .with_shape(rectangle)
-///     .with_clear_color(wgps
-	/// * `painter` - The painter instance
-	/// * `shape` - The Shape to remove from this layer
-	///
-	/// # Example
-	/// ```
-	/// // Remove a shape from the layer dynamically
-	/// layer.remove_shape(&mut painter, old_shape);
-	/// ```
-u::Color::BLACK)
+///     .with_clear_color(wgpu::Color::BLACK)
 ///     .create();
 /// ```
 ///
