@@ -21,7 +21,7 @@ struct App {
 	timer: f32,
 }
 
-const POOL_SIZE: usize = 20;
+const POOL_SIZE: usize = 30;
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
@@ -48,13 +48,14 @@ impl CanvasApp<()> for App {
 			let form = p.form(&vertices).create();
 
 			// Create color binding with random color
-			let color = p.bind_const_vec3(rand_vec3());
+			let color = rand_vec3();
+			let color_binding = p.bind_const_vec3(color);
 
 			// Create shape
 			let shape = p
 				.shape(form, shade)
 				.with_bindings(map! {
-					0 => color
+					0 => color_binding
 				})
 				.create();
 
@@ -62,13 +63,7 @@ impl CanvasApp<()> for App {
 
 			println!(
 				"Created shape {}: pos=({:.2}, {:.2}), size={:.2}, color=({:.2}, {:.2}, {:.2})",
-				i,
-				pos.x,
-				pos.y,
-				size,
-				rand_range(0.0, 1.0),
-				rand_range(0.0, 1.0),
-				rand_range(0.0, 1.0)
+				i, pos.x, pos.y, size, color.x, color.y, color.z
 			);
 		}
 
