@@ -117,6 +117,7 @@ impl ShapeData {
 		let sp = &painter.shapes[self.shape.0];
 		let shade_idx = sp.shade.0;
 		let shape_layers = sp.layers.as_slice();
+		let shape_instances = sp.instances.as_slice();
 
 		let sd = &painter.shades[shade_idx];
 		let layer_bindings_length = sd.layer_bindings_length;
@@ -127,6 +128,7 @@ impl ShapeData {
 			layer_bindings_length,
 			layers_layout,
 			shape_layers,
+			shape_instances,
 			layer_layers,
 		);
 	}
@@ -203,6 +205,7 @@ impl EffectData {
 		let ep = &painter.effects[self.effect.0];
 		let shade_idx = ep.shade.0;
 		let effect_layers = ep.layers.clone();
+		let effect_instances = ep.instances.as_slice();
 
 		let sd = &painter.shades[shade_idx];
 		let layer_bindings_length = sd.layer_bindings_length;
@@ -216,6 +219,7 @@ impl EffectData {
 			layer_bindings_length,
 			layers_layout,
 			&effect_layers,
+			effect_instances,
 			&layer_layers_vec,
 		);
 	}

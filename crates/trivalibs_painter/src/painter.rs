@@ -446,17 +446,33 @@ impl Painter {
 		pass.set_pipeline(&pipeline.pipeline);
 
 		// Get bindings from shape_data
-		if let Some(bind_group_data) = &shape_data.layer_bind_group_data {
-			let layer_bind_group = bind_group_data.to_gpu_bind_group(self);
-			pass.set_bind_group(1, &layer_bind_group, &[]);
-		}
-
 		let bind_groups = &shape_data.bind_groups;
-		if bind_groups.is_empty() {
-			draw(pass, None);
+
+		if let Some(layer_bind_group_data) = &shape_data.layer_bind_group_data {
+			if bind_groups.is_empty() {
+				// No instances - single draw with single layer bind group
+				let layer_bind_group = layer_bind_group_data.to_gpu_bind_group(self);
+				pass.set_bind_group(1, &layer_bind_group, &[]);
+				draw(pass, None);
+			} else {
+				// With instances - convert to multiple layer bind groups
+				let layer_bind_groups = layer_bind_group_data.to_gpu_bind_groups(self);
+
+				// Draw each instance with its corresponding layer bind group
+				for (value_bg, layer_bg) in bind_groups.iter().zip(layer_bind_groups.iter()) {
+					pass.set_bind_group(0, &self.bind_groups[value_bg.0].bind_group, &[]);
+					pass.set_bind_group(1, layer_bg, &[]);
+					draw(pass, None);
+				}
+			}
 		} else {
-			for bind_group in bind_groups {
-				draw(pass, Some(bind_group.clone()));
+			// No layer bindings - existing logic
+			if bind_groups.is_empty() {
+				draw(pass, None);
+			} else {
+				for bind_group in bind_groups {
+					draw(pass, Some(bind_group.clone()));
+				}
 			}
 		}
 	}
@@ -507,27 +523,43 @@ impl Painter {
 			pass.set_pipeline(&pipeline.pipeline);
 
 			// Get bindings from effect_data
-			if let Some(bind_group_data) = &effect_data.layer_bind_group_data {
-				let layer_bind_group = if skip_source {
-					bind_group_data.to_gpu_bind_group(self)
-				} else {
-					let binding = if let Some(src_mip_level) = e.src_mip_level {
-						layer.binding_at_mip_level(src_mip_level)
-					} else {
-						layer.binding()
-					};
-					bind_group_data.to_gpu_bind_group_with_first(self, &binding)
-				};
-				pass.set_bind_group(1, &layer_bind_group, &[]);
-			}
-
 			let bind_groups = &effect_data.bind_groups;
-			if bind_groups.is_empty() {
-				pass.draw(0..3, 0..1);
-			} else {
-				for b in bind_groups {
-					pass.set_bind_group(0, &self.bind_groups[b.0].bind_group, &[]);
+
+			if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {
+				if bind_groups.is_empty() {
+					// No instances - single draw with single layer bind group
+					let layer_bind_group = if skip_source {
+						layer_bind_group_data.to_gpu_bind_group(self)
+					} else {
+						let binding = if let Some(src_mip_level) = e.src_mip_level {
+							layer.binding_at_mip_level(src_mip_level)
+						} else {
+							layer.binding()
+						};
+						layer_bind_group_data.to_gpu_bind_group_with_first(self, &binding)
+					};
+					pass.set_bind_group(1, &layer_bind_group, &[]);
 					pass.draw(0..3, 0..1);
+				} else {
+					// With instances - convert to multiple layer bind groups
+					let layer_bind_groups = layer_bind_group_data.to_gpu_bind_groups(self);
+
+					// Draw each instance with its corresponding layer bind group
+					for (value_bg, layer_bg) in bind_groups.iter().zip(layer_bind_groups.iter()) {
+						pass.set_bind_group(0, &self.bind_groups[value_bg.0].bind_group, &[]);
+						pass.set_bind_group(1, layer_bg, &[]);
+						pass.draw(0..3, 0..1);
+					}
+				}
+			} else {
+				// No layer bindings - existing logic
+				if bind_groups.is_empty() {
+					pass.draw(0..3, 0..1);
+				} else {
+					for b in bind_groups {
+						pass.set_bind_group(0, &self.bind_groups[b.0].bind_group, &[]);
+						pass.draw(0..3, 0..1);
+					}
 				}
 			}
 		}

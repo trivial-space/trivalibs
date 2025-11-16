@@ -157,7 +157,7 @@ impl ValuesBindGroupData {
 #[derive(Clone)]
 pub(crate) struct LayerBindGroupData {
 	pub layout: BindGroupLayout,
-	pub data: Vec<LayerBinding>,
+	pub data: Vec<Vec<LayerBinding>>,
 }
 
 impl LayerBindGroupData {
@@ -165,6 +165,7 @@ impl LayerBindGroupData {
 		bindings_length: usize,
 		bind_group_layout: Option<BindGroupLayout>,
 		shape_bindings: &[(u32, LayerBinding)],
+		shape_instances: &[InstanceBinding],
 		layer_bindings: &[(u32, LayerBinding)],
 	) -> Option<Self> {
 		if bindings_length == 0 || bind_group_layout.is_none() {
@@ -183,19 +184,66 @@ impl LayerBindGroupData {
 			binding_map.insert(*i, *u);
 		}
 
-		let mut bindings = binding_map.iter().collect::<Vec<_>>();
-		bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
-		let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
+		if shape_instances.is_empty() {
+			let mut bindings = binding_map.iter().collect::<Vec<_>>();
+			bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
+			let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
 
-		Some(Self {
-			layout,
-			data: bindings,
-		})
+			Some(Self {
+				layout,
+				data: vec![bindings],
+			})
+		} else {
+			let mut instances = Vec::with_capacity(shape_instances.len());
+
+			for instance in shape_instances {
+				for (i, u) in instance.layers.iter() {
+					binding_map.insert(*i, *u);
+				}
+
+				let mut bindings = binding_map.iter().collect::<Vec<_>>();
+				bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
+				let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
+
+				instances.push(bindings);
+			}
+
+			Some(Self {
+				layout,
+				data: instances,
+			})
+		}
+	}
+
+	pub(crate) fn to_gpu_bind_groups(&self, painter: &Painter) -> Vec<wgpu::BindGroup> {
+		self.data
+			.iter()
+			.map(|bindings| {
+				let entries = bindings
+					.iter()
+					.enumerate()
+					.map(|(i, u)| wgpu::BindGroupEntry {
+						binding: i as u32,
+						resource: layer_to_resource(u, painter),
+					})
+					.collect::<Vec<_>>();
+
+				painter
+					.device
+					.create_bind_group(&wgpu::BindGroupDescriptor {
+						label: None,
+						layout: &painter.bind_group_layouts[self.layout.0],
+						entries: &entries,
+					})
+			})
+			.collect::<Vec<_>>()
 	}
 
 	pub(crate) fn to_gpu_bind_group(&self, painter: &Painter) -> wgpu::BindGroup {
 		let entries = self
 			.data
+			.first()
+			.unwrap()
 			.iter()
 			.enumerate()
 			.map(|(i, u)| wgpu::BindGroupEntry {
@@ -219,7 +267,7 @@ impl LayerBindGroupData {
 		first: &LayerBinding,
 	) -> wgpu::BindGroup {
 		let entries = std::iter::once(first)
-			.chain(self.data.iter())
+			.chain(self.data.first().unwrap().iter())
 			.enumerate()
 			.map(|(i, u)| wgpu::BindGroupEntry {
 				binding: i as u32,
