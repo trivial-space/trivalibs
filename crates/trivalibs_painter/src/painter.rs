@@ -415,8 +415,8 @@ impl Painter {
 
 	fn render_shape(&self, pass: &mut wgpu::RenderPass<'_>, shape_index: usize, layer: Layer) {
 		let l = &self.layers[layer.0];
-		let shape_data = l.shape_data.as_ref().unwrap();
-		let shape = shape_data.shapes[shape_index];
+		let shape_data = &l.shapes[shape_index];
+		let shape = shape_data.shape;
 		let s = &self.shapes[shape.0];
 		let f = &self.forms[s.form.0];
 
@@ -446,13 +446,13 @@ impl Painter {
 		let pipeline = &self.pipelines[&pipeline_key];
 		pass.set_pipeline(&pipeline.pipeline);
 
-		// Get bindings from layer's shape_data at the corresponding index
-		if let Some(bind_group_data) = &shape_data.layer_bind_group_data[shape_index] {
+		// Get bindings from shape_data
+		if let Some(bind_group_data) = &shape_data.layer_bind_group_data {
 			let layer_bind_group = bind_group_data.to_gpu_bind_group(self);
 			pass.set_bind_group(1, &layer_bind_group, &[]);
 		}
 
-		let bind_groups = &shape_data.bind_groups[shape_index];
+		let bind_groups = &shape_data.bind_groups;
 		if bind_groups.is_empty() {
 			draw(pass, None);
 		} else {
@@ -469,8 +469,8 @@ impl Painter {
 		skip_source: bool,
 	) -> Result<(), wgpu::SurfaceError> {
 		let l = &self.layers[layer.0];
-		let effect_data = l.effect_data.as_ref().unwrap();
-		let effect = effect_data.effects[effect_index];
+		let effect_data = &l.effects[effect_index];
+		let effect = effect_data.effect;
 		let e = &self.effects[effect.0];
 
 		let view = if let Some(mip_level) = e.dst_mip_level {
@@ -507,8 +507,8 @@ impl Painter {
 			let pipeline = &self.pipelines[&pipeline_key];
 			pass.set_pipeline(&pipeline.pipeline);
 
-			// Get bindings from layer's effect_data at the corresponding index
-			if let Some(bind_group_data) = &effect_data.layer_bind_group_data[effect_index] {
+			// Get bindings from effect_data
+			if let Some(bind_group_data) = &effect_data.layer_bind_group_data {
 				let layer_bind_group = if skip_source {
 					bind_group_data.to_gpu_bind_group(self)
 				} else {
@@ -522,7 +522,7 @@ impl Painter {
 				pass.set_bind_group(1, &layer_bind_group, &[]);
 			}
 
-			let bind_groups = &effect_data.bind_groups[effect_index];
+			let bind_groups = &effect_data.bind_groups;
 			if bind_groups.is_empty() {
 				pass.draw(0..3, 0..1);
 			} else {
@@ -540,8 +540,8 @@ impl Painter {
 
 	pub fn paint(&mut self, layer: Layer) -> Result<(), wgpu::SurfaceError> {
 		let l = &self.layers[layer.0];
-		let shapes_len = l.shape_data.as_ref().map_or(0, |sd| sd.shapes.len());
-		let effects_len = l.effect_data.as_ref().map_or(0, |ed| ed.effects.len());
+		let shapes_len = l.shapes.len();
+		let effects_len = l.effects.len();
 		let has_shapes = shapes_len > 0;
 
 		if has_shapes {
@@ -632,14 +632,13 @@ impl Painter {
 
 		let mut update_mips = true;
 		for i in 0..effects_len {
-			let effect_data = self.layers[layer.0].effect_data.as_ref().unwrap();
-			let effect = effect_data.effects[i];
+			let effect = self.layers[layer.0].effects[i].effect;
 			let e = &self.effects[effect.0];
 
 			let skip_source_tex = i == 0 && !(has_shapes || e.src_mip_level.is_some());
 			self.render_effect(i, layer, skip_source_tex)?;
 
-			if self.effects[effect.0].dst_mip_level.is_none() {
+			if e.dst_mip_level.is_none() {
 				self.layers[layer.0].swap_targets();
 			} else {
 				// If the effect has a mip target, we don't swap the targets.
