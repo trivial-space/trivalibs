@@ -59,7 +59,7 @@ pub(crate) struct ShapeData {
 
 impl ShapeData {
 	/// Creates a new ShapeData with bindings prepared using explicit layer data.
-	pub(crate) fn prepare(
+	pub(crate) fn new(
 		painter: &mut Painter,
 		shape: Shape,
 		layer_bindings: &[(u32, ValueBinding)],
@@ -78,19 +78,9 @@ impl ShapeData {
 		shape_data
 	}
 
-	/// Updates only layer bindings (cheap operation - only descriptors).
-	/// Use this when only layer texture references change, not value bindings.
-	pub(crate) fn update_layer_bindings(
-		&mut self,
-		painter: &Painter,
-		layer_layers: &[(u32, LayerBinding)],
-	) {
-		self.prepare_layer_bindings(painter, layer_layers);
-	}
-
 	/// Prepares value bindings (expensive - creates GPU resources).
 	/// This is the single source of truth for value binding creation.
-	fn prepare_value_bindings(
+	pub(crate) fn prepare_value_bindings(
 		&mut self,
 		painter: &mut Painter,
 		layer_bindings: &[(u32, ValueBinding)],
@@ -121,7 +111,11 @@ impl ShapeData {
 
 	/// Prepares layer bindings (cheap - only descriptors).
 	/// This is the single source of truth for layer binding creation.
-	fn prepare_layer_bindings(&mut self, painter: &Painter, layer_layers: &[(u32, LayerBinding)]) {
+	pub(crate) fn prepare_layer_bindings(
+		&mut self,
+		painter: &Painter,
+		layer_layers: &[(u32, LayerBinding)],
+	) {
 		// Extract necessary data from storage
 		let sp = &painter.shapes[self.shape.0];
 		let shade_idx = sp.shade.0;
@@ -154,7 +148,7 @@ pub(crate) struct EffectData {
 
 impl EffectData {
 	/// Creates a new EffectData with bindings prepared using explicit layer data.
-	pub(crate) fn prepare(
+	pub(crate) fn new(
 		painter: &mut Painter,
 		effect: Effect,
 		layer_bindings: &[(u32, ValueBinding)],
@@ -173,19 +167,9 @@ impl EffectData {
 		effect_data
 	}
 
-	/// Updates only layer bindings (cheap operation - only descriptors).
-	/// Use this when only layer texture references change, not value bindings.
-	pub(crate) fn update_layer_bindings(
-		&mut self,
-		painter: &Painter,
-		layer_layers: &[(u32, LayerBinding)],
-	) {
-		self.prepare_layer_bindings(painter, layer_layers);
-	}
-
 	/// Prepares value bindings (expensive - creates GPU resources).
 	/// This is the single source of truth for value binding creation.
-	fn prepare_value_bindings(
+	pub(crate) fn prepare_value_bindings(
 		&mut self,
 		painter: &mut Painter,
 		layer_bindings: &[(u32, ValueBinding)],
@@ -216,7 +200,11 @@ impl EffectData {
 
 	/// Prepares layer bindings (cheap - only descriptors).
 	/// This is the single source of truth for layer binding creation.
-	fn prepare_layer_bindings(&mut self, painter: &Painter, layer_layers: &[(u32, LayerBinding)]) {
+	pub(crate) fn prepare_layer_bindings(
+		&mut self,
+		painter: &Painter,
+		layer_layers: &[(u32, LayerBinding)],
+	) {
 		// Extract necessary data from storage
 		let ep = &painter.effects[self.effect.0];
 		let shade_idx = ep.shade.0;
@@ -423,14 +411,14 @@ impl Layer {
 		let shape_data: Vec<ShapeData> = props
 			.shapes
 			.into_iter()
-			.map(|shape| ShapeData::prepare(painter, shape, &layer_bindings, &layer_layers))
+			.map(|shape| ShapeData::new(painter, shape, &layer_bindings, &layer_layers))
 			.collect();
 
 		let effects_for_mip_check = props.effects.clone();
 		let effect_data: Vec<EffectData> = props
 			.effects
 			.into_iter()
-			.map(|effect| EffectData::prepare(painter, effect, &layer_bindings, &layer_layers))
+			.map(|effect| EffectData::new(painter, effect, &layer_bindings, &layer_layers))
 			.collect();
 
 		let storage = LayerStorage {
@@ -552,12 +540,12 @@ impl Layer {
 
 		// Update ONLY layer bindings (cheap operation - no GPU resource regeneration)
 		for sd in &mut shapes {
-			sd.update_layer_bindings(painter, &layers);
+			sd.prepare_layer_bindings(painter, &layers);
 		}
 
 		// Update ONLY layer bindings for effects
 		for ed in &mut effects {
-			ed.update_layer_bindings(painter, &layers);
+			ed.prepare_layer_bindings(painter, &layers);
 		}
 
 		// Write back
@@ -603,7 +591,7 @@ impl Layer {
 
 		painter.layers[self.0].shapes = shapes
 			.iter()
-			.map(|&shape| ShapeData::prepare(painter, shape, &layer_bindings, &layer_layers))
+			.map(|&shape| ShapeData::new(painter, shape, &layer_bindings, &layer_layers))
 			.collect();
 
 		// Ensure pipelines exist for all shapes (will reuse cached if available)
@@ -622,7 +610,7 @@ impl Layer {
 		let layer_bindings = painter.layers[self.0].bindings.clone();
 		let layer_layers = painter.layers[self.0].layers.clone();
 
-		let shape_data = ShapeData::prepare(painter, shape, &layer_bindings, &layer_layers);
+		let shape_data = ShapeData::new(painter, shape, &layer_bindings, &layer_layers);
 		painter.layers[self.0].shapes.push(shape_data);
 
 		// Ensure pipeline exists for this shape
