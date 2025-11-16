@@ -1,7 +1,7 @@
 use crate::{
+	Painter,
 	binding::{BindingLayout, InstanceBinding, LayerBinding, LayerLayout, ValueBinding},
 	texture::TexViewKey,
-	Painter,
 };
 use std::collections::btree_map;
 
@@ -78,9 +78,9 @@ impl ValuesBindGroupData {
 	pub(crate) fn from_bindings(
 		bindings_length: usize,
 		bind_group_layout: Option<BindGroupLayout>,
-		shape_bindings: &Vec<(u32, ValueBinding)>,
-		shape_instances: &Vec<InstanceBinding>,
-		layer_bindings: &Vec<(u32, ValueBinding)>,
+		shape_bindings: &[(u32, ValueBinding)],
+		shape_instances: &[InstanceBinding],
+		layer_bindings: &[(u32, ValueBinding)],
 	) -> Option<Self> {
 		if bindings_length == 0 || bind_group_layout.is_none() {
 			return None;
@@ -164,8 +164,8 @@ impl LayerBindGroupData {
 	pub(crate) fn from_bindings(
 		bindings_length: usize,
 		bind_group_layout: Option<BindGroupLayout>,
-		shape_bindings: &Vec<(u32, LayerBinding)>,
-		layer_bindings: &Vec<(u32, LayerBinding)>,
+		shape_bindings: &[(u32, LayerBinding)],
+		layer_bindings: &[(u32, LayerBinding)],
 	) -> Option<Self> {
 		if bindings_length == 0 || bind_group_layout.is_none() {
 			return None;
@@ -312,9 +312,9 @@ impl BindGroup {
 		painter: &mut Painter,
 		bindings_length: usize,
 		bind_group_layout: Option<BindGroupLayout>,
-		shape_bindings: &Vec<(u32, ValueBinding)>,
-		shape_instances: &Vec<InstanceBinding>,
-		layer_bindings: &Vec<(u32, ValueBinding)>,
+		shape_bindings: &[(u32, ValueBinding)],
+		shape_instances: &[InstanceBinding],
+		layer_bindings: &[(u32, ValueBinding)],
 	) -> Vec<Self> {
 		let data = ValuesBindGroupData::from_bindings(
 			bindings_length,

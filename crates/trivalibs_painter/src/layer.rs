@@ -95,9 +95,6 @@ impl ShapeData {
 		let value_bindings_length = sd.value_bindings_length;
 		let binding_layout = sd.binding_layout;
 
-		// Convert slice to Vec for API compatibility
-		let layer_bindings_vec = layer_bindings.to_vec();
-
 		// Create GPU bind groups (expensive operation)
 		self.bind_groups = BindGroup::values_bind_groups(
 			painter,
@@ -105,7 +102,7 @@ impl ShapeData {
 			binding_layout,
 			&value_bindings,
 			&instances,
-			&layer_bindings_vec,
+			layer_bindings,
 		);
 	}
 
@@ -119,21 +116,18 @@ impl ShapeData {
 		// Extract necessary data from storage
 		let sp = &painter.shapes[self.shape.0];
 		let shade_idx = sp.shade.0;
-		let shape_layers = sp.layers.clone();
+		let shape_layers = sp.layers.as_slice();
 
 		let sd = &painter.shades[shade_idx];
 		let layer_bindings_length = sd.layer_bindings_length;
 		let layers_layout = sd.layers_layout;
 
-		// Convert slice to Vec for API compatibility
-		let layer_layers_vec = layer_layers.to_vec();
-
 		// Create layer bind group data (cheap operation)
 		self.layer_bind_group_data = LayerBindGroupData::from_bindings(
 			layer_bindings_length,
 			layers_layout,
-			&shape_layers,
-			&layer_layers_vec,
+			shape_layers,
+			layer_layers,
 		);
 	}
 }
@@ -405,20 +399,16 @@ impl Layer {
 			formats.push(format);
 		}
 
-		let layer_bindings = props.bindings.clone();
-		let layer_layers = props.layers.clone();
-
 		let shape_data: Vec<ShapeData> = props
 			.shapes
 			.into_iter()
-			.map(|shape| ShapeData::new(painter, shape, &layer_bindings, &layer_layers))
+			.map(|shape| ShapeData::new(painter, shape, &props.bindings, &props.layers))
 			.collect();
 
-		let effects_for_mip_check = props.effects.clone();
 		let effect_data: Vec<EffectData> = props
 			.effects
-			.into_iter()
-			.map(|effect| EffectData::new(painter, effect, &layer_bindings, &layer_layers))
+			.iter()
+			.map(|effect| EffectData::new(painter, *effect, &props.bindings, &props.layers))
 			.collect();
 
 		let storage = LayerStorage {
@@ -436,17 +426,14 @@ impl Layer {
 			current_target: 0,
 			texture_count,
 			is_multi_target,
-			bindings: layer_bindings,
-			layers: layer_layers,
+			bindings: props.bindings,
+			layers: props.layers,
 			mips: props.mips,
 		};
 
 		painter.layers.push(storage);
 
-		if effects_for_mip_check
-			.iter()
-			.any(|e| e.has_mip_target(painter))
-		{
+		if props.effects.iter().any(|e| e.has_mip_target(painter)) {
 			let textures = painter.layers[layer.0].target_textures.clone();
 			for t in textures {
 				t.prepare_mip_level_views(painter);
