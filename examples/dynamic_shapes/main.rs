@@ -133,7 +133,6 @@ impl CanvasApp<()> for App {
 					..default()
 				},
 			])
-			// .with_layers(vec![(0, layer1.binding())])
 			.with_blend_state(wgpu::BlendState::ALPHA_BLENDING)
 			.create();
 
