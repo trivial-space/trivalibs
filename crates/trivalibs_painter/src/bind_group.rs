@@ -75,6 +75,22 @@ pub(crate) struct ValuesBindGroupData {
 }
 
 impl ValuesBindGroupData {
+	/// Creates ValueBindGroupData from layer, shape, and instance bindings.
+	///
+	/// # Binding Override Rules
+	/// Bindings follow this priority hierarchy (higher overrides lower):
+	/// 1. Layer bindings (lowest priority)
+	/// 2. Shape/Effect bindings (override layer)
+	/// 3. Instance bindings (highest priority, override shape/effect)
+	///
+	/// # Instance Optimization
+	/// - If no instances exist OR all instances have empty value bindings:
+	///   Returns a single bind group with layer+shape bindings only
+	/// - If any instance has value bindings:
+	///   Returns per-instance bind groups (one per instance)
+	///
+	/// This allows the render loop to optimize by only iterating instances
+	/// when their value bindings actually vary.
 	pub(crate) fn from_bindings(
 		bindings_length: usize,
 		bind_group_layout: Option<BindGroupLayout>,
@@ -88,6 +104,7 @@ impl ValuesBindGroupData {
 
 		let layout = bind_group_layout.unwrap();
 
+		// Build base binding map from layer and shape bindings (shape overrides layer)
 		let mut binding_map = btree_map::BTreeMap::new();
 
 		for (i, u) in layer_bindings.iter() {
@@ -98,7 +115,12 @@ impl ValuesBindGroupData {
 			binding_map.insert(*i, *u);
 		}
 
-		if shape_instances.is_empty() {
+		// Check if any instance has value bindings
+		let has_instance_values = shape_instances.iter().any(|inst| !inst.bindings.is_empty());
+
+		if shape_instances.is_empty() || !has_instance_values {
+			// No instances or all instances have empty value bindings
+			// Return single bind group with base (layer+shape) bindings
 			let mut bindings = binding_map.iter().collect::<Vec<_>>();
 			bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
 			let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
@@ -108,14 +130,18 @@ impl ValuesBindGroupData {
 				data: vec![bindings],
 			})
 		} else {
+			// At least one instance has value bindings
+			// Create per-instance bind groups (instance bindings override shape/layer)
 			let mut instances = Vec::with_capacity(shape_instances.len());
 
 			for instance in shape_instances {
+				let mut instance_map = binding_map.clone();
+
 				for (i, u) in instance.bindings.iter() {
-					binding_map.insert(*i, *u);
+					instance_map.insert(*i, *u);
 				}
 
-				let mut bindings = binding_map.iter().collect::<Vec<_>>();
+				let mut bindings = instance_map.iter().collect::<Vec<_>>();
 				bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
 				let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
 
@@ -161,6 +187,22 @@ pub(crate) struct LayerBindGroupData {
 }
 
 impl LayerBindGroupData {
+	/// Creates LayerBindGroupData from layer, shape, and instance bindings.
+	///
+	/// # Binding Override Rules
+	/// Bindings follow this priority hierarchy (higher overrides lower):
+	/// 1. Layer bindings (lowest priority)
+	/// 2. Shape/Effect bindings (override layer)
+	/// 3. Instance bindings (highest priority, override shape/effect)
+	///
+	/// # Instance Optimization
+	/// - If no instances exist OR all instances have empty layer bindings:
+	///   Returns a single bind group with layer+shape bindings only
+	/// - If any instance has layer bindings:
+	///   Returns per-instance bind groups (one per instance)
+	///
+	/// This allows the render loop to optimize by only iterating instances
+	/// when their layer bindings actually vary.
 	pub(crate) fn from_bindings(
 		bindings_length: usize,
 		bind_group_layout: Option<BindGroupLayout>,
@@ -174,6 +216,7 @@ impl LayerBindGroupData {
 
 		let layout = bind_group_layout.unwrap();
 
+		// Build base binding map from layer and shape bindings (shape overrides layer)
 		let mut binding_map = btree_map::BTreeMap::new();
 
 		for (i, u) in layer_bindings.iter() {
@@ -184,7 +227,12 @@ impl LayerBindGroupData {
 			binding_map.insert(*i, *u);
 		}
 
-		if shape_instances.is_empty() {
+		// Check if any instance has layer bindings
+		let has_instance_layers = shape_instances.iter().any(|inst| !inst.layers.is_empty());
+
+		if shape_instances.is_empty() || !has_instance_layers {
+			// No instances or all instances have empty layer bindings
+			// Return single bind group with base (layer+shape) bindings
 			let mut bindings = binding_map.iter().collect::<Vec<_>>();
 			bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
 			let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
@@ -194,14 +242,18 @@ impl LayerBindGroupData {
 				data: vec![bindings],
 			})
 		} else {
+			// At least one instance has layer bindings
+			// Create per-instance bind groups (instance bindings override shape/layer)
 			let mut instances = Vec::with_capacity(shape_instances.len());
 
 			for instance in shape_instances {
+				let mut instance_map = binding_map.clone();
+
 				for (i, u) in instance.layers.iter() {
-					binding_map.insert(*i, *u);
+					instance_map.insert(*i, *u);
 				}
 
-				let mut bindings = binding_map.iter().collect::<Vec<_>>();
+				let mut bindings = instance_map.iter().collect::<Vec<_>>();
 				bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
 				let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
 
