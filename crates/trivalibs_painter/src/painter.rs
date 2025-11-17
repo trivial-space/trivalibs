@@ -1,6 +1,6 @@
 use crate::{
-	bind_group::{BindGroup, BindGroupLayout, BindGroupStorage},
-	binding::{BindingBuffer, Mat3U, ValueBinding, Vec3U},
+	bind_group::{BindGroup, BindGroupLayout, BindGroupStorage, LayerBindGroupData},
+	binding::{BindingBuffer, LayerBinding, Mat3U, ValueBinding, Vec3U},
 	effect::{Effect, EffectBuilder, EffectStorage},
 	form::{Form, FormBuffer, FormBuilder, FormStorage},
 	layer::{Layer, LayerBuilder, LayerStorage, SingleEffectLayerBuilder},
@@ -524,6 +524,32 @@ impl Painter {
 		}
 	}
 
+	/// Helper to create a single layer bind group, optionally prepending the source binding.
+	fn create_layer_bind_group(
+		&self,
+		layer_bind_group_data: &LayerBindGroupData,
+		source_binding: Option<&LayerBinding>,
+	) -> wgpu::BindGroup {
+		if let Some(binding) = source_binding {
+			layer_bind_group_data.to_gpu_bind_group_with_first(self, binding)
+		} else {
+			layer_bind_group_data.to_gpu_bind_group(self)
+		}
+	}
+
+	/// Helper to create multiple layer bind groups, optionally prepending the source binding to each.
+	fn create_layer_bind_groups(
+		&self,
+		layer_bind_group_data: &LayerBindGroupData,
+		source_binding: Option<&LayerBinding>,
+	) -> Vec<wgpu::BindGroup> {
+		if let Some(binding) = source_binding {
+			layer_bind_group_data.to_gpu_bind_groups_with_first(self, binding)
+		} else {
+			layer_bind_group_data.to_gpu_bind_groups(self)
+		}
+	}
+
 	/// Renders an effect with optimized instance handling.
 	///
 	/// # Instance Rendering Rules
@@ -592,22 +618,27 @@ impl Painter {
 				.unwrap_or(0);
 			let value_data_len = bind_groups.len();
 
+			// Pre-compute source binding if needed (avoids duplicate computation in all cases)
+			let source_binding = if !skip_source {
+				Some(if let Some(src_mip_level) = e.src_mip_level {
+					layer.binding_at_mip_level(src_mip_level)
+				} else {
+					layer.binding()
+				})
+			} else {
+				None
+			};
+
 			// Determine instance rendering strategy based on which bindings vary
 			match (value_data_len <= 1, layer_data_len <= 1) {
 				(true, true) => {
 					// Case 1: No instances - both bindings ≤ 1
 					// Set both bind groups once and do single draw
 					if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {
-						let layer_bind_group = if skip_source {
-							layer_bind_group_data.to_gpu_bind_group(self)
-						} else {
-							let binding = if let Some(src_mip_level) = e.src_mip_level {
-								layer.binding_at_mip_level(src_mip_level)
-							} else {
-								layer.binding()
-							};
-							layer_bind_group_data.to_gpu_bind_group_with_first(self, &binding)
-						};
+						let layer_bind_group = self.create_layer_bind_group(
+							layer_bind_group_data,
+							source_binding.as_ref(),
+						);
 						pass.set_bind_group(1, &layer_bind_group, &[]);
 					}
 
@@ -620,16 +651,10 @@ impl Painter {
 					// Case 2: Only value bindings vary (values > 1, layers ≤ 1)
 					// Set layer bindings once, iterate through value bindings
 					if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {
-						let layer_bind_group = if skip_source {
-							layer_bind_group_data.to_gpu_bind_group(self)
-						} else {
-							let binding = if let Some(src_mip_level) = e.src_mip_level {
-								layer.binding_at_mip_level(src_mip_level)
-							} else {
-								layer.binding()
-							};
-							layer_bind_group_data.to_gpu_bind_group_with_first(self, &binding)
-						};
+						let layer_bind_group = self.create_layer_bind_group(
+							layer_bind_group_data,
+							source_binding.as_ref(),
+						);
 						pass.set_bind_group(1, &layer_bind_group, &[]);
 					}
 
@@ -646,7 +671,10 @@ impl Painter {
 					}
 
 					if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {
-						let layer_bind_groups = layer_bind_group_data.to_gpu_bind_groups(self);
+						let layer_bind_groups = self.create_layer_bind_groups(
+							layer_bind_group_data,
+							source_binding.as_ref(),
+						);
 						for layer_bg in layer_bind_groups {
 							pass.set_bind_group(1, &layer_bg, &[]);
 							pass.draw(0..3, 0..1);
@@ -659,7 +687,10 @@ impl Painter {
 					// Case 4: Both bindings vary (both > 1)
 					// Iterate through all instances, setting both bind groups per draw
 					if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {
-						let layer_bind_groups = layer_bind_group_data.to_gpu_bind_groups(self);
+						let layer_bind_groups = self.create_layer_bind_groups(
+							layer_bind_group_data,
+							source_binding.as_ref(),
+						);
 
 						for (value_bg, layer_bg) in bind_groups.iter().zip(layer_bind_groups.iter())
 						{

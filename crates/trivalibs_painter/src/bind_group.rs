@@ -75,22 +75,6 @@ pub(crate) struct ValuesBindGroupData {
 }
 
 impl ValuesBindGroupData {
-	/// Creates ValueBindGroupData from layer, shape, and instance bindings.
-	///
-	/// # Binding Override Rules
-	/// Bindings follow this priority hierarchy (higher overrides lower):
-	/// 1. Layer bindings (lowest priority)
-	/// 2. Shape/Effect bindings (override layer)
-	/// 3. Instance bindings (highest priority, override shape/effect)
-	///
-	/// # Instance Optimization
-	/// - If no instances exist OR all instances have empty value bindings:
-	///   Returns a single bind group with layer+shape bindings only
-	/// - If any instance has value bindings:
-	///   Returns per-instance bind groups (one per instance)
-	///
-	/// This allows the render loop to optimize by only iterating instances
-	/// when their value bindings actually vary.
 	pub(crate) fn from_bindings(
 		bindings_length: usize,
 		bind_group_layout: Option<BindGroupLayout>,
@@ -187,22 +171,35 @@ pub(crate) struct LayerBindGroupData {
 }
 
 impl LayerBindGroupData {
-	/// Creates LayerBindGroupData from layer, shape, and instance bindings.
-	///
-	/// # Binding Override Rules
-	/// Bindings follow this priority hierarchy (higher overrides lower):
-	/// 1. Layer bindings (lowest priority)
-	/// 2. Shape/Effect bindings (override layer)
-	/// 3. Instance bindings (highest priority, override shape/effect)
-	///
-	/// # Instance Optimization
-	/// - If no instances exist OR all instances have empty layer bindings:
-	///   Returns a single bind group with layer+shape bindings only
-	/// - If any instance has layer bindings:
-	///   Returns per-instance bind groups (one per instance)
-	///
-	/// This allows the render loop to optimize by only iterating instances
-	/// when their layer bindings actually vary.
+	/// Helper function to create bind group entries from an iterator of LayerBindings
+	fn create_layer_entries<'a>(
+		bindings: impl Iterator<Item = &'a LayerBinding>,
+		painter: &'a Painter,
+	) -> Vec<wgpu::BindGroupEntry<'a>> {
+		bindings
+			.enumerate()
+			.map(|(i, u)| wgpu::BindGroupEntry {
+				binding: i as u32,
+				resource: layer_to_resource(u, painter),
+			})
+			.collect()
+	}
+
+	/// Helper function to create a bind group from entries
+	fn create_bind_group_from_entries<'a>(
+		painter: &'a Painter,
+		layout: &BindGroupLayout,
+		entries: &'a [wgpu::BindGroupEntry<'a>],
+	) -> wgpu::BindGroup {
+		painter
+			.device
+			.create_bind_group(&wgpu::BindGroupDescriptor {
+				label: None,
+				layout: &painter.bind_group_layouts[layout.0],
+				entries,
+			})
+	}
+
 	pub(crate) fn from_bindings(
 		bindings_length: usize,
 		bind_group_layout: Option<BindGroupLayout>,
@@ -271,46 +268,15 @@ impl LayerBindGroupData {
 		self.data
 			.iter()
 			.map(|bindings| {
-				let entries = bindings
-					.iter()
-					.enumerate()
-					.map(|(i, u)| wgpu::BindGroupEntry {
-						binding: i as u32,
-						resource: layer_to_resource(u, painter),
-					})
-					.collect::<Vec<_>>();
-
-				painter
-					.device
-					.create_bind_group(&wgpu::BindGroupDescriptor {
-						label: None,
-						layout: &painter.bind_group_layouts[self.layout.0],
-						entries: &entries,
-					})
+				let entries = Self::create_layer_entries(bindings.iter(), painter);
+				Self::create_bind_group_from_entries(painter, &self.layout, &entries)
 			})
-			.collect::<Vec<_>>()
+			.collect()
 	}
 
 	pub(crate) fn to_gpu_bind_group(&self, painter: &Painter) -> wgpu::BindGroup {
-		let entries = self
-			.data
-			.first()
-			.unwrap()
-			.iter()
-			.enumerate()
-			.map(|(i, u)| wgpu::BindGroupEntry {
-				binding: i as u32,
-				resource: layer_to_resource(u, painter),
-			})
-			.collect::<Vec<_>>();
-
-		painter
-			.device
-			.create_bind_group(&wgpu::BindGroupDescriptor {
-				label: None,
-				layout: &painter.bind_group_layouts[self.layout.0],
-				entries: &entries,
-			})
+		let entries = Self::create_layer_entries(self.data.first().unwrap().iter(), painter);
+		Self::create_bind_group_from_entries(painter, &self.layout, &entries)
 	}
 
 	pub(crate) fn to_gpu_bind_group_with_first(
@@ -318,22 +284,31 @@ impl LayerBindGroupData {
 		painter: &Painter,
 		first: &LayerBinding,
 	) -> wgpu::BindGroup {
-		let entries = std::iter::once(first)
-			.chain(self.data.first().unwrap().iter())
-			.enumerate()
-			.map(|(i, u)| wgpu::BindGroupEntry {
-				binding: i as u32,
-				resource: layer_to_resource(u, painter),
-			})
-			.collect::<Vec<_>>();
+		let entries = Self::create_layer_entries(
+			std::iter::once(first).chain(self.data.first().unwrap().iter()),
+			painter,
+		);
+		Self::create_bind_group_from_entries(painter, &self.layout, &entries)
+	}
 
-		painter
-			.device
-			.create_bind_group(&wgpu::BindGroupDescriptor {
-				label: None,
-				layout: &painter.bind_group_layouts[self.layout.0],
-				entries: &entries,
+	/// Creates multiple bind groups (one per instance), each with the first binding prepended.
+	/// Used for effect rendering with instances where the source texture needs to be inserted
+	/// as the first binding for each instance.
+	pub(crate) fn to_gpu_bind_groups_with_first(
+		&self,
+		painter: &Painter,
+		first: &LayerBinding,
+	) -> Vec<wgpu::BindGroup> {
+		self.data
+			.iter()
+			.map(|bindings| {
+				let entries = Self::create_layer_entries(
+					std::iter::once(first).chain(bindings.iter()),
+					painter,
+				);
+				Self::create_bind_group_from_entries(painter, &self.layout, &entries)
 			})
+			.collect()
 	}
 }
 
