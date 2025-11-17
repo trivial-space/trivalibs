@@ -1,9 +1,11 @@
 use crate::{
-	bind_group::{BindGroup, BindGroupLayout, BindGroupStorage},
-	binding::{BindingBuffer, Mat3U, ValueBinding, Vec3U},
+	bind_group::{BindGroup, BindGroupLayout, BindGroupStorage, LayerBindGroupData},
+	binding::{BindingBuffer, LayerBinding, Mat3U, ValueBinding, Vec3U},
 	effect::{Effect, EffectBuilder, EffectStorage},
 	form::{Form, FormBuffer, FormBuilder, FormStorage},
-	layer::{Layer, LayerBuilder, LayerStorage, SingleEffectLayerBuilder},
+	layer::{
+		InstanceRenderingStrategy, Layer, LayerBuilder, LayerStorage, SingleEffectLayerBuilder,
+	},
 	pipeline::PipelineStorage,
 	prelude::{BINDING_LAYER_FRAG, BINDING_SAMPLER_FRAG},
 	sampler::{Sampler, SamplerBuilder, SamplerProps},
@@ -413,7 +415,23 @@ impl Painter {
 		}
 	}
 
-	fn render_shape(&self, pass: &mut wgpu::RenderPass<'_>, shape: Shape, layer: Layer) {
+	/// Renders a shape with optimized instance handling.
+	///
+	/// # Instance Rendering Rules
+	/// Based on the lengths of bind_groups (value bindings) and layer_bind_group_data (layer bindings):
+	///
+	/// 1. **No instances** (both ≤ 1): Set bindings once, single draw call
+	/// 2. **Only value bindings vary** (values > 1, layers ≤ 1):
+	///    Set layer bindings once, iterate through value bindings
+	/// 3. **Only layer bindings vary** (layers > 1, values ≤ 1):
+	///    Set value bindings once, iterate through layer bindings
+	/// 4. **Both vary** (both > 1):
+	///    Iterate through all instances, setting both bind groups per draw
+	///
+	/// This respects the override hierarchy: Layer → Shape → Instance
+	fn render_shape(&self, pass: &mut wgpu::RenderPass<'_>, shape_index: usize, layer: Layer) {
+		let shape_data = &self.layers[layer.0].shapes[shape_index];
+		let shape = shape_data.shape;
 		let s = &self.shapes[shape.0];
 		let f = &self.forms[s.form.0];
 
@@ -443,28 +461,115 @@ impl Painter {
 		let pipeline = &self.pipelines[&pipeline_key];
 		pass.set_pipeline(&pipeline.pipeline);
 
-		if let Some(bind_group) = s.layer_bind_group_data.as_ref() {
-			let layer_bind_group = bind_group.to_gpu_bind_group(self);
-			pass.set_bind_group(1, &layer_bind_group, &[]);
-		}
+		// Get bindings from shape_data
+		let bind_groups = &shape_data.bind_groups;
 
-		if s.bind_groups.is_empty() {
-			draw(pass, None);
-		} else {
-			for bind_group in &s.bind_groups {
-				draw(pass, Some(bind_group.clone()));
+		// Use pre-computed rendering strategy
+		match shape_data.rendering_strategy {
+			InstanceRenderingStrategy::NoInstances => {
+				// Case 1: No instances - both bindings ≤ 1
+				// Set both bind groups once and do single draw
+				if let Some(layer_bind_group_data) = &shape_data.layer_bind_group_data {
+					let layer_bind_group = layer_bind_group_data.to_gpu_bind_group(self);
+					pass.set_bind_group(1, &layer_bind_group, &[]);
+				}
+
+				let value_binding = bind_groups.first().copied();
+				draw(pass, value_binding);
+			}
+			InstanceRenderingStrategy::ValueBindingsVary => {
+				// Case 2: Only value bindings vary (values > 1, layers ≤ 1)
+				// Set layer bindings once, iterate through value bindings
+				if let Some(layer_bind_group_data) = &shape_data.layer_bind_group_data {
+					let layer_bind_group = layer_bind_group_data.to_gpu_bind_group(self);
+					pass.set_bind_group(1, &layer_bind_group, &[]);
+				}
+
+				for value_bg in bind_groups {
+					draw(pass, Some(*value_bg));
+				}
+			}
+			InstanceRenderingStrategy::LayerBindingsVary => {
+				// Case 3: Only layer bindings vary (layers > 1, values ≤ 1)
+				// Set value bindings once, iterate through layer bindings
+				if let Some(value_bg) = bind_groups.first() {
+					pass.set_bind_group(0, &self.bind_groups[value_bg.0].bind_group, &[]);
+				}
+
+				if let Some(layer_bind_group_data) = &shape_data.layer_bind_group_data {
+					let layer_bind_groups = layer_bind_group_data.to_gpu_bind_groups(self);
+					for layer_bg in layer_bind_groups {
+						pass.set_bind_group(1, &layer_bg, &[]);
+						draw(pass, None);
+					}
+				}
+			}
+			InstanceRenderingStrategy::BothBindingsVary => {
+				// Case 4: Both bindings vary (both > 1)
+				// Iterate through all instances, setting both bind groups per draw
+				if let Some(layer_bind_group_data) = &shape_data.layer_bind_group_data {
+					let layer_bind_groups = layer_bind_group_data.to_gpu_bind_groups(self);
+
+					for (value_bg, layer_bg) in bind_groups.iter().zip(layer_bind_groups.iter()) {
+						pass.set_bind_group(0, &self.bind_groups[value_bg.0].bind_group, &[]);
+						pass.set_bind_group(1, layer_bg, &[]);
+						draw(pass, None);
+					}
+				}
 			}
 		}
 	}
 
+	/// Helper to create a single layer bind group, optionally prepending the source binding.
+	fn create_layer_bind_group(
+		&self,
+		layer_bind_group_data: &LayerBindGroupData,
+		source_binding: Option<&LayerBinding>,
+	) -> wgpu::BindGroup {
+		if let Some(binding) = source_binding {
+			layer_bind_group_data.to_gpu_bind_group_with_first(self, binding)
+		} else {
+			layer_bind_group_data.to_gpu_bind_group(self)
+		}
+	}
+
+	/// Helper to create multiple layer bind groups, optionally prepending the source binding to each.
+	fn create_layer_bind_groups(
+		&self,
+		layer_bind_group_data: &LayerBindGroupData,
+		source_binding: Option<&LayerBinding>,
+	) -> Vec<wgpu::BindGroup> {
+		if let Some(binding) = source_binding {
+			layer_bind_group_data.to_gpu_bind_groups_with_first(self, binding)
+		} else {
+			layer_bind_group_data.to_gpu_bind_groups(self)
+		}
+	}
+
+	/// Renders an effect with optimized instance handling.
+	///
+	/// # Instance Rendering Rules
+	/// Based on the lengths of bind_groups (value bindings) and layer_bind_group_data (layer bindings):
+	///
+	/// 1. **No instances** (both ≤ 1): Set bindings once, single draw call
+	/// 2. **Only value bindings vary** (values > 1, layers ≤ 1):
+	///    Set layer bindings once, iterate through value bindings
+	/// 3. **Only layer bindings vary** (layers > 1, values ≤ 1):
+	///    Set value bindings once, iterate through layer bindings
+	/// 4. **Both vary** (both > 1):
+	///    Iterate through all instances, setting both bind groups per draw
+	///
+	/// This respects the override hierarchy: Layer → Effect → Instance
 	fn render_effect(
 		&self,
-		effect: Effect,
+		effect_index: usize,
 		layer: Layer,
 		skip_source: bool,
 	) -> Result<(), wgpu::SurfaceError> {
-		let e = &self.effects[effect.0];
 		let l = &self.layers[layer.0];
+		let effect_data = &l.effects[effect_index];
+		let effect = effect_data.effect;
+		let e = &self.effects[effect.0];
 
 		let view = if let Some(mip_level) = e.dst_mip_level {
 			l.current_target_texture()
@@ -500,26 +605,90 @@ impl Painter {
 			let pipeline = &self.pipelines[&pipeline_key];
 			pass.set_pipeline(&pipeline.pipeline);
 
-			if let Some(bind_group_data) = e.layer_bind_group_data.as_ref() {
-				let layer_bind_group = if skip_source {
-					bind_group_data.to_gpu_bind_group(self)
-				} else {
-					let binding = if let Some(src_mip_level) = e.src_mip_level {
-						layer.binding_at_mip_level(src_mip_level)
-					} else {
-						layer.binding()
-					};
-					bind_group_data.to_gpu_bind_group_with_first(self, &binding)
-				};
-				pass.set_bind_group(1, &layer_bind_group, &[]);
-			}
+			// Get bindings from effect_data
+			let bind_groups = &effect_data.bind_groups;
 
-			if e.bind_groups.is_empty() {
-				pass.draw(0..3, 0..1);
+			// Pre-compute source binding if needed (avoids duplicate computation in all cases)
+			let source_binding = if !skip_source {
+				Some(if let Some(src_mip_level) = e.src_mip_level {
+					layer.binding_at_mip_level(src_mip_level)
+				} else {
+					layer.binding()
+				})
 			} else {
-				for b in &e.bind_groups {
-					pass.set_bind_group(0, &self.bind_groups[b.0].bind_group, &[]);
+				None
+			};
+
+			// Use pre-computed rendering strategy
+			match effect_data.rendering_strategy {
+				InstanceRenderingStrategy::NoInstances => {
+					// Case 1: No instances - both bindings ≤ 1
+					// Set both bind groups once and do single draw
+					if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {
+						let layer_bind_group = self.create_layer_bind_group(
+							layer_bind_group_data,
+							source_binding.as_ref(),
+						);
+						pass.set_bind_group(1, &layer_bind_group, &[]);
+					}
+
+					if let Some(value_bg) = bind_groups.first() {
+						pass.set_bind_group(0, &self.bind_groups[value_bg.0].bind_group, &[]);
+					}
 					pass.draw(0..3, 0..1);
+				}
+				InstanceRenderingStrategy::ValueBindingsVary => {
+					// Case 2: Only value bindings vary (values > 1, layers ≤ 1)
+					// Set layer bindings once, iterate through value bindings
+					if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {
+						let layer_bind_group = self.create_layer_bind_group(
+							layer_bind_group_data,
+							source_binding.as_ref(),
+						);
+						pass.set_bind_group(1, &layer_bind_group, &[]);
+					}
+
+					for value_bg in bind_groups {
+						pass.set_bind_group(0, &self.bind_groups[value_bg.0].bind_group, &[]);
+						pass.draw(0..3, 0..1);
+					}
+				}
+				InstanceRenderingStrategy::LayerBindingsVary => {
+					// Case 3: Only layer bindings vary (layers > 1, values ≤ 1)
+					// Set value bindings once, iterate through layer bindings
+					if let Some(value_bg) = bind_groups.first() {
+						pass.set_bind_group(0, &self.bind_groups[value_bg.0].bind_group, &[]);
+					}
+
+					if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {
+						let layer_bind_groups = self.create_layer_bind_groups(
+							layer_bind_group_data,
+							source_binding.as_ref(),
+						);
+						for layer_bg in layer_bind_groups {
+							pass.set_bind_group(1, &layer_bg, &[]);
+							pass.draw(0..3, 0..1);
+						}
+					} else {
+						pass.draw(0..3, 0..1);
+					}
+				}
+				InstanceRenderingStrategy::BothBindingsVary => {
+					// Case 4: Both bindings vary (both > 1)
+					// Iterate through all instances, setting both bind groups per draw
+					if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {
+						let layer_bind_groups = self.create_layer_bind_groups(
+							layer_bind_group_data,
+							source_binding.as_ref(),
+						);
+
+						for (value_bg, layer_bg) in bind_groups.iter().zip(layer_bind_groups.iter())
+						{
+							pass.set_bind_group(0, &self.bind_groups[value_bg.0].bind_group, &[]);
+							pass.set_bind_group(1, layer_bg, &[]);
+							pass.draw(0..3, 0..1);
+						}
+					}
 				}
 			}
 		}
@@ -605,8 +774,7 @@ impl Painter {
 				});
 
 				for i in 0..shapes_len {
-					let shape = l.shapes[i];
-					self.render_shape(&mut pass, shape, layer);
+					self.render_shape(&mut pass, i, layer);
 				}
 			}
 
@@ -624,13 +792,13 @@ impl Painter {
 
 		let mut update_mips = true;
 		for i in 0..effects_len {
-			let effect = self.layers[layer.0].effects[i];
+			let effect = self.layers[layer.0].effects[i].effect;
 			let e = &self.effects[effect.0];
 
 			let skip_source_tex = i == 0 && !(has_shapes || e.src_mip_level.is_some());
-			self.render_effect(effect, layer, skip_source_tex)?;
+			self.render_effect(i, layer, skip_source_tex)?;
 
-			if self.effects[effect.0].dst_mip_level.is_none() {
+			if e.dst_mip_level.is_none() {
 				self.layers[layer.0].swap_targets();
 			} else {
 				// If the effect has a mip target, we don't swap the targets.

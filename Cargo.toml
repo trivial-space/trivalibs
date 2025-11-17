@@ -19,6 +19,7 @@ trivalibs = { path = "crates/trivalibs" }
 trivalibs-core = { path = "crates/trivalibs_core" }
 trivalibs-painter = { path = "crates/trivalibs_painter" }
 trivalibs-nostd = { path = "crates/trivalibs_nostd" }
+trivalibs-macros = { path = "crates/trivalibs_macros" }
 serde = { version = "1.0", features = ["derive"] }
 serde_repr = "0.1"
 serde_bytes = "0.11"

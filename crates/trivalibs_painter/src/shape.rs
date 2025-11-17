@@ -1,9 +1,7 @@
 use crate::{
 	Painter,
-	bind_group::{BindGroup, LayerBindGroupData},
 	binding::{InstanceBinding, LayerBinding, ValueBinding},
 	form::Form,
-	layer::Layer,
 	shade::Shade,
 };
 
@@ -17,8 +15,6 @@ pub(crate) struct ShapeStorage {
 	pub pipeline_key: Vec<u8>,
 	pub cull_mode: Option<wgpu::Face>,
 	pub blend_state: wgpu::BlendState,
-	pub bind_groups: Vec<BindGroup>,
-	pub layer_bind_group_data: Option<LayerBindGroupData>,
 }
 
 #[derive(Clone)]
@@ -80,63 +76,11 @@ impl Shape {
 			instances: props.instances,
 			cull_mode: props.cull_mode,
 			blend_state: props.blend_state,
-			bind_groups: Vec::with_capacity(0),
-			layer_bind_group_data: None,
 		};
 
 		painter.shapes.push(shape);
 
 		Shape(painter.shapes.len() - 1)
-	}
-
-	/// Prepares GPU bind groups for value bindings (buffers and samplers).
-	///
-	/// This is an expensive operation that creates GPU resources and should only
-	/// be called during initialization or when value bindings change.
-	///
-	/// This method merges shape-level value bindings with layer-level value binding
-	/// defaults to create the final GPU bind groups.
-	pub(crate) fn prepare_value_bindings(&self, painter: &mut Painter, layer: Layer) {
-		let sp = &painter.shapes[self.0];
-		let sd = &painter.shades[sp.shade.0];
-		let l = &painter.layers[layer.0];
-
-		let value_bindings = &sp.bindings.clone();
-		let layer_bindings = &l.bindings.clone();
-		let instances = &sp.instances.clone();
-
-		let bind_groups = BindGroup::values_bind_groups(
-			painter,
-			sd.value_bindings_length,
-			sd.binding_layout,
-			value_bindings,
-			instances,
-			layer_bindings,
-		);
-
-		painter.shapes[self.0].bind_groups = bind_groups;
-	}
-
-	/// Prepares layer binding data for texture bindings.
-	///
-	/// This is a cheap operation that only updates binding descriptors without
-	/// creating GPU resources. Can be called frequently when texture bindings change.
-	///
-	/// This method merges shape-level layer bindings with layer-level layer bindings
-	/// to create the final texture binding descriptors.
-	pub(crate) fn prepare_layer_bindings(&self, painter: &mut Painter, layer: Layer) {
-		let sp = &painter.shapes[self.0];
-		let sd = &painter.shades[sp.shade.0];
-		let l = &painter.layers[layer.0];
-
-		let layer_bind_group_data = LayerBindGroupData::from_bindings(
-			sd.layer_bindings_length,
-			sd.layers_layout,
-			&sp.layers.clone(),
-			&l.layers.clone(),
-		);
-
-		painter.shapes[self.0].layer_bind_group_data = layer_bind_group_data;
 	}
 }
 

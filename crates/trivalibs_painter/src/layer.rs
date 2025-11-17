@@ -1,5 +1,6 @@
 use crate::{
 	Painter,
+	bind_group::{BindGroup, LayerBindGroupData},
 	binding::{InstanceBinding, LayerBinding, LayerLayout, ValueBinding},
 	effect::Effect,
 	prelude::{BINDING_LAYER_BOTH, BINDING_LAYER_FRAG, BINDING_LAYER_VERT},
@@ -8,6 +9,35 @@ use crate::{
 	texture::{MipMapCount, Texture, Texture2DProps},
 	texture_utils::map_format_to_u8,
 };
+
+/// Describes the instance rendering strategy to use based on binding configurations.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum InstanceRenderingStrategy {
+	/// No instances - both value and layer bindings ≤ 1
+	/// Set both bind groups once and do single draw
+	NoInstances,
+	/// Only value bindings vary - values > 1, layers ≤ 1
+	/// Set layer bindings once, iterate through value bindings
+	ValueBindingsVary,
+	/// Only layer bindings vary - layers > 1, values ≤ 1
+	/// Set value bindings once, iterate through layer bindings
+	LayerBindingsVary,
+	/// Both bindings vary - both > 1
+	/// Iterate through all instances, setting both bind groups per draw
+	BothBindingsVary,
+}
+
+impl InstanceRenderingStrategy {
+	/// Determines the rendering strategy based on bind group counts.
+	pub(crate) fn from_counts(value_count: usize, layer_count: usize) -> Self {
+		match (value_count <= 1, layer_count <= 1) {
+			(true, true) => Self::NoInstances,
+			(false, true) => Self::ValueBindingsVary,
+			(true, false) => Self::LayerBindingsVary,
+			(false, false) => Self::BothBindingsVary,
+		}
+	}
+}
 
 #[derive(Clone)]
 pub struct LayerProps<'a> {
@@ -48,9 +78,207 @@ impl Default for LayerProps<'_> {
 	}
 }
 
+/// Encapsulates a single shape and its per-layer binding state.
+#[derive(Clone)]
+pub(crate) struct ShapeData {
+	pub shape: Shape,
+	pub bind_groups: Vec<BindGroup>,
+	pub layer_bind_group_data: Option<LayerBindGroupData>,
+	pub rendering_strategy: InstanceRenderingStrategy,
+}
+
+impl ShapeData {
+	/// Creates a new ShapeData with bindings prepared using explicit layer data.
+	pub(crate) fn new(
+		painter: &mut Painter,
+		shape: Shape,
+		layer_bindings: &[(u32, ValueBinding)],
+		layer_layers: &[(u32, LayerBinding)],
+	) -> Self {
+		let mut shape_data = ShapeData {
+			shape,
+			bind_groups: Vec::new(),
+			layer_bind_group_data: None,
+			rendering_strategy: InstanceRenderingStrategy::NoInstances,
+		};
+
+		shape_data.prepare_value_bindings(painter, layer_bindings);
+		shape_data.prepare_layer_bindings(painter, layer_layers);
+		shape_data.update_rendering_strategy();
+
+		shape_data
+	}
+
+	/// Updates the rendering strategy based on current bind group counts.
+	fn update_rendering_strategy(&mut self) {
+		let value_count = self.bind_groups.len();
+		let layer_count = self
+			.layer_bind_group_data
+			.as_ref()
+			.map(|d| d.data.len())
+			.unwrap_or(0);
+		self.rendering_strategy = InstanceRenderingStrategy::from_counts(value_count, layer_count);
+	}
+
+	/// Prepares value bindings (expensive - creates GPU resources).
+	pub(crate) fn prepare_value_bindings(
+		&mut self,
+		painter: &mut Painter,
+		layer_bindings: &[(u32, ValueBinding)],
+	) {
+		// Extract necessary data from storage
+		let sp = &painter.shapes[self.shape.0];
+		let shade_idx = sp.shade.0;
+		let value_bindings = sp.bindings.clone();
+		let instances = sp.instances.clone();
+
+		let sd = &painter.shades[shade_idx];
+		let value_bindings_length = sd.value_bindings_length;
+		let binding_layout = sd.binding_layout;
+
+		// Create GPU bind groups (expensive operation)
+		self.bind_groups = BindGroup::values_bind_groups(
+			painter,
+			value_bindings_length,
+			binding_layout,
+			&value_bindings,
+			&instances,
+			layer_bindings,
+		);
+	}
+
+	/// Prepares layer bindings (cheap - only descriptors).
+	pub(crate) fn prepare_layer_bindings(
+		&mut self,
+		painter: &Painter,
+		layer_layers: &[(u32, LayerBinding)],
+	) {
+		// Extract necessary data from storage
+		let sp = &painter.shapes[self.shape.0];
+		let shade_idx = sp.shade.0;
+		let shape_layers = sp.layers.as_slice();
+		let shape_instances = sp.instances.as_slice();
+
+		let sd = &painter.shades[shade_idx];
+		let layer_bindings_length = sd.layer_bindings_length;
+		let layers_layout = sd.layers_layout;
+
+		// Create layer bind group data (cheap operation)
+		self.layer_bind_group_data = LayerBindGroupData::from_bindings(
+			layer_bindings_length,
+			layers_layout,
+			shape_layers,
+			shape_instances,
+			layer_layers,
+		);
+	}
+}
+
+/// Encapsulates a single effect and its per-layer binding state.
+#[derive(Clone)]
+pub(crate) struct EffectData {
+	pub effect: Effect,
+	pub bind_groups: Vec<BindGroup>,
+	pub layer_bind_group_data: Option<LayerBindGroupData>,
+	pub rendering_strategy: InstanceRenderingStrategy,
+}
+
+impl EffectData {
+	/// Creates a new EffectData with bindings prepared using explicit layer data.
+	pub(crate) fn new(
+		painter: &mut Painter,
+		effect: Effect,
+		layer_bindings: &[(u32, ValueBinding)],
+		layer_layers: &[(u32, LayerBinding)],
+	) -> Self {
+		let mut effect_data = EffectData {
+			effect,
+			bind_groups: Vec::new(),
+			layer_bind_group_data: None,
+			rendering_strategy: InstanceRenderingStrategy::NoInstances,
+		};
+
+		effect_data.prepare_value_bindings(painter, layer_bindings);
+		effect_data.prepare_layer_bindings(painter, layer_layers);
+		effect_data.update_rendering_strategy();
+
+		effect_data
+	}
+
+	/// Updates the rendering strategy based on current bind group counts.
+	fn update_rendering_strategy(&mut self) {
+		let value_count = self.bind_groups.len();
+		let layer_count = self
+			.layer_bind_group_data
+			.as_ref()
+			.map(|d| d.data.len())
+			.unwrap_or(0);
+		self.rendering_strategy = InstanceRenderingStrategy::from_counts(value_count, layer_count);
+	}
+
+	/// Prepares value bindings (expensive - creates GPU resources).
+	pub(crate) fn prepare_value_bindings(
+		&mut self,
+		painter: &mut Painter,
+		layer_bindings: &[(u32, ValueBinding)],
+	) {
+		// Extract necessary data from storage
+		let ep = &painter.effects[self.effect.0];
+		let shade_idx = ep.shade.0;
+		let value_bindings = ep.bindings.clone();
+		let instances = ep.instances.clone();
+
+		let sd = &painter.shades[shade_idx];
+		let value_bindings_length = sd.value_bindings_length;
+		let binding_layout = sd.binding_layout;
+
+		// Convert slice to Vec for API compatibility
+		let layer_bindings_vec = layer_bindings.to_vec();
+
+		// Create GPU bind groups (expensive operation)
+		self.bind_groups = BindGroup::values_bind_groups(
+			painter,
+			value_bindings_length,
+			binding_layout,
+			&value_bindings,
+			&instances,
+			&layer_bindings_vec,
+		);
+	}
+
+	/// Prepares layer bindings (cheap - only descriptors).
+	pub(crate) fn prepare_layer_bindings(
+		&mut self,
+		painter: &Painter,
+		layer_layers: &[(u32, LayerBinding)],
+	) {
+		// Extract necessary data from storage
+		let ep = &painter.effects[self.effect.0];
+		let shade_idx = ep.shade.0;
+		let effect_layers = ep.layers.clone();
+		let effect_instances = ep.instances.as_slice();
+
+		let sd = &painter.shades[shade_idx];
+		let layer_bindings_length = sd.layer_bindings_length;
+		let layers_layout = sd.layers_layout;
+
+		// Convert slice to Vec for API compatibility
+		let layer_layers_vec = layer_layers.to_vec();
+
+		// Create layer bind group data (cheap operation)
+		self.layer_bind_group_data = LayerBindGroupData::from_bindings(
+			layer_bindings_length,
+			layers_layout,
+			&effect_layers,
+			effect_instances,
+			&layer_layers_vec,
+		);
+	}
+}
+
 pub(crate) struct LayerStorage {
-	pub shapes: Vec<Shape>,
-	pub effects: Vec<Effect>,
+	pub shapes: Vec<ShapeData>,
+	pub effects: Vec<EffectData>,
 	pub target_textures: Vec<Texture>,
 	pub depth_texture: Option<Texture>,
 	pub width: u32,
@@ -226,9 +454,21 @@ impl Layer {
 			formats.push(format);
 		}
 
+		let shape_data: Vec<ShapeData> = props
+			.shapes
+			.into_iter()
+			.map(|shape| ShapeData::new(painter, shape, &props.bindings, &props.layers))
+			.collect();
+
+		let effect_data: Vec<EffectData> = props
+			.effects
+			.iter()
+			.map(|effect| EffectData::new(painter, *effect, &props.bindings, &props.layers))
+			.collect();
+
 		let storage = LayerStorage {
-			shapes: props.shapes.clone(),
-			effects: props.effects.clone(),
+			shapes: shape_data,
+			effects: effect_data,
 			width,
 			height,
 			target_textures,
@@ -248,14 +488,6 @@ impl Layer {
 
 		painter.layers.push(storage);
 
-		for s in props.shapes {
-			s.prepare_value_bindings(painter, layer);
-			s.prepare_layer_bindings(painter, layer);
-		}
-		for e in props.effects.iter() {
-			e.prepare_value_bindings(painter, layer);
-			e.prepare_layer_bindings(painter, layer);
-		}
 		if props.effects.iter().any(|e| e.has_mip_target(painter)) {
 			let textures = painter.layers[layer.0].target_textures.clone();
 			for t in textures {
@@ -279,13 +511,23 @@ impl Layer {
 	/// Alternatively, LayerBuilder::create_and_init can be used to create and initialize.
 	/// Or Painter::init_and_paint can be used to initialize and paint in one call.
 	pub fn init_gpu_pipelines(&self, painter: &mut Painter) {
-		let shapes = (&painter.layers[self.0]).shapes.clone();
-		let effects = (&painter.layers[self.0]).effects.clone();
+		let shapes: Vec<Shape> = painter.layers[self.0]
+			.shapes
+			.iter()
+			.map(|sd| sd.shape)
+			.collect();
+
+		let effects: Vec<Effect> = painter.layers[self.0]
+			.effects
+			.iter()
+			.map(|ed| ed.effect)
+			.collect();
 
 		for s in shapes {
 			let key = painter.get_shape_pipeline_key(s, *self);
 			painter.ensure_shape_pipeline(&key, s, *self);
 		}
+
 		for e in effects {
 			let key = painter.get_effect_pipeline_key(e, *self);
 			painter.ensure_effect_pipeline(&key, e, *self);
@@ -331,27 +573,26 @@ impl Layer {
 	/// * `painter` - The painter instance
 	/// * `layers` - Vector of (slot_index, LayerBinding) pairs
 	///
-	/// # Example
-	/// ```
-	/// layer.set_layer_bindings(&mut painter, vec![
-	///     (0, texture_layer_a.binding()),
-	///     (1, texture_layer_b.binding_at_mip_level(2)),
-	/// ]);
-	/// ```
 	pub fn set_layer_bindings(&self, painter: &mut Painter, layers: Vec<(u32, LayerBinding)>) {
-		painter.layers[self.0].layers = layers;
+		painter.layers[self.0].layers = layers.clone();
 
-		// Only re-prepare layer bindings (cheap texture descriptor updates)
-		// No need to regenerate expensive GPU bind groups for value bindings
-		let shapes = painter.layers[self.0].shapes.clone();
-		for shape in shapes {
-			shape.prepare_layer_bindings(painter, *self);
+		// Clone the shapes and effects to avoid borrow conflicts
+		let mut shapes = painter.layers[self.0].shapes.clone();
+		let mut effects = painter.layers[self.0].effects.clone();
+
+		// Update ONLY layer bindings (cheap operation - no GPU resource regeneration)
+		for sd in &mut shapes {
+			sd.prepare_layer_bindings(painter, &layers);
 		}
 
-		let effects = painter.layers[self.0].effects.clone();
-		for effect in effects {
-			effect.prepare_layer_bindings(painter, *self);
+		// Update ONLY layer bindings for effects
+		for ed in &mut effects {
+			ed.prepare_layer_bindings(painter, &layers);
 		}
+
+		// Write back
+		painter.layers[self.0].shapes = shapes;
+		painter.layers[self.0].effects = effects;
 	}
 
 	/// Updates a single layer-level binding by slot index.
@@ -365,11 +606,6 @@ impl Layer {
 	/// * `slot` - The binding slot index
 	/// * `binding` - The new LayerBinding for this slot
 	///
-	/// # Example
-	/// ```
-	/// // Switch the texture at binding slot 0
-	/// layer.set_layer_binding(&mut painter, 0, new_texture_layer.binding());
-	/// ```
 	pub fn set_layer_binding(&self, painter: &mut Painter, slot: u32, binding: LayerBinding) {
 		let mut layers = painter.layers[self.0].layers.clone();
 
@@ -382,6 +618,57 @@ impl Layer {
 		}
 
 		self.set_layer_bindings(painter, layers);
+	}
+
+	/// Replaces all shapes in the layer with a new list of shapes.
+	///
+	/// This is useful for dynamically changing which shapes are rendered in a layer at runtime.
+	/// The method will prepare bindings for the new shapes and ensure their GPU pipelines exist.
+	/// Pipelines are cached and reused, so adding shapes that share configurations with existing
+	/// shapes is efficient.
+	///
+	pub fn set_shapes(&self, painter: &mut Painter, shapes: Vec<Shape>) {
+		let layer_bindings = painter.layers[self.0].bindings.clone();
+		let layer_layers = painter.layers[self.0].layers.clone();
+
+		painter.layers[self.0].shapes = shapes
+			.iter()
+			.map(|&shape| ShapeData::new(painter, shape, &layer_bindings, &layer_layers))
+			.collect();
+
+		// Ensure pipelines exist for all shapes (will reuse cached if available)
+		for shape in shapes {
+			let key = painter.get_shape_pipeline_key(shape, *self);
+			painter.ensure_shape_pipeline(&key, shape, *self);
+		}
+	}
+
+	/// Adds a single shape to the layer.
+	///
+	/// This is a convenience method for appending a shape to the existing shapes vector.
+	/// If you need to replace all shapes or add multiple shapes at once, use `set_shapes()` instead.
+	///
+	pub fn add_shape(&self, painter: &mut Painter, shape: Shape) {
+		let layer_bindings = painter.layers[self.0].bindings.clone();
+		let layer_layers = painter.layers[self.0].layers.clone();
+
+		let shape_data = ShapeData::new(painter, shape, &layer_bindings, &layer_layers);
+		painter.layers[self.0].shapes.push(shape_data);
+
+		// Ensure pipeline exists for this shape
+		let key = painter.get_shape_pipeline_key(shape, *self);
+		painter.ensure_shape_pipeline(&key, shape, *self);
+	}
+
+	/// Removes a specific shape from the layer.
+	///
+	/// This filters out all occurrences of the given shape from the layer's shape list.
+	/// If the shape appears multiple times, all instances will be removed.
+	///
+	pub fn remove_shape(&self, painter: &mut Painter, shape: Shape) {
+		painter.layers[self.0]
+			.shapes
+			.retain(|sd| sd.shape.0 != shape.0);
 	}
 
 	pub fn resize(&mut self, painter: &mut Painter, width: u32, height: u32) {
@@ -446,8 +733,10 @@ impl Layer {
 			);
 		}
 
-		let effects = painter.layers[self.0].effects.clone();
-		let prepare_effect_mips = effects.iter().any(|e| e.has_mip_target(painter));
+		let prepare_effect_mips = painter.layers[self.0]
+			.effects
+			.iter()
+			.any(|ed| ed.effect.has_mip_target(painter));
 
 		if prepare_effect_mips {
 			let textures = painter.layers[self.0].target_textures.clone();

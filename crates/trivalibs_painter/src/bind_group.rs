@@ -1,7 +1,7 @@
 use crate::{
+	Painter,
 	binding::{BindingLayout, InstanceBinding, LayerBinding, LayerLayout, ValueBinding},
 	texture::TexViewKey,
-	Painter,
 };
 use std::collections::btree_map;
 
@@ -78,9 +78,9 @@ impl ValuesBindGroupData {
 	pub(crate) fn from_bindings(
 		bindings_length: usize,
 		bind_group_layout: Option<BindGroupLayout>,
-		shape_bindings: &Vec<(u32, ValueBinding)>,
-		shape_instances: &Vec<InstanceBinding>,
-		layer_bindings: &Vec<(u32, ValueBinding)>,
+		shape_bindings: &[(u32, ValueBinding)],
+		shape_instances: &[InstanceBinding],
+		layer_bindings: &[(u32, ValueBinding)],
 	) -> Option<Self> {
 		if bindings_length == 0 || bind_group_layout.is_none() {
 			return None;
@@ -88,6 +88,7 @@ impl ValuesBindGroupData {
 
 		let layout = bind_group_layout.unwrap();
 
+		// Build base binding map from layer and shape bindings (shape overrides layer)
 		let mut binding_map = btree_map::BTreeMap::new();
 
 		for (i, u) in layer_bindings.iter() {
@@ -98,7 +99,12 @@ impl ValuesBindGroupData {
 			binding_map.insert(*i, *u);
 		}
 
-		if shape_instances.is_empty() {
+		// Check if any instance has value bindings
+		let has_instance_values = shape_instances.iter().any(|inst| !inst.bindings.is_empty());
+
+		if shape_instances.is_empty() || !has_instance_values {
+			// No instances or all instances have empty value bindings
+			// Return single bind group with base (layer+shape) bindings
 			let mut bindings = binding_map.iter().collect::<Vec<_>>();
 			bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
 			let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
@@ -108,14 +114,18 @@ impl ValuesBindGroupData {
 				data: vec![bindings],
 			})
 		} else {
+			// At least one instance has value bindings
+			// Create per-instance bind groups (instance bindings override shape/layer)
 			let mut instances = Vec::with_capacity(shape_instances.len());
 
 			for instance in shape_instances {
+				let mut instance_map = binding_map.clone();
+
 				for (i, u) in instance.bindings.iter() {
-					binding_map.insert(*i, *u);
+					instance_map.insert(*i, *u);
 				}
 
-				let mut bindings = binding_map.iter().collect::<Vec<_>>();
+				let mut bindings = instance_map.iter().collect::<Vec<_>>();
 				bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
 				let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
 
@@ -157,15 +167,45 @@ impl ValuesBindGroupData {
 #[derive(Clone)]
 pub(crate) struct LayerBindGroupData {
 	pub layout: BindGroupLayout,
-	pub data: Vec<LayerBinding>,
+	pub data: Vec<Vec<LayerBinding>>,
 }
 
 impl LayerBindGroupData {
+	/// Helper function to create bind group entries from an iterator of LayerBindings
+	fn create_layer_entries<'a>(
+		bindings: impl Iterator<Item = &'a LayerBinding>,
+		painter: &'a Painter,
+	) -> Vec<wgpu::BindGroupEntry<'a>> {
+		bindings
+			.enumerate()
+			.map(|(i, u)| wgpu::BindGroupEntry {
+				binding: i as u32,
+				resource: layer_to_resource(u, painter),
+			})
+			.collect()
+	}
+
+	/// Helper function to create a bind group from entries
+	fn create_bind_group_from_entries<'a>(
+		painter: &'a Painter,
+		layout: &BindGroupLayout,
+		entries: &'a [wgpu::BindGroupEntry<'a>],
+	) -> wgpu::BindGroup {
+		painter
+			.device
+			.create_bind_group(&wgpu::BindGroupDescriptor {
+				label: None,
+				layout: &painter.bind_group_layouts[layout.0],
+				entries,
+			})
+	}
+
 	pub(crate) fn from_bindings(
 		bindings_length: usize,
 		bind_group_layout: Option<BindGroupLayout>,
-		shape_bindings: &Vec<(u32, LayerBinding)>,
-		layer_bindings: &Vec<(u32, LayerBinding)>,
+		shape_bindings: &[(u32, LayerBinding)],
+		shape_instances: &[InstanceBinding],
+		layer_bindings: &[(u32, LayerBinding)],
 	) -> Option<Self> {
 		if bindings_length == 0 || bind_group_layout.is_none() {
 			return None;
@@ -173,6 +213,7 @@ impl LayerBindGroupData {
 
 		let layout = bind_group_layout.unwrap();
 
+		// Build base binding map from layer and shape bindings (shape overrides layer)
 		let mut binding_map = btree_map::BTreeMap::new();
 
 		for (i, u) in layer_bindings.iter() {
@@ -183,34 +224,59 @@ impl LayerBindGroupData {
 			binding_map.insert(*i, *u);
 		}
 
-		let mut bindings = binding_map.iter().collect::<Vec<_>>();
-		bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
-		let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
+		// Check if any instance has layer bindings
+		let has_instance_layers = shape_instances.iter().any(|inst| !inst.layers.is_empty());
 
-		Some(Self {
-			layout,
-			data: bindings,
-		})
+		if shape_instances.is_empty() || !has_instance_layers {
+			// No instances or all instances have empty layer bindings
+			// Return single bind group with base (layer+shape) bindings
+			let mut bindings = binding_map.iter().collect::<Vec<_>>();
+			bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
+			let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
+
+			Some(Self {
+				layout,
+				data: vec![bindings],
+			})
+		} else {
+			// At least one instance has layer bindings
+			// Create per-instance bind groups (instance bindings override shape/layer)
+			let mut instances = Vec::with_capacity(shape_instances.len());
+
+			for instance in shape_instances {
+				let mut instance_map = binding_map.clone();
+
+				for (i, u) in instance.layers.iter() {
+					instance_map.insert(*i, *u);
+				}
+
+				let mut bindings = instance_map.iter().collect::<Vec<_>>();
+				bindings.sort_by(|(a, _), (b, _)| a.cmp(b));
+				let bindings = bindings.iter().map(|(_, b)| **b).collect::<Vec<_>>();
+
+				instances.push(bindings);
+			}
+
+			Some(Self {
+				layout,
+				data: instances,
+			})
+		}
+	}
+
+	pub(crate) fn to_gpu_bind_groups(&self, painter: &Painter) -> Vec<wgpu::BindGroup> {
+		self.data
+			.iter()
+			.map(|bindings| {
+				let entries = Self::create_layer_entries(bindings.iter(), painter);
+				Self::create_bind_group_from_entries(painter, &self.layout, &entries)
+			})
+			.collect()
 	}
 
 	pub(crate) fn to_gpu_bind_group(&self, painter: &Painter) -> wgpu::BindGroup {
-		let entries = self
-			.data
-			.iter()
-			.enumerate()
-			.map(|(i, u)| wgpu::BindGroupEntry {
-				binding: i as u32,
-				resource: layer_to_resource(u, painter),
-			})
-			.collect::<Vec<_>>();
-
-		painter
-			.device
-			.create_bind_group(&wgpu::BindGroupDescriptor {
-				label: None,
-				layout: &painter.bind_group_layouts[self.layout.0],
-				entries: &entries,
-			})
+		let entries = Self::create_layer_entries(self.data.first().unwrap().iter(), painter);
+		Self::create_bind_group_from_entries(painter, &self.layout, &entries)
 	}
 
 	pub(crate) fn to_gpu_bind_group_with_first(
@@ -218,22 +284,31 @@ impl LayerBindGroupData {
 		painter: &Painter,
 		first: &LayerBinding,
 	) -> wgpu::BindGroup {
-		let entries = std::iter::once(first)
-			.chain(self.data.iter())
-			.enumerate()
-			.map(|(i, u)| wgpu::BindGroupEntry {
-				binding: i as u32,
-				resource: layer_to_resource(u, painter),
-			})
-			.collect::<Vec<_>>();
+		let entries = Self::create_layer_entries(
+			std::iter::once(first).chain(self.data.first().unwrap().iter()),
+			painter,
+		);
+		Self::create_bind_group_from_entries(painter, &self.layout, &entries)
+	}
 
-		painter
-			.device
-			.create_bind_group(&wgpu::BindGroupDescriptor {
-				label: None,
-				layout: &painter.bind_group_layouts[self.layout.0],
-				entries: &entries,
+	/// Creates multiple bind groups (one per instance), each with the first binding prepended.
+	/// Used for effect rendering with instances where the source texture needs to be inserted
+	/// as the first binding for each instance.
+	pub(crate) fn to_gpu_bind_groups_with_first(
+		&self,
+		painter: &Painter,
+		first: &LayerBinding,
+	) -> Vec<wgpu::BindGroup> {
+		self.data
+			.iter()
+			.map(|bindings| {
+				let entries = Self::create_layer_entries(
+					std::iter::once(first).chain(bindings.iter()),
+					painter,
+				);
+				Self::create_bind_group_from_entries(painter, &self.layout, &entries)
 			})
+			.collect()
 	}
 }
 
@@ -312,9 +387,9 @@ impl BindGroup {
 		painter: &mut Painter,
 		bindings_length: usize,
 		bind_group_layout: Option<BindGroupLayout>,
-		shape_bindings: &Vec<(u32, ValueBinding)>,
-		shape_instances: &Vec<InstanceBinding>,
-		layer_bindings: &Vec<(u32, ValueBinding)>,
+		shape_bindings: &[(u32, ValueBinding)],
+		shape_instances: &[InstanceBinding],
+		layer_bindings: &[(u32, ValueBinding)],
 	) -> Vec<Self> {
 		let data = ValuesBindGroupData::from_bindings(
 			bindings_length,
