@@ -3,7 +3,9 @@ use crate::{
 	binding::{BindingBuffer, LayerBinding, Mat3U, ValueBinding, Vec3U},
 	effect::{Effect, EffectBuilder, EffectStorage},
 	form::{Form, FormBuffer, FormBuilder, FormStorage},
-	layer::{Layer, LayerBuilder, LayerStorage, SingleEffectLayerBuilder},
+	layer::{
+		InstanceRenderingStrategy, Layer, LayerBuilder, LayerStorage, SingleEffectLayerBuilder,
+	},
 	pipeline::PipelineStorage,
 	prelude::{BINDING_LAYER_FRAG, BINDING_SAMPLER_FRAG},
 	sampler::{Sampler, SamplerBuilder, SamplerProps},
@@ -461,16 +463,10 @@ impl Painter {
 
 		// Get bindings from shape_data
 		let bind_groups = &shape_data.bind_groups;
-		let layer_data_len = shape_data
-			.layer_bind_group_data
-			.as_ref()
-			.map(|d| d.data.len())
-			.unwrap_or(0);
-		let value_data_len = bind_groups.len();
 
-		// Determine instance rendering strategy based on which bindings vary
-		match (value_data_len <= 1, layer_data_len <= 1) {
-			(true, true) => {
+		// Use pre-computed rendering strategy
+		match shape_data.rendering_strategy {
+			InstanceRenderingStrategy::NoInstances => {
 				// Case 1: No instances - both bindings ≤ 1
 				// Set both bind groups once and do single draw
 				if let Some(layer_bind_group_data) = &shape_data.layer_bind_group_data {
@@ -481,7 +477,7 @@ impl Painter {
 				let value_binding = bind_groups.first().copied();
 				draw(pass, value_binding);
 			}
-			(false, true) => {
+			InstanceRenderingStrategy::ValueBindingsVary => {
 				// Case 2: Only value bindings vary (values > 1, layers ≤ 1)
 				// Set layer bindings once, iterate through value bindings
 				if let Some(layer_bind_group_data) = &shape_data.layer_bind_group_data {
@@ -493,7 +489,7 @@ impl Painter {
 					draw(pass, Some(*value_bg));
 				}
 			}
-			(true, false) => {
+			InstanceRenderingStrategy::LayerBindingsVary => {
 				// Case 3: Only layer bindings vary (layers > 1, values ≤ 1)
 				// Set value bindings once, iterate through layer bindings
 				if let Some(value_bg) = bind_groups.first() {
@@ -508,7 +504,7 @@ impl Painter {
 					}
 				}
 			}
-			(false, false) => {
+			InstanceRenderingStrategy::BothBindingsVary => {
 				// Case 4: Both bindings vary (both > 1)
 				// Iterate through all instances, setting both bind groups per draw
 				if let Some(layer_bind_group_data) = &shape_data.layer_bind_group_data {
@@ -611,12 +607,6 @@ impl Painter {
 
 			// Get bindings from effect_data
 			let bind_groups = &effect_data.bind_groups;
-			let layer_data_len = effect_data
-				.layer_bind_group_data
-				.as_ref()
-				.map(|d| d.data.len())
-				.unwrap_or(0);
-			let value_data_len = bind_groups.len();
 
 			// Pre-compute source binding if needed (avoids duplicate computation in all cases)
 			let source_binding = if !skip_source {
@@ -629,9 +619,9 @@ impl Painter {
 				None
 			};
 
-			// Determine instance rendering strategy based on which bindings vary
-			match (value_data_len <= 1, layer_data_len <= 1) {
-				(true, true) => {
+			// Use pre-computed rendering strategy
+			match effect_data.rendering_strategy {
+				InstanceRenderingStrategy::NoInstances => {
 					// Case 1: No instances - both bindings ≤ 1
 					// Set both bind groups once and do single draw
 					if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {
@@ -647,7 +637,7 @@ impl Painter {
 					}
 					pass.draw(0..3, 0..1);
 				}
-				(false, true) => {
+				InstanceRenderingStrategy::ValueBindingsVary => {
 					// Case 2: Only value bindings vary (values > 1, layers ≤ 1)
 					// Set layer bindings once, iterate through value bindings
 					if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {
@@ -663,7 +653,7 @@ impl Painter {
 						pass.draw(0..3, 0..1);
 					}
 				}
-				(true, false) => {
+				InstanceRenderingStrategy::LayerBindingsVary => {
 					// Case 3: Only layer bindings vary (layers > 1, values ≤ 1)
 					// Set value bindings once, iterate through layer bindings
 					if let Some(value_bg) = bind_groups.first() {
@@ -683,7 +673,7 @@ impl Painter {
 						pass.draw(0..3, 0..1);
 					}
 				}
-				(false, false) => {
+				InstanceRenderingStrategy::BothBindingsVary => {
 					// Case 4: Both bindings vary (both > 1)
 					// Iterate through all instances, setting both bind groups per draw
 					if let Some(layer_bind_group_data) = &effect_data.layer_bind_group_data {

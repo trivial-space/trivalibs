@@ -10,6 +10,35 @@ use crate::{
 	texture_utils::map_format_to_u8,
 };
 
+/// Describes the instance rendering strategy to use based on binding configurations.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum InstanceRenderingStrategy {
+	/// No instances - both value and layer bindings ≤ 1
+	/// Set both bind groups once and do single draw
+	NoInstances,
+	/// Only value bindings vary - values > 1, layers ≤ 1
+	/// Set layer bindings once, iterate through value bindings
+	ValueBindingsVary,
+	/// Only layer bindings vary - layers > 1, values ≤ 1
+	/// Set value bindings once, iterate through layer bindings
+	LayerBindingsVary,
+	/// Both bindings vary - both > 1
+	/// Iterate through all instances, setting both bind groups per draw
+	BothBindingsVary,
+}
+
+impl InstanceRenderingStrategy {
+	/// Determines the rendering strategy based on bind group counts.
+	pub(crate) fn from_counts(value_count: usize, layer_count: usize) -> Self {
+		match (value_count <= 1, layer_count <= 1) {
+			(true, true) => Self::NoInstances,
+			(false, true) => Self::ValueBindingsVary,
+			(true, false) => Self::LayerBindingsVary,
+			(false, false) => Self::BothBindingsVary,
+		}
+	}
+}
+
 #[derive(Clone)]
 pub struct LayerProps<'a> {
 	pub static_texture: bool,
@@ -55,6 +84,7 @@ pub(crate) struct ShapeData {
 	pub shape: Shape,
 	pub bind_groups: Vec<BindGroup>,
 	pub layer_bind_group_data: Option<LayerBindGroupData>,
+	pub rendering_strategy: InstanceRenderingStrategy,
 }
 
 impl ShapeData {
@@ -69,17 +99,28 @@ impl ShapeData {
 			shape,
 			bind_groups: Vec::new(),
 			layer_bind_group_data: None,
+			rendering_strategy: InstanceRenderingStrategy::NoInstances,
 		};
 
-		// Delegate to private helpers (single source of truth)
 		shape_data.prepare_value_bindings(painter, layer_bindings);
 		shape_data.prepare_layer_bindings(painter, layer_layers);
+		shape_data.update_rendering_strategy();
 
 		shape_data
 	}
 
+	/// Updates the rendering strategy based on current bind group counts.
+	fn update_rendering_strategy(&mut self) {
+		let value_count = self.bind_groups.len();
+		let layer_count = self
+			.layer_bind_group_data
+			.as_ref()
+			.map(|d| d.data.len())
+			.unwrap_or(0);
+		self.rendering_strategy = InstanceRenderingStrategy::from_counts(value_count, layer_count);
+	}
+
 	/// Prepares value bindings (expensive - creates GPU resources).
-	/// This is the single source of truth for value binding creation.
 	pub(crate) fn prepare_value_bindings(
 		&mut self,
 		painter: &mut Painter,
@@ -107,7 +148,6 @@ impl ShapeData {
 	}
 
 	/// Prepares layer bindings (cheap - only descriptors).
-	/// This is the single source of truth for layer binding creation.
 	pub(crate) fn prepare_layer_bindings(
 		&mut self,
 		painter: &Painter,
@@ -140,6 +180,7 @@ pub(crate) struct EffectData {
 	pub effect: Effect,
 	pub bind_groups: Vec<BindGroup>,
 	pub layer_bind_group_data: Option<LayerBindGroupData>,
+	pub rendering_strategy: InstanceRenderingStrategy,
 }
 
 impl EffectData {
@@ -154,17 +195,28 @@ impl EffectData {
 			effect,
 			bind_groups: Vec::new(),
 			layer_bind_group_data: None,
+			rendering_strategy: InstanceRenderingStrategy::NoInstances,
 		};
 
-		// Delegate to private helpers (single source of truth)
 		effect_data.prepare_value_bindings(painter, layer_bindings);
 		effect_data.prepare_layer_bindings(painter, layer_layers);
+		effect_data.update_rendering_strategy();
 
 		effect_data
 	}
 
+	/// Updates the rendering strategy based on current bind group counts.
+	fn update_rendering_strategy(&mut self) {
+		let value_count = self.bind_groups.len();
+		let layer_count = self
+			.layer_bind_group_data
+			.as_ref()
+			.map(|d| d.data.len())
+			.unwrap_or(0);
+		self.rendering_strategy = InstanceRenderingStrategy::from_counts(value_count, layer_count);
+	}
+
 	/// Prepares value bindings (expensive - creates GPU resources).
-	/// This is the single source of truth for value binding creation.
 	pub(crate) fn prepare_value_bindings(
 		&mut self,
 		painter: &mut Painter,
@@ -195,7 +247,6 @@ impl EffectData {
 	}
 
 	/// Prepares layer bindings (cheap - only descriptors).
-	/// This is the single source of truth for layer binding creation.
 	pub(crate) fn prepare_layer_bindings(
 		&mut self,
 		painter: &Painter,
