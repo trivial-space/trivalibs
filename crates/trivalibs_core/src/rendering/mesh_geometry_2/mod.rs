@@ -18,7 +18,7 @@ pub mod utils;
 
 #[derive(Debug, Clone)]
 pub struct FaceVertex<V> {
-	pub vertex_index: usize,
+	pub position_index: usize,
 	pub data: V,
 }
 
@@ -41,15 +41,15 @@ impl<V> Face<V> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MeshVertexFaceRef {
+pub struct PositionFaceRef {
 	pub face_index: usize,
 	pub vertex_slot: usize,
 }
 
 #[derive(Debug)]
-pub struct MeshVertex {
+pub struct VertexPosition {
 	pub position: Vec3,
-	pub faces: Vec<MeshVertexFaceRef>,
+	pub faces: Vec<PositionFaceRef>,
 	pub vertex_normal: Option<Vec3>,
 }
 
@@ -77,9 +77,9 @@ pub struct MeshSection<V>
 where
 	V: Position3D,
 {
-	pub vertices: Vec<MeshVertex>,
+	pub positions: Vec<VertexPosition>,
 	faces: Vec<Face<V>>,
-	vertex_indices: HashMap<VertIdx3f, usize>,
+	position_indices: HashMap<VertIdx3f, usize>,
 	section_index: usize,
 }
 
@@ -89,24 +89,24 @@ where
 {
 	pub fn new(section_index: usize) -> Self {
 		Self {
-			vertices: Vec::new(),
+			positions: Vec::new(),
 			faces: Vec::new(),
-			vertex_indices: HashMap::new(),
+			position_indices: HashMap::new(),
 			section_index,
 		}
 	}
 
-	fn get_vertex_index(&mut self, pos: Vec3) -> usize {
-		if let Some(idx) = self.vertex_indices.get(&pos.into()) {
+	fn get_position_index(&mut self, pos: Vec3) -> usize {
+		if let Some(idx) = self.position_indices.get(&pos.into()) {
 			*idx
 		} else {
-			let idx = self.vertices.len();
-			self.vertices.push(MeshVertex {
+			let idx = self.positions.len();
+			self.positions.push(VertexPosition {
 				position: pos,
 				faces: Vec::with_capacity(8),
 				vertex_normal: None,
 			});
-			self.vertex_indices.insert(pos.into(), idx);
+			self.position_indices.insert(pos.into(), idx);
 			idx
 		}
 	}
@@ -116,11 +116,11 @@ where
 			.vertices
 			.iter()
 			.enumerate()
-			.map(|(slot, fv)| (slot, fv.vertex_index))
+			.map(|(slot, fv)| (slot, fv.position_index))
 			.collect::<Vec<_>>();
 		for (slot, vertex_idx) in refs {
-			let vertex = &mut self.vertices[vertex_idx];
-			vertex.faces.push(MeshVertexFaceRef {
+			let vertex = &mut self.positions[vertex_idx];
+			vertex.faces.push(PositionFaceRef {
 				face_index: face_idx,
 				vertex_slot: slot,
 			});
@@ -138,9 +138,9 @@ where
 		let vertices = verts
 			.into_iter()
 			.map(|v| {
-				let idx = self.get_vertex_index(v.position());
+				let idx = self.get_position_index(v.position());
 				FaceVertex {
-					vertex_index: idx,
+					position_index: idx,
 					data: v,
 				}
 			})
@@ -152,9 +152,9 @@ where
 		let vertices = verts
 			.into_iter()
 			.map(|v| {
-				let idx = self.get_vertex_index(v.position());
+				let idx = self.get_position_index(v.position());
 				FaceVertex {
-					vertex_index: idx,
+					position_index: idx,
 					data: v,
 				}
 			})
@@ -175,11 +175,11 @@ where
 		let face_vertex_indices = self.faces[face_idx]
 			.vertices
 			.iter()
-			.map(|fv| fv.vertex_index)
+			.map(|fv| fv.position_index)
 			.collect::<Vec<_>>();
 
 		for vertex_idx in face_vertex_indices {
-			let vertex = &mut self.vertices[vertex_idx];
+			let vertex = &mut self.positions[vertex_idx];
 			vertex.faces.retain(|f| f.face_index != face_idx);
 		}
 
@@ -189,10 +189,10 @@ where
 			let moved_vertices = self.faces[face_idx]
 				.vertices
 				.iter()
-				.map(|fv| fv.vertex_index)
+				.map(|fv| fv.position_index)
 				.collect::<Vec<_>>();
 			for vertex_idx in moved_vertices {
-				if let Some(face_ref) = self.vertices[vertex_idx]
+				if let Some(face_ref) = self.positions[vertex_idx]
 					.faces
 					.iter_mut()
 					.find(|r| r.face_index == last_idx)
@@ -203,8 +203,8 @@ where
 		}
 	}
 
-	fn vertex_face_data(&self, vertex_idx: usize) -> &V {
-		let vertex = &self.vertices[vertex_idx];
+	fn position_face_data(&self, vertex_idx: usize) -> &V {
+		let vertex = &self.positions[vertex_idx];
 		let reference = vertex
 			.faces
 			.first()
@@ -255,7 +255,7 @@ where
 	pub fn vertex_count(&self) -> usize {
 		self.sections
 			.values()
-			.map(|section| section.vertices.len())
+			.map(|section| section.positions.len())
 			.sum()
 	}
 
@@ -320,15 +320,15 @@ where
 		self.add_grid_cw_quads_data(grid, default())
 	}
 
-	pub fn vertex<T: Into<SectionIndex>>(&self, into_idx: T) -> &MeshVertex {
+	pub fn vertex<T: Into<SectionIndex>>(&self, into_idx: T) -> &VertexPosition {
 		let i: SectionIndex = into_idx.into();
-		&self.sections.get(&i.section).unwrap().vertices[i.index]
+		&self.sections.get(&i.section).unwrap().positions[i.index]
 	}
 
 	pub fn get_vertex_index(&self, pos: Vec3) -> Vec<SectionIndex> {
 		let mut indices = vec![];
 		for (section_idx, section) in self.sections.iter() {
-			if let Some(idx) = section.vertex_indices.get(&pos.into()) {
+			if let Some(idx) = section.position_indices.get(&pos.into()) {
 				indices.push(section_index(*section_idx, *idx));
 			}
 		}
@@ -345,13 +345,6 @@ where
 		&mut self.sections.get_mut(&i.section).unwrap().faces[i.index]
 	}
 
-	pub fn face_vertices(&self, face: &Face<V>) -> Vec<V> {
-		self.sections
-			.get(&face.section)
-			.unwrap()
-			.face_vertices(face)
-	}
-
 	pub fn remove_face<T: Into<SectionIndex>>(&mut self, into_idx: T) {
 		let face_idx: SectionIndex = into_idx.into();
 		self.sections
@@ -363,7 +356,7 @@ where
 	fn calculate_vertex_normal<I: Into<SectionIndex>>(&self, into_idx: I) -> Vec3 {
 		let idx: SectionIndex = into_idx.into();
 		let section = self.sections.get(&idx.section).unwrap();
-		let vert = &section.vertices[idx.index];
+		let vert = &section.positions[idx.index];
 		let mut normal = Vec3::ZERO;
 		for face_ref in vert.faces.iter() {
 			let face = &section.faces[face_ref.face_index];
@@ -443,10 +436,21 @@ where
 
 #[derive(PartialEq)]
 pub enum MeshBufferType {
+	/// Emit per-face vertex data without normals; triangles/quads unrolled in order added.
+	/// Assumes provided vertex data might differ even for shared positions.
 	FaceVertices,
+	/// Emit per-face vertex data with interpolated vertex normals for smooth shading.
+	/// Assumes provided vertex data might differ even for shared positions.
 	FaceVerticesWithVertexNormals,
+	/// Emit per-face vertex data with the same normal duplicated per face for flat shading.
+	/// Vertex data might differ for shared positions because normals might be different.
 	FaceVerticesWithFaceNormals,
+	/// Emit deduped vertex data (no normals) plus an index buffer. Most compact buffer storage.
+	/// Assumes provided vertex data is the same for shared positions.
 	CompactVertices,
+	/// Same as `CompactVertices` but appends a vertex normal alongside each deduped vertex.
+	/// Assumes provided vertex data is the same for shared positions.
+	CompactVerticesWithNormal,
 }
 
 impl MeshBufferType {
@@ -455,7 +459,7 @@ impl MeshBufferType {
 			self,
 			MeshBufferType::FaceVerticesWithVertexNormals
 				| MeshBufferType::FaceVerticesWithFaceNormals
-				| MeshBufferType::CompactVertices
+				| MeshBufferType::CompactVerticesWithNormal
 		)
 	}
 }
@@ -497,7 +501,7 @@ where
 						for vertex in &face.vertices {
 							let normal = self.calculate_vertex_normal(section_index(
 								*sec_idx,
-								vertex.vertex_index,
+								vertex.position_index,
 							));
 							buffer.extend(bytemuck::bytes_of(&vertex.data));
 							buffer.extend(bytemuck::bytes_of(&normal));
@@ -535,11 +539,33 @@ where
 			}
 
 			MeshBufferType::CompactVertices => {
+				let mut index_offset = 0;
+				for section in self.sections.values() {
+					for vertex_idx in 0..section.positions.len() {
+						let data = section.position_face_data(vertex_idx);
+						buffer.extend(bytemuck::bytes_of(data));
+						vertex_count += 1;
+					}
+
+					for face in section.faces.iter() {
+						let face_indices = face
+							.vertices
+							.iter()
+							.map(|v| v.position_index + index_offset)
+							.collect::<Vec<_>>();
+						fill_face_index_buffer(&mut indices, &face_indices);
+					}
+
+					index_offset += section.positions.len();
+				}
+			}
+
+			MeshBufferType::CompactVerticesWithNormal => {
 				self.ensure_face_normals();
 				let mut index_offset = 0;
 				for (sec_idx, section) in self.sections.iter() {
-					for vertex_idx in 0..section.vertices.len() {
-						let data = section.vertex_face_data(vertex_idx);
+					for vertex_idx in 0..section.positions.len() {
+						let data = section.position_face_data(vertex_idx);
 						let normal =
 							self.calculate_vertex_normal(section_index(*sec_idx, vertex_idx));
 						buffer.extend(bytemuck::bytes_of(data));
@@ -551,12 +577,12 @@ where
 						let face_indices = face
 							.vertices
 							.iter()
-							.map(|v| v.vertex_index + index_offset)
+							.map(|v| v.position_index + index_offset)
 							.collect::<Vec<_>>();
 						fill_face_index_buffer(&mut indices, &face_indices);
 					}
 
-					index_offset += section.vertices.len();
+					index_offset += section.positions.len();
 				}
 			}
 		}
@@ -628,7 +654,7 @@ where
 	}
 }
 
-impl Position3D for MeshVertex {
+impl Position3D for VertexPosition {
 	fn position(&self) -> Vec3 {
 		self.position
 	}

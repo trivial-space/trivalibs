@@ -1,5 +1,5 @@
 use super::{
-	DEFAULT_MESH_SECTION, Face, MeshGeometry, MeshVertex, MeshVertexFaceRef, section_index,
+	DEFAULT_MESH_SECTION, Face, MeshGeometry, PositionFaceRef, VertexPosition, section_index,
 };
 use bytemuck::{Pod, Zeroable};
 use glam::{Vec3, vec3};
@@ -23,15 +23,15 @@ fn vert(x: f32, y: f32, z: f32) -> Vert {
 fn face_indices(face: &Face<Vert>) -> Vec<usize> {
 	face.vertices
 		.iter()
-		.map(|vertex| vertex.vertex_index)
+		.map(|vertex| vertex.position_index)
 		.collect()
 }
 
-fn vertex_face_indices(vertex: &MeshVertex) -> Vec<usize> {
+fn vertex_face_indices(vertex: &VertexPosition) -> Vec<usize> {
 	vertex.faces.iter().map(|f| f.face_index).collect()
 }
 
-fn vertex_face_refs(vertex: &MeshVertex) -> Vec<MeshVertexFaceRef> {
+fn vertex_face_refs(vertex: &VertexPosition) -> Vec<PositionFaceRef> {
 	vertex.faces.clone()
 }
 
@@ -51,7 +51,7 @@ fn generate_geometry() {
 	let Face { vertices, .. } = geom.face(0);
 	let indices = vertices
 		.iter()
-		.map(|fv| fv.vertex_index)
+		.map(|fv| fv.position_index)
 		.collect::<Vec<_>>();
 	assert_eq!(indices, vec![0, 1, 2]);
 	assert_eq!(vertices[0].data, v1);
@@ -84,7 +84,7 @@ fn remove_face() {
 	let section = geom.sections.get(&DEFAULT_MESH_SECTION).unwrap();
 
 	assert_eq!(section.faces.len(), 4);
-	assert_eq!(section.vertices.len(), 5);
+	assert_eq!(section.positions.len(), 5);
 	assert_eq!(face_indices(geom.face(1)), vec![0, 3, 1]);
 	assert_eq!(face_indices(geom.face(2)), vec![0, 4, 3]);
 	assert_eq!(face_indices(geom.face(3)), vec![0, 2, 4]);
@@ -100,7 +100,7 @@ fn remove_face() {
 	let section = geom.sections.get(&DEFAULT_MESH_SECTION).unwrap();
 
 	assert_eq!(section.faces.len(), 3);
-	assert_eq!(section.vertices.len(), 5);
+	assert_eq!(section.positions.len(), 5);
 	assert_eq!(face_indices(geom.face(1)), vec![0, 2, 4]);
 
 	assert_eq!(vertex_face_indices(geom.vertex(0)), vec![0, 2, 1]);
@@ -114,7 +114,7 @@ fn remove_face() {
 	let section = geom.sections.get(&DEFAULT_MESH_SECTION).unwrap();
 
 	assert_eq!(section.faces.len(), 2);
-	assert_eq!(section.vertices.len(), 5);
+	assert_eq!(section.positions.len(), 5);
 	assert_eq!(face_indices(geom.face(0)), vec![0, 4, 3]);
 
 	assert_eq!(vertex_face_indices(geom.vertex(0)), vec![0, 1]);
