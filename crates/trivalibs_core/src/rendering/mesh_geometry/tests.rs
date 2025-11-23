@@ -42,7 +42,7 @@ fn generate_geometry() {
 	let v2 = vert(1.0, 0.0, 0.0);
 	let v3 = vert(0.0, 1.0, 0.0);
 
-	geom.add_face3([v1, v2, v3]);
+	geom.add_face(&[v1, v2, v3]);
 
 	assert_eq!(geom.vertex(0).position, v1.position());
 	assert_eq!(geom.vertex(1).position, v2.position());
@@ -76,10 +76,10 @@ fn remove_face() {
 	let mut geom = MeshGeometry::new();
 	let v = vert(1.0, 1.0, 0.0);
 
-	geom.add_face3([v, vert(2.0, 0.0, 0.0), vert(0.0, 0.0, 0.0)]);
-	geom.add_face3([v, vert(2.0, 2.0, 0.0), vert(2.0, 0.0, 0.0)]);
-	geom.add_face3([v, vert(0.0, 2.0, 0.0), vert(2.0, 2.0, 0.0)]);
-	geom.add_face3([v, vert(0.0, 0.0, 0.0), vert(0.0, 2.0, 0.0)]);
+	geom.add_face(&[v, vert(2.0, 0.0, 0.0), vert(0.0, 0.0, 0.0)]);
+	geom.add_face(&[v, vert(2.0, 2.0, 0.0), vert(2.0, 0.0, 0.0)]);
+	geom.add_face(&[v, vert(0.0, 2.0, 0.0), vert(2.0, 2.0, 0.0)]);
+	geom.add_face(&[v, vert(0.0, 0.0, 0.0), vert(0.0, 2.0, 0.0)]);
 
 	let section = geom.sections.get(&DEFAULT_MESH_SECTION).unwrap();
 
