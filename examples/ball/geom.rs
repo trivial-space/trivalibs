@@ -3,7 +3,7 @@ use trivalibs::{
 	math::coords::angles_to_cartesian,
 	prelude::*,
 	rendering::{
-		mesh_geometry::MeshBufferType, shapes::sphere::create_sphere_mesh, BufferedGeometry,
+		BufferedGeometry, mesh_geometry::MeshBufferType, shapes::sphere::create_sphere_mesh,
 	},
 };
 
@@ -65,7 +65,7 @@ pub fn create_ball_geom() -> BufferedGeometry {
 	for i in 0..geom.face_count() {
 		let face = geom.face(i);
 
-		let vertices = geom.face_vertices(face);
+		let vertices = face.vertices();
 
 		let uv = vertices.iter().map(|v| v.uv).sum::<Vec2>() / vertices.len() as f32;
 

@@ -1,7 +1,7 @@
 pub mod camera;
 pub mod line_2d;
 pub mod mesh_geometry;
-pub mod mesh_geometry_2;
+pub mod mesh_geometry_old;
 pub mod scene;
 pub mod shapes;
 pub mod texture;

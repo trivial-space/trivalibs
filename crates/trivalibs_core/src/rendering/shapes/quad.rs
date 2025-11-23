@@ -1,5 +1,5 @@
 use crate::data::Position3D;
-use glam::{vec2, Vec2, Vec3};
+use glam::{Vec2, Vec3, vec2};
 use lerp::Lerp;
 
 pub struct Quad3D<P>

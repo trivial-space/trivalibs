@@ -6,6 +6,13 @@ use glam::{Vec2, Vec3};
 use lerp::Lerp;
 use macro_rules_attribute::apply;
 
+impl NotOverridable for Vec3 {}
+impl Position3D for Vec3 {
+	fn position(&self) -> Vec3 {
+		*self
+	}
+}
+
 #[apply(gpu_data)]
 pub struct Vert3d {
 	pub pos: Vec3,
