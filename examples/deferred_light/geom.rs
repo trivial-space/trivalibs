@@ -2,9 +2,9 @@ use trivalibs::{
 	math::coords::angles_to_cartesian,
 	prelude::*,
 	rendering::{
-		mesh_geometry::{face_data, MeshBufferType, MeshGeometry},
-		shapes::{cuboid::Cuboid, sphere::create_sphere_mesh},
 		BufferedGeometry,
+		mesh_geometry::{MeshBufferType, MeshGeometry},
+		shapes::{cuboid::Cuboid, quad::Quad3D, sphere::create_sphere_mesh},
 	},
 };
 
@@ -13,83 +13,62 @@ struct Vertex {
 	pos: Vec3,
 	color: Vec3,
 }
-impl Overridable for Vertex {
-	fn override_with(&self, attribs: &Self) -> Self {
-		Vertex {
-			color: attribs.color,
-			..*self
-		}
-	}
-}
 impl Position3D for Vertex {
 	fn position(&self) -> Vec3 {
 		self.pos
 	}
 }
 
-fn vert(pos: Vec3) -> Vertex {
+fn vert_pos(pos: Vec3) -> Vertex {
 	Vertex {
 		pos,
 		color: Vec3::ZERO,
 	}
 }
 
-fn color_vert(color: Vec3) -> Vertex {
-	Vertex {
-		pos: Vec3::ZERO,
-		color,
-	}
+fn vert(pos: Vec3, color: Vec3) -> Vertex {
+	Vertex { pos, color }
 }
 
 const VERTICAL_SEGMENTS: u32 = 25;
 const HORIZONTAL_SEGMENTS: u32 = 50;
 
 pub fn create_ball_geom() -> BufferedGeometry {
-	let mut geom = create_sphere_mesh(
+	let geom = create_sphere_mesh(
 		VERTICAL_SEGMENTS,
 		HORIZONTAL_SEGMENTS,
-		|horiz_angle, vert_angle| vert(angles_to_cartesian(horiz_angle, vert_angle)),
+		|horiz_angle, vert_angle| vert_pos(angles_to_cartesian(horiz_angle, vert_angle)),
 	);
 
-	for i in 0..geom.face_count() {
+	let mut geom = geom.map(|face| {
 		let color = vec3(random(), random(), random());
-		let face = geom.face_mut(i);
-		face.data = Some(color_vert(color));
-	}
 
-	geom.to_buffered_geometry_by_type(MeshBufferType::VertexNormalFaceData)
+		face.vertices().iter().map(|v| vert(v.pos, color)).collect()
+	});
+
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithVertexNormals)
 }
 
 pub fn create_box_geom() -> BufferedGeometry {
 	let box_shape = Cuboid::unit_cube();
 	let mut geom = MeshGeometry::new();
 
-	let v = |pos, _| vert(pos);
+	let add = |geom: &mut MeshGeometry<_>, quad: Quad3D<Vec3>, color: Vec3| {
+		geom.add_face(
+			&quad
+				.to_ccw_verts()
+				.iter()
+				.map(|&pos| vert(pos, color))
+				.collect::<Vec<_>>(),
+		);
+	};
 
-	geom.add_face4_data(
-		box_shape.front_face_f(v).to_ccw_verts(),
-		face_data(color_vert(vec3(1.0, 0.0, 0.0))),
-	);
-	geom.add_face4_data(
-		box_shape.back_face_f(v).to_ccw_verts(),
-		face_data(color_vert(vec3(0.0, 1.0, 0.0))),
-	);
-	geom.add_face4_data(
-		box_shape.left_face_f(v).to_ccw_verts(),
-		face_data(color_vert(vec3(0.0, 0.0, 1.0))),
-	);
-	geom.add_face4_data(
-		box_shape.right_face_f(v).to_ccw_verts(),
-		face_data(color_vert(vec3(1.0, 1.0, 0.0))),
-	);
-	geom.add_face4_data(
-		box_shape.top_face_f(v).to_ccw_verts(),
-		face_data(color_vert(vec3(0.0, 1.0, 1.0))),
-	);
-	geom.add_face4_data(
-		box_shape.bottom_face_f(v).to_ccw_verts(),
-		face_data(color_vert(vec3(1.0, 0.0, 1.0))),
-	);
+	add(&mut geom, box_shape.front_face(), vec3(1.0, 0.0, 0.0));
+	add(&mut geom, box_shape.back_face(), vec3(0.0, 1.0, 0.0));
+	add(&mut geom, box_shape.left_face(), vec3(0.0, 0.0, 1.0));
+	add(&mut geom, box_shape.right_face(), vec3(1.0, 1.0, 0.0));
+	add(&mut geom, box_shape.top_face(), vec3(0.0, 1.0, 1.0));
+	add(&mut geom, box_shape.bottom_face(), vec3(1.0, 0.0, 1.0));
 
-	geom.to_buffered_geometry_by_type(MeshBufferType::FaceNormals)
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithFaceNormals)
 }

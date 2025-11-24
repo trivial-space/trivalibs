@@ -24,7 +24,7 @@ impl Hash for VertIdx2Usize {
 	}
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct VertIdx3f(pub f32, pub f32, pub f32);
 impl VertexIndex for VertIdx3f {}
 
@@ -33,11 +33,26 @@ impl From<Vec3> for VertIdx3f {
 		Self(v.x, v.y, v.z)
 	}
 }
+
+impl PartialEq for VertIdx3f {
+	fn eq(&self, other: &Self) -> bool {
+		const SCALE: f32 = 10_000.0;
+		((self.0 * SCALE).round() as i32) == ((other.0 * SCALE).round() as i32)
+			&& ((self.1 * SCALE).round() as i32) == ((other.1 * SCALE).round() as i32)
+			&& ((self.2 * SCALE).round() as i32) == ((other.2 * SCALE).round() as i32)
+	}
+}
+
 impl Eq for VertIdx3f {}
+
 impl Hash for VertIdx3f {
 	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-		let hash_val: f64 =
-			self.0 as f64 + self.1 as f64 * 100_000_f64 + self.2 as f64 * 10_000_000_000_f64;
-		hash_val.to_ne_bytes().hash(state)
+		const SCALE: f32 = 10_000.0;
+		let x = (self.0 * SCALE).round() as i32;
+		let y = (self.1 * SCALE).round() as i32;
+		let z = (self.2 * SCALE).round() as i32;
+		x.hash(state);
+		y.hash(state);
+		z.hash(state);
 	}
 }

@@ -353,6 +353,8 @@ impl Transform {
 		self.rotation = Quat::from_mat3(&Mat3::from_cols(right, up, back));
 	}
 
+	/// TODO: The copied doc example test fails! We need to see if we can find a hint in bevy, where this is copied from.
+	///
 	/// Rotates this [`Transform`] so that the `main_axis` vector, reinterpreted in local coordinates, points
 	/// in the given `main_direction`, while `secondary_axis` points towards `secondary_direction`.
 	///
@@ -378,8 +380,8 @@ impl Transform {
 	///
 	/// Example
 	/// ```
-	/// # use bevy_math::{Vec3, Vec3, Quat};
-	/// # use bevy_transform::components::Transform;
+	/// # use glam::{Vec3, Quat};
+	/// # use trivalibs_core::math::transform::Transform;
 	/// # let mut t1 = Transform::IDENTITY;
 	/// # let mut t2 = Transform::IDENTITY;
 	/// t1.align(Vec3::X, Vec3::Y, Vec3::new(1., 1., 0.), Vec3::Z);

@@ -1,11 +1,8 @@
+use crate::{data::Position3D, rendering::mesh_geometry::MeshGeometry};
+use bytemuck::Zeroable;
 use std::f32::consts::{PI, TAU};
 
-use crate::{
-	data::{Overridable, Position3D},
-	rendering::mesh_geometry::MeshGeometry,
-};
-
-pub fn create_sphere_mesh<V: Overridable + Position3D + Clone>(
+pub fn create_sphere_mesh<V: Position3D + Clone + Zeroable>(
 	vertical_segments: u32,
 	horizontal_segments: u32,
 	f: impl Fn(f32, f32) -> V,
@@ -22,12 +19,12 @@ pub fn create_sphere_mesh<V: Overridable + Position3D + Clone>(
 				let v3 = col1[i].clone();
 				let v4 = col1[i + 1].clone();
 
-				geom.add_face4([v1, v2, v4, v3]);
+				geom.add_face(&[v1, v2, v4, v3]);
 			}
 
-			geom.add_face3([first_vert, col2[0].clone(), col1[0].clone()]);
+			geom.add_face(&[first_vert, col2[0].clone(), col1[0].clone()]);
 
-			geom.add_face3([
+			geom.add_face(&[
 				col2[col2.len() - 1].clone(),
 				last_vert,
 				col1[col1.len() - 1].clone(),
