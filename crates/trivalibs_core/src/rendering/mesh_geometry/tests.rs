@@ -1,5 +1,5 @@
 use super::{
-	DEFAULT_MESH_SECTION, Face, MeshGeometry, PositionFaceRef, VertexPosition, section_index,
+	DEFAULT_MESH_SECTION, Face, MeshGeometry, PositionFaceRef, VertexPosition, face_section,
 };
 use bytemuck::{Pod, Zeroable};
 use glam::{Vec3, vec3};
@@ -59,16 +59,10 @@ fn generate_geometry() {
 	assert_eq!(vertices[2].data, v3);
 
 	assert_eq!(geom.face_count(), 1);
-	assert_eq!(geom.vertex_count(), 3);
+	assert_eq!(geom.position_count(), 3);
 
-	assert_eq!(
-		geom.get_vertex_index(v2.position()),
-		vec![section_index(DEFAULT_MESH_SECTION, 1)]
-	);
-	assert_eq!(
-		geom.get_vertex_index(v3.position()),
-		vec![section_index(DEFAULT_MESH_SECTION, 2)]
-	);
+	assert_eq!(geom.get_vertex_index(v2.position()), Some(1));
+	assert_eq!(geom.get_vertex_index(v3.position()), Some(2));
 }
 
 #[test]
@@ -81,10 +75,8 @@ fn remove_face() {
 	geom.add_face(&[v, vert(0.0, 2.0, 0.0), vert(2.0, 2.0, 0.0)]);
 	geom.add_face(&[v, vert(0.0, 0.0, 0.0), vert(0.0, 2.0, 0.0)]);
 
-	let section = geom.sections.get(&DEFAULT_MESH_SECTION).unwrap();
-
-	assert_eq!(section.faces.len(), 4);
-	assert_eq!(section.positions.len(), 5);
+	assert_eq!(geom.face_count(), 4);
+	assert_eq!(geom.position_count(), 5);
 	assert_eq!(face_indices(geom.face(1)), vec![0, 3, 1]);
 	assert_eq!(face_indices(geom.face(2)), vec![0, 4, 3]);
 	assert_eq!(face_indices(geom.face(3)), vec![0, 2, 4]);
@@ -97,10 +89,8 @@ fn remove_face() {
 
 	geom.remove_face(1);
 
-	let section = geom.sections.get(&DEFAULT_MESH_SECTION).unwrap();
-
-	assert_eq!(section.faces.len(), 3);
-	assert_eq!(section.positions.len(), 5);
+	assert_eq!(geom.face_count(), 3);
+	assert_eq!(geom.position_count(), 5);
 	assert_eq!(face_indices(geom.face(1)), vec![0, 2, 4]);
 
 	assert_eq!(vertex_face_indices(geom.vertex(0)), vec![0, 2, 1]);
@@ -111,10 +101,8 @@ fn remove_face() {
 
 	geom.remove_face(0);
 
-	let section = geom.sections.get(&DEFAULT_MESH_SECTION).unwrap();
-
-	assert_eq!(section.faces.len(), 2);
-	assert_eq!(section.positions.len(), 5);
+	assert_eq!(geom.face_count(), 2);
+	assert_eq!(geom.position_count(), 5);
 	assert_eq!(face_indices(geom.face(0)), vec![0, 4, 3]);
 
 	assert_eq!(vertex_face_indices(geom.vertex(0)), vec![0, 1]);
@@ -125,9 +113,7 @@ fn remove_face() {
 
 	geom.remove_face(1);
 
-	let section = geom.sections.get(&DEFAULT_MESH_SECTION).unwrap();
-
-	assert_eq!(section.faces.len(), 1);
+	assert_eq!(geom.face_count(), 1);
 
 	assert_eq!(vertex_face_indices(geom.vertex(0)), vec![0]);
 	assert_eq!(vertex_face_indices(geom.vertex(1)), vec![]);
@@ -137,13 +123,82 @@ fn remove_face() {
 
 	geom.remove_face(0);
 
-	let section = geom.sections.get(&DEFAULT_MESH_SECTION).unwrap();
-
-	assert_eq!(section.faces.len(), 0);
+	assert_eq!(geom.face_count(), 0);
 
 	assert_eq!(vertex_face_refs(geom.vertex(0)), vec![]);
 	assert_eq!(vertex_face_refs(geom.vertex(1)), vec![]);
 	assert_eq!(vertex_face_refs(geom.vertex(2)), vec![]);
 	assert_eq!(vertex_face_refs(geom.vertex(3)), vec![]);
 	assert_eq!(vertex_face_refs(geom.vertex(4)), vec![]);
+}
+
+#[test]
+fn new_from_section_resets_sections() {
+	let mut geom = MeshGeometry::new();
+	let base = [
+		vert(0.0, 0.0, 0.0),
+		vert(1.0, 0.0, 0.0),
+		vert(0.0, 1.0, 0.0),
+	];
+	let other = [
+		vert(0.0, 0.0, 1.0),
+		vert(1.0, 0.0, 1.0),
+		vert(0.0, 1.0, 1.0),
+	];
+
+	geom.add_face_data(&base, face_section(2));
+	geom.add_face_data(&other, face_section(3));
+
+	let section = geom.new_from_section(3);
+
+	assert_eq!(section.face_count(), 1);
+	assert_eq!(section.position_count(), 3);
+	assert_eq!(section.face(0).section, DEFAULT_MESH_SECTION);
+	assert_eq!(section.face(0).vertices.len(), 3);
+}
+
+#[test]
+fn split_by_sections_produces_separate_meshes() {
+	let mut geom = MeshGeometry::new();
+	let base = [
+		vert(0.0, 0.0, 0.0),
+		vert(1.0, 0.0, 0.0),
+		vert(0.0, 1.0, 0.0),
+	];
+	let shifted = [
+		vert(0.0, 0.0, 1.0),
+		vert(1.0, 0.0, 1.0),
+		vert(0.0, 1.0, 1.0),
+	];
+	let quad = [
+		vert(0.0, 0.0, 2.0),
+		vert(1.0, 0.0, 2.0),
+		vert(1.0, 1.0, 2.0),
+		vert(0.0, 1.0, 2.0),
+	];
+
+	geom.add_face_data(&base, face_section(5));
+	geom.add_face_data(&shifted, face_section(5));
+	geom.add_face_data(&quad, face_section(8));
+
+	let sections = geom.split_by_sections();
+
+	assert_eq!(sections.len(), 2);
+
+	let sec5 = sections.get(&5).unwrap();
+	assert_eq!(sec5.face_count(), 2);
+	assert!(
+		sec5.faces
+			.iter()
+			.all(|face| face.section == DEFAULT_MESH_SECTION)
+	);
+
+	let sec8 = sections.get(&8).unwrap();
+	assert_eq!(sec8.face_count(), 1);
+	assert_eq!(sec8.face(0).vertices.len(), 4);
+	assert!(
+		sec8.faces
+			.iter()
+			.all(|face| face.section == DEFAULT_MESH_SECTION)
+	);
 }

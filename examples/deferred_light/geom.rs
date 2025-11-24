@@ -2,9 +2,9 @@ use trivalibs::{
 	math::coords::angles_to_cartesian,
 	prelude::*,
 	rendering::{
-		mesh_geometry::{face_data, MeshBufferType, MeshGeometry},
-		shapes::{cuboid::Cuboid, sphere::create_sphere_mesh},
 		BufferedGeometry,
+		mesh_geometry::{MeshBufferType, MeshGeometry},
+		shapes::{cuboid::Cuboid, sphere::create_sphere_mesh},
 	},
 };
 

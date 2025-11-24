@@ -4,14 +4,13 @@ use trivalibs::{
 	painter::{prelude::*, utils::input_state::InputState},
 	prelude::*,
 	rendering::{
+		BufferedGeometry,
 		camera::{CamProps, PerspectiveCamera},
 		mesh_geometry::{
-			face_normal,
-			utils::{vert_pos_uv, Vert3dUv},
-			FaceDataProps, MeshBufferType, MeshGeometry,
+			MeshBufferType, MeshGeometry, face_normal, face_props,
+			utils::{Vert3dUv, vert_pos_uv},
 		},
 		shapes::{cuboid::Cuboid, quad::Quad3D},
-		BufferedGeometry,
 	},
 };
 
@@ -20,9 +19,9 @@ pub fn create_plane(width: f32, height: f32, normal: Vec3, center: Vec3) -> Buff
 		Quad3D::from_dimensions_center_f(width, height, normal, center, vert_pos_uv).into();
 
 	let mut geom = MeshGeometry::new();
-	geom.add_face4_data(plane.to_ccw_verts(), face_normal(plane.normal));
+	geom.add_face_data(&plane.to_ccw_verts(), face_normal(plane.normal));
 
-	geom.to_buffered_geometry_by_type(MeshBufferType::FaceNormals)
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithVertexNormals)
 }
 
 pub fn create_box(center: Vec3, size: Vec3) -> BufferedGeometry {
@@ -30,31 +29,25 @@ pub fn create_box(center: Vec3, size: Vec3) -> BufferedGeometry {
 
 	let mut geom = MeshGeometry::new();
 
-	let face_data = |normal: Vec3, section: usize| FaceDataProps {
-		normal: Some(normal),
-		section: Some(section),
-		data: None,
-	};
-
 	let front = bbox.front_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.x, uvw.y)));
-	geom.add_face4_data(front.to_ccw_verts(), face_data(front.normal, 0));
+	geom.add_face_data(&front.to_ccw_verts(), face_props(front.normal, 0));
 
 	let back = bbox.back_face_f(|pos, uvw| vert_pos_uv(pos, vec2(1.0 - uvw.x, uvw.y)));
-	geom.add_face4_data(back.to_ccw_verts(), face_data(back.normal, 1));
+	geom.add_face_data(&back.to_ccw_verts(), face_props(back.normal, 1));
 
 	let left = bbox.left_face_f(|pos, uvw| vert_pos_uv(pos, vec2(1.0 - uvw.z, uvw.y)));
-	geom.add_face4_data(left.to_ccw_verts(), face_data(left.normal, 2));
+	geom.add_face_data(&left.to_ccw_verts(), face_props(left.normal, 2));
 
 	let right = bbox.right_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.z, uvw.y)));
-	geom.add_face4_data(right.to_ccw_verts(), face_data(right.normal, 3));
+	geom.add_face_data(&right.to_ccw_verts(), face_props(right.normal, 3));
 
 	let top = bbox.top_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.x, 1.0 - uvw.z)));
-	geom.add_face4_data(top.to_ccw_verts(), face_data(top.normal, 4));
+	geom.add_face_data(&top.to_ccw_verts(), face_props(top.normal, 4));
 
 	let bottom = bbox.bottom_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.x, uvw.z)));
-	geom.add_face4_data(bottom.to_ccw_verts(), face_data(bottom.normal, 5));
+	geom.add_face_data(&bottom.to_ccw_verts(), face_props(bottom.normal, 5));
 
-	geom.to_buffered_geometry_by_type(MeshBufferType::FaceNormals)
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithFaceNormals)
 }
 
 struct App {
