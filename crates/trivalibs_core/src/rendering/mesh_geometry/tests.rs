@@ -21,10 +21,7 @@ fn vert(x: f32, y: f32, z: f32) -> Vert {
 }
 
 fn face_indices(face: &Face<Vert>) -> Vec<usize> {
-	face.vertices
-		.iter()
-		.map(|vertex| vertex.position_index)
-		.collect()
+	face.position_indices().to_vec()
 }
 
 fn vertex_face_indices(vertex: &VertexPosition) -> Vec<usize> {
@@ -48,15 +45,11 @@ fn generate_geometry() {
 	assert_eq!(geom.vertex(1).position, v2.position());
 	assert_eq!(geom.vertex(2).position, v3.position());
 
-	let Face { vertices, .. } = geom.face(0);
-	let indices = vertices
-		.iter()
-		.map(|fv| fv.position_index)
-		.collect::<Vec<_>>();
-	assert_eq!(indices, vec![0, 1, 2]);
-	assert_eq!(vertices[0].data, v1);
-	assert_eq!(vertices[1].data, v2);
-	assert_eq!(vertices[2].data, v3);
+	let face = geom.face(0);
+	assert_eq!(face.position_indices(), &[0, 1, 2]);
+	assert_eq!(face.vertex_data()[0], v1);
+	assert_eq!(face.vertex_data()[1], v2);
+	assert_eq!(face.vertex_data()[2], v3);
 
 	assert_eq!(geom.face_count(), 1);
 	assert_eq!(geom.position_count(), 3);
@@ -154,7 +147,7 @@ fn new_from_section_resets_sections() {
 	assert_eq!(section.face_count(), 1);
 	assert_eq!(section.position_count(), 3);
 	assert_eq!(section.face(0).section, DEFAULT_MESH_SECTION);
-	assert_eq!(section.face(0).vertices.len(), 3);
+	assert_eq!(section.face(0).vertex_count, 3);
 }
 
 #[test]
@@ -195,7 +188,7 @@ fn split_by_sections_produces_separate_meshes() {
 
 	let sec8 = sections.get(&8).unwrap();
 	assert_eq!(sec8.face_count(), 1);
-	assert_eq!(sec8.face(0).vertices.len(), 4);
+	assert_eq!(sec8.face(0).vertex_count, 4);
 	assert!(
 		sec8.faces
 			.iter()

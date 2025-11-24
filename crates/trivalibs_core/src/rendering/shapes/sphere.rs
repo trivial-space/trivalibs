@@ -5,7 +5,7 @@ use crate::{
 	rendering::mesh_geometry::MeshGeometry,
 };
 
-pub fn create_sphere_mesh<V: Overridable + Position3D + Clone>(
+pub fn create_sphere_mesh<V: Overridable + Position3D + Clone + bytemuck::Zeroable>(
 	vertical_segments: u32,
 	horizontal_segments: u32,
 	f: impl Fn(f32, f32) -> V,
