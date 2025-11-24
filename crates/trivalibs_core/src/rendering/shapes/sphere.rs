@@ -1,8 +1,6 @@
-use std::f32::consts::{PI, TAU};
-
-use bytemuck::Zeroable;
-
 use crate::{data::Position3D, rendering::mesh_geometry::MeshGeometry};
+use bytemuck::Zeroable;
+use std::f32::consts::{PI, TAU};
 
 pub fn create_sphere_mesh<V: Position3D + Clone + Zeroable>(
 	vertical_segments: u32,
