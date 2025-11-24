@@ -11,27 +11,27 @@ use crate::{
 	},
 	utils::default,
 };
+use bytemuck::Zeroable;
 use glam::Vec3;
 use std::collections::{BTreeMap, HashMap};
 
 pub mod utils;
 
-#[derive(Debug, Clone)]
-pub struct FaceVertex<V> {
-	pub position_index: usize,
-	pub data: V,
+struct FaceVertex<V> {
+	position_index: usize,
+	data: V,
 }
 
 #[derive(Debug)]
 pub struct Face<V> {
-	pub vertices: [V; 4],
-	pub position_indices: [usize; 4],
+	vertices: [V; 4],
+	position_indices: [usize; 4],
 	pub vertex_count: u8,
 	pub face_normal: Option<Vec3>,
 	pub section: usize,
 }
 
-impl<V: bytemuck::Zeroable> Face<V> {
+impl<V: Zeroable> Face<V> {
 	fn new(face_vertices: Vec<FaceVertex<V>>, face_normal: Option<Vec3>, section: usize) -> Self {
 		debug_assert!(face_vertices.len() == 3 || face_vertices.len() == 4);
 		let vertex_count = face_vertices.len() as u8;
@@ -55,22 +55,17 @@ impl<V: bytemuck::Zeroable> Face<V> {
 }
 
 impl<V> Face<V> {
-	pub fn vertex_data(&self) -> &[V] {
+	pub fn vertices(&self) -> &[V] {
 		&self.vertices[..self.vertex_count as usize]
 	}
 
-	pub fn vertex_data_mut(&mut self) -> &mut [V] {
-		&mut self.vertices[..self.vertex_count as usize]
+	pub fn vertex(&self, idx: usize) -> &V {
+		debug_assert!(idx < self.vertex_count as usize);
+		&self.vertices[idx]
 	}
 
-	pub fn position_indices(&self) -> &[usize] {
+	fn position_indices(&self) -> &[usize] {
 		&self.position_indices[..self.vertex_count as usize]
-	}
-}
-
-impl<V: Clone> Face<V> {
-	pub fn vertices(&self) -> Vec<V> {
-		self.vertex_data().to_vec()
 	}
 }
 
@@ -119,14 +114,14 @@ pub struct MeshGeometry<V>
 where
 	V: Position3D,
 {
-	pub positions: Vec<VertexPosition>,
-	pub faces: Vec<Face<V>>,
+	positions: Vec<VertexPosition>,
+	faces: Vec<Face<V>>,
 	position_indices: HashMap<VertIdx3f, usize>,
 }
 
 impl<V> MeshGeometry<V>
 where
-	V: Position3D + Clone + bytemuck::Zeroable,
+	V: Position3D + Clone + Zeroable,
 {
 	pub fn new() -> Self {
 		Self {
@@ -189,14 +184,7 @@ where
 		}
 	}
 
-	fn append_face(&mut self, vertices: Vec<FaceVertex<V>>, props: FaceProps, section_idx: usize) {
-		let face_idx = self.faces.len();
-		self.faces
-			.push(Face::new(vertices, props.normal, section_idx));
-		self.register_face_refs(face_idx);
-	}
-
-	fn position_face_data(&self, vertex_idx: usize) -> &V {
+	fn first_vertex_data_at(&self, vertex_idx: usize) -> &V {
 		let vertex = &self.positions[vertex_idx];
 		let reference = vertex
 			.faces
@@ -206,21 +194,23 @@ where
 		&face.vertices[reference.vertex_slot]
 	}
 
-	pub fn add_face_data(&mut self, verts: &[V], mut props: FaceProps) {
-		debug_assert!(verts.len() == 3 || verts.len() == 4);
+	pub fn add_face_data(&mut self, vertices: &[V], props: FaceProps) {
+		debug_assert!(vertices.len() == 3 || vertices.len() == 4);
+		let mut vs = Vec::with_capacity(vertices.len());
+		for v in vertices {
+			vs.push(FaceVertex {
+				position_index: self.get_position_index(v.position()),
+				data: v.clone(),
+			});
+		}
+
 		let section_idx = props.section.unwrap_or(DEFAULT_MESH_SECTION);
-		props.section = None;
-		let vertices = verts
-			.iter()
-			.map(|v| {
-				let idx = self.get_position_index(v.position());
-				FaceVertex {
-					position_index: idx,
-					data: v.clone(),
-				}
-			})
-			.collect();
-		self.append_face(vertices, props, section_idx);
+		let face = Face::new(vs, props.normal, section_idx);
+
+		let face_idx = self.faces.len();
+
+		self.faces.push(face);
+		self.register_face_refs(face_idx);
 	}
 
 	pub fn add_face(&mut self, verts: &[V]) {
@@ -254,8 +244,7 @@ where
 				normal: face.face_normal,
 				section: Some(DEFAULT_MESH_SECTION),
 			};
-			let vertices = face.vertices();
-			geom.add_face_data(&vertices, props);
+			geom.add_face_data(face.vertices(), props);
 		}
 		geom
 	}
@@ -274,20 +263,14 @@ where
 		result
 	}
 
-	pub fn vertex(&self, index: usize) -> &VertexPosition {
-		&self.positions[index]
-	}
-
-	pub fn get_vertex_index(&self, pos: Vec3) -> Option<usize> {
-		self.position_indices.get(&pos.into()).copied()
+	pub fn get_position_faces(&self, pos: Vec3) -> Option<&[PositionFaceRef]> {
+		self.position_indices
+			.get(&pos.into())
+			.map(|i| self.positions[*i].faces.as_slice())
 	}
 
 	pub fn face(&self, index: usize) -> &Face<V> {
 		&self.faces[index]
-	}
-
-	pub fn face_mut(&mut self, index: usize) -> &mut Face<V> {
-		&mut self.faces[index]
 	}
 
 	pub fn remove_face(&mut self, face_idx: usize) {
@@ -320,7 +303,7 @@ where
 
 	fn calculate_face_normal(&self, face_idx: usize) -> Vec3 {
 		let face = &self.faces[face_idx];
-		let verts = face.vertex_data();
+		let verts = face.vertices();
 		let pos0 = verts[0].position();
 		let pos1 = verts[1].position();
 		let pos2 = verts[2].position();
@@ -357,8 +340,8 @@ where
 			};
 
 			if needs_normal {
-				let normal = Some(self.calculate_face_normal(face_idx));
-				self.faces[face_idx].face_normal = normal;
+				let normal = self.calculate_face_normal(face_idx);
+				self.faces[face_idx].face_normal = Some(normal);
 			}
 		}
 		has_quads
@@ -413,7 +396,7 @@ where
 				let has_quads = self.has_quads();
 				for face in self.faces.iter() {
 					let index_offset = vertex_count;
-					for vertex_data in face.vertex_data() {
+					for vertex_data in face.vertices() {
 						buffer.extend(bytemuck::bytes_of(vertex_data));
 						vertex_count += 1;
 					}
@@ -431,7 +414,7 @@ where
 				for face in self.faces.iter() {
 					let index_offset = vertex_count;
 					for (vertex_data, &pos_idx) in
-						face.vertex_data().iter().zip(face.position_indices())
+						face.vertices().iter().zip(face.position_indices())
 					{
 						let normal = self.calculate_vertex_normal(pos_idx, Some(face.section));
 						buffer.extend(bytemuck::bytes_of(vertex_data));
@@ -452,7 +435,7 @@ where
 				for face in self.faces.iter() {
 					let index_offset = vertex_count;
 					let normal = face.face_normal.unwrap();
-					for vertex_data in face.vertex_data() {
+					for vertex_data in face.vertices() {
 						buffer.extend(bytemuck::bytes_of(vertex_data));
 						buffer.extend(bytemuck::bytes_of(&normal));
 						vertex_count += 1;
@@ -468,7 +451,7 @@ where
 
 			MeshBufferType::CompactVertices => {
 				for vertex_idx in 0..self.positions.len() {
-					let data = self.position_face_data(vertex_idx);
+					let data = self.first_vertex_data_at(vertex_idx);
 					buffer.extend(bytemuck::bytes_of(data));
 					vertex_count += 1;
 				}
@@ -481,7 +464,7 @@ where
 			MeshBufferType::CompactVerticesWithNormal => {
 				self.ensure_face_normals();
 				for vertex_idx in 0..self.positions.len() {
-					let data = self.position_face_data(vertex_idx);
+					let data = self.first_vertex_data_at(vertex_idx);
 					let normal = self.calculate_vertex_normal(vertex_idx, None);
 					buffer.extend(bytemuck::bytes_of(data));
 					buffer.extend(bytemuck::bytes_of(&normal));
@@ -527,7 +510,7 @@ fn fill_face_index_buffer(index_buffer: &mut Vec<u8>, indices: &[usize]) {
 
 impl<V> MeshGeometry<V>
 where
-	V: WebglVertexData + Position3D + Clone + bytemuck::Zeroable,
+	V: WebglVertexData + Position3D + Clone + Zeroable,
 {
 	pub fn to_webgl_buffered_geometry_by_type(
 		&mut self,
