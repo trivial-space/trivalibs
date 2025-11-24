@@ -13,7 +13,8 @@ use crate::{
 };
 use bytemuck::Zeroable;
 use glam::Vec3;
-use std::collections::{BTreeMap, HashMap};
+use rustc_hash::FxHashMap;
+use std::collections::BTreeMap;
 
 pub mod utils;
 
@@ -150,7 +151,7 @@ where
 {
 	positions: Vec<VertexPosition>,
 	faces: Vec<Face<V>>,
-	position_indices: HashMap<VertIdx3f, usize>,
+	position_indices: FxHashMap<VertIdx3f, usize>,
 }
 
 impl<V> MeshGeometry<V>
@@ -161,7 +162,7 @@ where
 		Self {
 			positions: Vec::new(),
 			faces: Vec::new(),
-			position_indices: HashMap::new(),
+			position_indices: FxHashMap::default(),
 		}
 	}
 
@@ -404,10 +405,6 @@ where
 			}
 		}
 		normal.normalize_or_zero()
-	}
-
-	fn calculate_face_normal(&self, face_idx: usize) -> Vec3 {
-		self.faces[face_idx].calculate_normal()
 	}
 
 	fn ensure_face_normals(&mut self) -> bool {

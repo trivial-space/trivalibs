@@ -1,8 +1,8 @@
 use crate::{
+	Painter,
 	bind_group::BindGroupLayout,
 	binding::{BindingLayout, LayerLayout},
 	prelude::BINDING_LAYER_FRAG,
-	Painter,
 };
 use std::fs;
 
@@ -99,12 +99,12 @@ pub fn attrib(location: u32, format: wgpu::VertexFormat, offset: u64) -> wgpu::V
 	}
 }
 
-impl Into<AttribsFormat> for &[wgpu::VertexFormat] {
-	fn into(self) -> AttribsFormat {
+impl From<&[wgpu::VertexFormat]> for AttribsFormat {
+	fn from(formats: &[wgpu::VertexFormat]) -> Self {
 		let mut stride = 0;
-		let mut attributes = Vec::with_capacity(self.len());
+		let mut attributes = Vec::with_capacity(formats.len());
 		let mut location = 0;
-		for format in self {
+		for format in formats {
 			attributes.push(attrib(location, *format, stride));
 			stride += format.size();
 			location += 1;
@@ -114,47 +114,47 @@ impl Into<AttribsFormat> for &[wgpu::VertexFormat] {
 	}
 }
 
-impl Into<AttribsFormat> for &[wgpu::VertexFormat; 1] {
-	fn into(self) -> AttribsFormat {
-		self.as_slice().into()
+impl From<&[wgpu::VertexFormat; 1]> for AttribsFormat {
+	fn from(formats: &[wgpu::VertexFormat; 1]) -> Self {
+		AttribsFormat::from(formats.as_slice())
 	}
 }
-impl Into<AttribsFormat> for &[wgpu::VertexFormat; 2] {
-	fn into(self) -> AttribsFormat {
-		self.as_slice().into()
+impl From<&[wgpu::VertexFormat; 2]> for AttribsFormat {
+	fn from(formats: &[wgpu::VertexFormat; 2]) -> Self {
+		AttribsFormat::from(formats.as_slice())
 	}
 }
-impl Into<AttribsFormat> for &[wgpu::VertexFormat; 3] {
-	fn into(self) -> AttribsFormat {
-		self.as_slice().into()
+impl From<&[wgpu::VertexFormat; 3]> for AttribsFormat {
+	fn from(formats: &[wgpu::VertexFormat; 3]) -> Self {
+		AttribsFormat::from(formats.as_slice())
 	}
 }
-impl Into<AttribsFormat> for &[wgpu::VertexFormat; 4] {
-	fn into(self) -> AttribsFormat {
-		self.as_slice().into()
+impl From<&[wgpu::VertexFormat; 4]> for AttribsFormat {
+	fn from(formats: &[wgpu::VertexFormat; 4]) -> Self {
+		AttribsFormat::from(formats.as_slice())
 	}
 }
-impl Into<AttribsFormat> for &[wgpu::VertexFormat; 5] {
-	fn into(self) -> AttribsFormat {
-		self.as_slice().into()
+impl From<&[wgpu::VertexFormat; 5]> for AttribsFormat {
+	fn from(formats: &[wgpu::VertexFormat; 5]) -> Self {
+		AttribsFormat::from(formats.as_slice())
 	}
 }
-impl Into<AttribsFormat> for &[wgpu::VertexFormat; 6] {
-	fn into(self) -> AttribsFormat {
-		self.as_slice().into()
+impl From<&[wgpu::VertexFormat; 6]> for AttribsFormat {
+	fn from(formats: &[wgpu::VertexFormat; 6]) -> Self {
+		AttribsFormat::from(formats.as_slice())
 	}
 }
-impl Into<AttribsFormat> for Vec<wgpu::VertexFormat> {
-	fn into(self) -> AttribsFormat {
-		self.as_slice().into()
+impl From<Vec<wgpu::VertexFormat>> for AttribsFormat {
+	fn from(formats: Vec<wgpu::VertexFormat>) -> Self {
+		AttribsFormat::from(formats.as_slice())
 	}
 }
 
-impl Into<AttribsFormat> for wgpu::VertexFormat {
-	fn into(self) -> AttribsFormat {
+impl From<wgpu::VertexFormat> for AttribsFormat {
+	fn from(format: wgpu::VertexFormat) -> Self {
 		AttribsFormat {
-			attributes: vec![attrib(0, self, 0)],
-			stride: self.size(),
+			attributes: vec![attrib(0, format, 0)],
+			stride: format.size(),
 		}
 	}
 }

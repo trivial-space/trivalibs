@@ -13,23 +13,15 @@ struct Vertex {
 	uv: Vec2,
 	color: Vec3,
 }
-impl Overridable for Vertex {
-	fn override_with(&self, attribs: &Self) -> Self {
-		Vertex {
-			color: attribs.color,
-			..*self
-		}
-	}
-}
 impl Position3D for Vertex {
 	fn position(&self) -> Vec3 {
 		self.pos
 	}
 }
 
-// fn vert(pos: Vec3, uv: Vec2, color: Vec3) -> Vertex {
-// 	Vertex { pos, uv, color }
-// }
+fn vert(pos: Vec3, uv: Vec2, color: Vec3) -> Vertex {
+	Vertex { pos, uv, color }
+}
 
 fn pos_vert(pos: Vec3, uv: Vec2) -> Vertex {
 	Vertex {
@@ -39,19 +31,11 @@ fn pos_vert(pos: Vec3, uv: Vec2) -> Vertex {
 	}
 }
 
-fn color_vert(color: Vec3) -> Vertex {
-	Vertex {
-		pos: Vec3::ZERO,
-		color,
-		uv: Vec2::ZERO,
-	}
-}
-
 const VERTICAL_SEGMENTS: u32 = 50;
 const HORIZONTAL_SEGMENTS: u32 = 50;
 
 pub fn create_ball_geom() -> BufferedGeometry {
-	let mut geom = create_sphere_mesh(
+	let geom = create_sphere_mesh(
 		VERTICAL_SEGMENTS,
 		HORIZONTAL_SEGMENTS,
 		|horiz_angle, vert_angle| {
@@ -62,9 +46,7 @@ pub fn create_ball_geom() -> BufferedGeometry {
 		},
 	);
 
-	for i in 0..geom.face_count() {
-		let face = geom.face(i);
-
+	let mut geom = geom.map(|face| {
 		let vertices = face.vertices();
 
 		let uv = vertices.iter().map(|v| v.uv).sum::<Vec2>() / vertices.len() as f32;
@@ -73,11 +55,10 @@ pub fn create_ball_geom() -> BufferedGeometry {
 		let gradient = if use_horiz_gradient { uv.x } else { uv.y };
 		let color = vec3(random(), random(), random()) * 0.2 + gradient * 0.8;
 
-		let face = geom.face_mut(i);
-		face.data = Some(color_vert(color));
-	}
+		vertices.iter().map(|v| vert(v.pos, v.uv, color)).collect()
+	});
 
-	geom.to_buffered_geometry_by_type(MeshBufferType::VertexNormalFaceData)
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithVertexNormals)
 }
 
 #[test]
