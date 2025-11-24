@@ -69,6 +69,40 @@ impl<V> Face<V> {
 	}
 }
 
+impl<V: Position3D> Face<V> {
+	/// Calculate the face normal from vertex positions without modifying the stored normal.
+	pub fn calculate_normal(&self) -> Vec3 {
+		let verts = self.vertices();
+		let pos0 = verts[0].position();
+		let pos1 = verts[1].position();
+		let pos2 = verts[2].position();
+
+		let mut v1 = pos2 - pos0;
+		let mut v2 = pos1 - pos0;
+
+		let v1_len = v1.length();
+		let v2_len = v2.length();
+		let v1_len_0 = v1_len < 0.0001;
+		let v2_len_0 = v2_len < 0.0001;
+		let v3_len_0 = (v2 / v2_len).dot(v1 / v1_len).abs() > 0.9999;
+
+		if (v1_len_0 || v2_len_0 || v3_len_0) && verts.len() > 3 {
+			if v2_len_0 {
+				v2 = pos1 - verts[3].position();
+			} else {
+				v1 = verts[3].position() - pos0;
+			}
+		}
+
+		v2.cross(v1).normalize()
+	}
+
+	/// Calculate and store the face normal in the face_normal field.
+	pub fn calculate_and_store_normal(&mut self) {
+		self.face_normal = Some(self.calculate_normal());
+	}
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PositionFaceRef {
 	pub face_index: usize,
@@ -263,6 +297,77 @@ where
 		result
 	}
 
+	/// Map each face to new vertices, preserving face properties (normal, section).
+	/// The mapper function receives a reference to each face and should return new vertices (3 or 4).
+	pub fn map<F>(&self, mut f: F) -> Self
+	where
+		F: FnMut(&Face<V>) -> Vec<V>,
+	{
+		let mut geom = MeshGeometry::new();
+		for face in &self.faces {
+			geom.add_face_data(
+				&f(face),
+				FaceProps {
+					normal: face.face_normal,
+					section: Some(face.section),
+				},
+			);
+		}
+		geom
+	}
+
+	/// Map each face to new vertices and properties.
+	/// The mapper function receives a reference to each face and should return new vertices and FaceProps.
+	pub fn map_data<F>(&self, mut f: F) -> Self
+	where
+		F: FnMut(&Face<V>) -> (Vec<V>, FaceProps),
+	{
+		let mut geom = MeshGeometry::new();
+		for face in &self.faces {
+			let (new_vertices, props) = f(face);
+			geom.add_face_data(&new_vertices, props);
+		}
+		geom
+	}
+
+	/// Map each face to zero or more new faces, preserving face properties for all output faces.
+	/// The mapper function receives a reference to each face and should return a Vec of vertex arrays.
+	/// Return an empty Vec to filter out the face, a single-element Vec to map, or multiple elements to split.
+	pub fn flat_map<F>(&self, mut f: F) -> Self
+	where
+		F: FnMut(&Face<V>) -> Vec<Vec<V>>,
+	{
+		let mut geom = MeshGeometry::new();
+		for face in &self.faces {
+			let new_faces = f(face);
+			let props = FaceProps {
+				normal: face.face_normal,
+				section: Some(face.section),
+			};
+			for new_vertices in new_faces {
+				geom.add_face_data(&new_vertices, props);
+			}
+		}
+		geom
+	}
+
+	/// Map each face to zero or more new faces with full control over vertices and properties.
+	/// The mapper function receives a reference to each face and should return a Vec of (vertices, FaceProps) tuples.
+	/// Return an empty Vec to filter out the face, a single-element Vec to map, or multiple elements to split.
+	pub fn flat_map_data<F>(&self, mut f: F) -> Self
+	where
+		F: FnMut(&Face<V>) -> Vec<(Vec<V>, FaceProps)>,
+	{
+		let mut geom = MeshGeometry::new();
+		for face in &self.faces {
+			let new_faces = f(face);
+			for (new_vertices, props) in new_faces {
+				geom.add_face_data(&new_vertices, props);
+			}
+		}
+		geom
+	}
+
 	pub fn get_position_faces(&self, pos: Vec3) -> Option<&[PositionFaceRef]> {
 		self.position_indices
 			.get(&pos.into())
@@ -302,48 +407,24 @@ where
 	}
 
 	fn calculate_face_normal(&self, face_idx: usize) -> Vec3 {
-		let face = &self.faces[face_idx];
-		let verts = face.vertices();
-		let pos0 = verts[0].position();
-		let pos1 = verts[1].position();
-		let pos2 = verts[2].position();
-
-		let mut v1 = pos2 - pos0;
-		let mut v2 = pos1 - pos0;
-
-		let v1_len = v1.length();
-		let v2_len = v2.length();
-		let v1_len_0 = v1_len < 0.0001;
-		let v2_len_0 = v2_len < 0.0001;
-		let v3_len_0 = (v2 / v2_len).dot(v1 / v1_len).abs() > 0.9999;
-
-		if (v1_len_0 || v2_len_0 || v3_len_0) && verts.len() > 3 {
-			if v2_len_0 {
-				v2 = pos1 - verts[3].position();
-			} else {
-				v1 = verts[3].position() - pos0;
-			}
-		}
-
-		v2.cross(v1).normalize()
+		self.faces[face_idx].calculate_normal()
 	}
 
 	fn ensure_face_normals(&mut self) -> bool {
 		let mut has_quads = false;
-		for face_idx in 0..self.faces.len() {
-			let needs_normal = {
-				let face = &self.faces[face_idx];
-				if !has_quads && face.vertex_count > 3 {
-					has_quads = true;
-				}
-				face.face_normal.is_none()
-			};
 
-			if needs_normal {
-				let normal = self.calculate_face_normal(face_idx);
-				self.faces[face_idx].face_normal = Some(normal);
+		for face_idx in 0..self.faces.len() {
+			let face = &mut self.faces[face_idx];
+
+			if face.face_normal.is_none() {
+				face.calculate_and_store_normal();
+			}
+
+			if !has_quads && face.vertex_count > 3 {
+				has_quads = true;
 			}
 		}
+
 		has_quads
 	}
 
