@@ -37,7 +37,7 @@ impl CanvasApp<()> for App {
 			.with_size(4, 4)
 			.create();
 
-		let _ = p.init_and_paint(red_layer);
+		p.init_and_paint(red_layer);
 
 		// Create blue layer - renders solid blue color
 		let blue_layer = p
@@ -46,7 +46,7 @@ impl CanvasApp<()> for App {
 			.with_size(4, 4)
 			.create();
 
-		let _ = p.init_and_paint(blue_layer);
+		p.init_and_paint(blue_layer);
 
 		// Create sampler for texture sampling
 		let sampler = p.sampler_nearest();
