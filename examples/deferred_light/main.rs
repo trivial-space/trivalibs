@@ -188,7 +188,7 @@ impl CanvasApp<()> for App {
 		self.u_vp_mat.update(p, self.cam.view_proj_mat());
 	}
 
-	fn update(&mut self, p: &mut Painter, tpf: f32) {
+	fn frame(&mut self, p: &mut Painter, tpf: f32) {
 		self.ball_transform.rotate_y(tpf * 0.25);
 		self.box_transform.rotate_y(tpf * 0.25);
 		self.box_transform.rotate_x(tpf * 0.3);
@@ -201,9 +201,8 @@ impl CanvasApp<()> for App {
 		self.u_box_rot.update(p, self.box_transform.rotation);
 
 		p.request_next_frame();
-	}
 
-	fn render(&self, p: &mut Painter) {
+		// render
 		p.paint(self.scene_layer);
 		p.paint(self.canvas);
 		p.show(self.canvas)

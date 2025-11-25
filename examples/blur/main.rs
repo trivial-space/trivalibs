@@ -126,11 +126,8 @@ impl CanvasApp<()> for App {
 		self.size.update(p, vec2(width as f32, height as f32));
 	}
 
-	fn update(&mut self, p: &mut Painter, _tpf: f32) {
+	fn frame(&mut self, p: &mut Painter, _tpf: f32) {
 		p.request_next_frame();
-	}
-
-	fn render(&self, p: &mut Painter)  {
 		p.paint_and_show(self.canvas)
 	}
 

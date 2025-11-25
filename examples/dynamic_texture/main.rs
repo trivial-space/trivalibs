@@ -71,7 +71,7 @@ impl CanvasApp<()> for App {
 
 	fn resize(&mut self, _p: &mut Painter, _width: u32, _height: u32) {}
 
-	fn update(&mut self, p: &mut Painter, tpf: f32) {
+	fn frame(&mut self, p: &mut Painter, tpf: f32) {
 		self.time += tpf;
 
 		// Toggle every second
@@ -91,12 +91,10 @@ impl CanvasApp<()> for App {
 			}
 		}
 
-		p.request_next_frame();
-	}
-
-	fn render(&self, p: &mut Painter)  {
 		// Render and show display layer (which samples from red or blue)
-		p.paint_and_show(self.display_layer)
+		p.paint_and_show(self.display_layer);
+
+		p.request_next_frame();
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

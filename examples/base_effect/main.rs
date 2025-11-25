@@ -42,15 +42,13 @@ impl CanvasApp<()> for App {
 		self.u_size.update(p, uvec2(width, height));
 	}
 
-	fn update(&mut self, p: &mut Painter, tpf: f32) {
+	fn frame(&mut self, p: &mut Painter, tpf: f32) {
+		p.request_next_frame();
+
 		self.time += tpf;
 		self.u_time.update(p, self.time);
 
-		p.request_next_frame();
-	}
-
-	fn render(&self, p: &mut Painter)  {
-		p.paint_and_show(self.canvas)
+		p.paint_and_show(self.canvas);
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

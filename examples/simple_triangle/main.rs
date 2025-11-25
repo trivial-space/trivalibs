@@ -79,14 +79,13 @@ impl CanvasApp<()> for App {
 		self.vp_mat.update(p, self.cam.view_proj_mat());
 	}
 
-	fn update(&mut self, p: &mut Painter, tpf: f32) {
+	fn frame(&mut self, p: &mut Painter, tpf: f32) {
 		self.transform.rotate_y(tpf * 0.5);
 		self.model_mat.update(p, self.transform.model_mat());
-	}
 
-	fn render(&self, p: &mut Painter) {
+		p.paint_and_show(self.canvas);
+
 		p.request_next_frame();
-		p.paint_and_show(self.canvas)
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

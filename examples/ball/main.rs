@@ -102,7 +102,7 @@ impl CanvasApp<()> for App {
 		self.cam.set_aspect_ratio(width as f32 / height as f32);
 	}
 
-	fn update(&mut self, p: &mut Painter, tpf: f32) {
+	fn frame(&mut self, p: &mut Painter, tpf: f32) {
 		self.ball_transform.rotate_y(tpf * 0.5);
 
 		self.mvp
@@ -111,11 +111,9 @@ impl CanvasApp<()> for App {
 		self.norm
 			.update_mat3(p, self.ball_transform.view_normal_mat(&self.cam));
 
-		p.request_next_frame();
-	}
+		p.paint_and_show(self.canvas);
 
-	fn render(&self, p: &mut Painter) {
-		p.paint_and_show(self.canvas)
+		p.request_next_frame();
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

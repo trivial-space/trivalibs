@@ -91,17 +91,17 @@ impl CanvasApp<()> for App {
 		self.u_size.update(p, uvec2(width, height));
 	}
 
-	fn render(&self, p: &mut Painter)  {
+	fn frame(&mut self, p: &mut Painter, tpf: f32) {
+		self.time += tpf;
+		self.u_time.update(p, self.time);
+
 		let c = &self.canvases[self.current_canvas];
+
+		p.paint_and_show(c.layer);
+
 		if c.animated {
 			p.request_next_frame();
 		}
-		p.paint_and_show(c.layer)
-	}
-
-	fn update(&mut self, p: &mut Painter, tpf: f32) {
-		self.time += tpf;
-		self.u_time.update(p, self.time);
 	}
 
 	fn event(&mut self, e: Event<()>, p: &mut Painter) {

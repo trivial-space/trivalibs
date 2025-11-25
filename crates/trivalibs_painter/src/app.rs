@@ -32,8 +32,7 @@ pub enum Event<UserEvent> {
 pub trait CanvasApp<UserEvent> {
 	fn init(painter: &mut Painter) -> Self;
 	fn resize(&mut self, painter: &mut Painter, width: u32, height: u32);
-	fn update(&mut self, painter: &mut Painter, tpf: f32);
-	fn render(&self, painter: &mut Painter);
+	fn frame(&mut self, painter: &mut Painter, tpf: f32);
 	fn event(&mut self, event: Event<UserEvent>, painter: &mut Painter);
 
 	fn create() -> CanvasAppStarter<UserEvent, Self>
@@ -404,7 +403,7 @@ where
 					if let WindowState::Initialized(painter, app) = &mut self.state {
 						painter.reload_shader(path);
 						app.event(Event::ShaderReloadEvent, painter);
-						let _ = app.render(painter);
+						app.frame(painter, 0.0);
 					}
 				}
 			}
@@ -469,9 +468,7 @@ where
 								}
 							}
 
-							app.update(painter, elapsed);
-
-							app.render(painter);
+							app.frame(painter, elapsed);
 
 							if let Some(err) = &painter.surface_error {
 								match err {

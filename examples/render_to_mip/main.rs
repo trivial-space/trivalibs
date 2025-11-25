@@ -95,16 +95,14 @@ impl CanvasApp<()> for App {
 		self.u_mip_levels.update(p, mips as f32);
 	}
 
-	fn update(&mut self, p: &mut Painter, tpf: f32) {
+	fn frame(&mut self, p: &mut Painter, tpf: f32) {
 		self.time += tpf;
 		self.u_time.update(p, self.time);
 
-		p.request_next_frame();
-	}
-
-	fn render(&self, p: &mut Painter) {
 		p.paint(self.image);
-		p.paint_and_show(self.canvas)
+		p.paint_and_show(self.canvas);
+
+		p.request_next_frame();
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

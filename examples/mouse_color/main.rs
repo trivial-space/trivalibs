@@ -21,7 +21,7 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn render(&self, p: &mut Painter) {
+	fn frame(&mut self, p: &mut Painter, _tpf: f32) {
 		let frame = p.surface.get_current_texture().unwrap();
 
 		let view = frame
@@ -73,7 +73,6 @@ impl CanvasApp<()> for App {
 	}
 
 	fn resize(&mut self, _p: &mut Painter, _w: u32, _h: u32) {}
-	fn update(&mut self, _p: &mut Painter, _tpf: f32) {}
 }
 
 pub fn main() {
