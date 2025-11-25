@@ -1,8 +1,8 @@
 use trivalibs::painter::{
-	app::{CanvasApp, Event},
-	wgpu::{self, SurfaceError},
-	winit::event::WindowEvent,
 	Painter,
+	app::{CanvasApp, Event},
+	wgpu,
+	winit::event::WindowEvent,
 };
 
 struct App {
@@ -21,8 +21,8 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
-		let frame = p.surface.get_current_texture()?;
+	fn render(&self, p: &mut Painter) {
+		let frame = p.surface.get_current_texture().unwrap();
 
 		let view = frame
 			.texture
@@ -51,8 +51,6 @@ impl CanvasApp<()> for App {
 
 		p.queue.submit(Some(encoder.finish()));
 		frame.present();
-
-		Ok(())
 	}
 
 	fn event(&mut self, event: Event<()>, p: &mut Painter) {

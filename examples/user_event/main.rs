@@ -1,7 +1,7 @@
 use trivalibs::painter::{
+	Painter,
 	app::{CanvasApp, Event},
 	wgpu::{self, include_spirv},
-	Painter,
 };
 
 struct App {
@@ -68,8 +68,8 @@ impl CanvasApp<UserEvent> for App {
 		}
 	}
 
-	fn render(&self, painter: &mut Painter) -> Result<(), wgpu::SurfaceError> {
-		let frame = painter.surface.get_current_texture()?;
+	fn render(&self, painter: &mut Painter) {
+		let frame = painter.surface.get_current_texture().unwrap();
 
 		let view = frame
 			.texture
@@ -100,8 +100,6 @@ impl CanvasApp<UserEvent> for App {
 
 		painter.queue.submit(Some(encoder.finish()));
 		frame.present();
-
-		Ok(())
 	}
 
 	fn event(&mut self, event: Event<UserEvent>, painter: &mut Painter) {
@@ -122,13 +120,15 @@ pub fn main() {
 	let app = App::create();
 	let handle = app.get_handle();
 
-	std::thread::spawn(move || loop {
-		std::thread::sleep(std::time::Duration::from_secs(2));
-		let _ = handle.send_event(UserEvent(wgpu::Color::RED));
-		std::thread::sleep(std::time::Duration::from_secs(2));
-		let _ = handle.send_event(UserEvent(wgpu::Color::GREEN));
-		std::thread::sleep(std::time::Duration::from_secs(2));
-		let _ = handle.send_event(UserEvent(wgpu::Color::BLUE));
+	std::thread::spawn(move || {
+		loop {
+			std::thread::sleep(std::time::Duration::from_secs(2));
+			let _ = handle.send_event(UserEvent(wgpu::Color::RED));
+			std::thread::sleep(std::time::Duration::from_secs(2));
+			let _ = handle.send_event(UserEvent(wgpu::Color::GREEN));
+			std::thread::sleep(std::time::Duration::from_secs(2));
+			let _ = handle.send_event(UserEvent(wgpu::Color::BLUE));
+		}
 	});
 
 	app.start();

@@ -10,7 +10,6 @@ use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::spawn_local;
 use web_time::Instant;
-use wgpu::SurfaceError;
 #[cfg(not(target_arch = "wasm32"))]
 use winit::dpi::PhysicalPosition;
 use winit::{
@@ -34,7 +33,7 @@ pub trait CanvasApp<UserEvent> {
 	fn init(painter: &mut Painter) -> Self;
 	fn resize(&mut self, painter: &mut Painter, width: u32, height: u32);
 	fn update(&mut self, painter: &mut Painter, tpf: f32);
-	fn render(&self, painter: &mut Painter) -> Result<(), SurfaceError>;
+	fn render(&self, painter: &mut Painter);
 	fn event(&mut self, event: Event<UserEvent>, painter: &mut Painter);
 
 	fn create() -> CanvasAppStarter<UserEvent, Self>
@@ -472,34 +471,38 @@ where
 
 							app.update(painter, elapsed);
 
-							match app.render(painter) {
-								Ok(_) => {}
-								// Reconfigure the surface if it's lost or outdated
-								Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-									painter.resize(PhysicalSize {
-										width: painter.config.width,
-										height: painter.config.height,
-									});
-									app.resize(
-										painter,
-										painter.config.width,
-										painter.config.height,
-									);
-								}
-								// The system is out of memory, we should probably quit
-								Err(wgpu::SurfaceError::OutOfMemory) => {
-									log::error!("OutOfMemory");
-									event_loop.exit();
-								}
+							app.render(painter);
 
-								// This happens when the a frame takes too long to present
-								Err(wgpu::SurfaceError::Timeout) => {
-									log::warn!("Surface timeout")
-								}
+							if let Some(err) = &painter.surface_error {
+								match err {
+									wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated => {
+										painter.resize(PhysicalSize {
+											width: painter.config.width,
+											height: painter.config.height,
+										});
+										app.resize(
+											painter,
+											painter.config.width,
+											painter.config.height,
+										);
+										log::error!("Surface lost or outdated, resizing");
+									}
+									// The system is out of memory, we should probably quit
+									wgpu::SurfaceError::OutOfMemory => {
+										log::error!("OutOfMemory");
+										event_loop.exit();
+									}
 
-								Err(other) => {
-									log::error!("Other error: {:?}", other);
+									// This happens when the a frame takes too long to present
+									wgpu::SurfaceError::Timeout => {
+										log::warn!("Surface timeout")
+									}
+
+									other => {
+										log::error!("Other error: {:?}", other);
+									}
 								}
+								painter.surface_error = None;
 							}
 
 							self.is_resizing = false;

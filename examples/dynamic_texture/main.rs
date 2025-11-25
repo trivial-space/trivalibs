@@ -94,7 +94,7 @@ impl CanvasApp<()> for App {
 		p.request_next_frame();
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
+	fn render(&self, p: &mut Painter)  {
 		// Render and show display layer (which samples from red or blue)
 		p.paint_and_show(self.display_layer)
 	}

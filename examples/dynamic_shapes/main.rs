@@ -187,9 +187,9 @@ impl CanvasApp<()> for App {
 		p.request_next_frame();
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
-		p.paint(self.layer1)?;
-		p.paint(self.layer2)?;
+	fn render(&self, p: &mut Painter) {
+		p.paint(self.layer1);
+		p.paint(self.layer2);
 		p.paint_and_show(self.canvas)
 	}
 

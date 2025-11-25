@@ -91,7 +91,7 @@ impl CanvasApp<()> for App {
 		self.u_size.update(p, uvec2(width, height));
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
+	fn render(&self, p: &mut Painter)  {
 		let c = &self.canvases[self.current_canvas];
 		if c.animated {
 			p.request_next_frame();

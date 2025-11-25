@@ -84,7 +84,7 @@ impl CanvasApp<()> for App {
 		self.model_mat.update(p, self.transform.model_mat());
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
+	fn render(&self, p: &mut Painter) {
 		p.request_next_frame();
 		p.paint_and_show(self.canvas)
 	}

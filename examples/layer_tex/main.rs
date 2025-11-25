@@ -244,10 +244,10 @@ impl CanvasApp<ResizeEvent> for App {
 		p.request_next_frame();
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
-		p.paint(self.color_triangle_layer)?;
-		p.paint(self.color_quad_layer)?;
-		p.paint(self.canvas)?;
+	fn render(&self, p: &mut Painter) {
+		p.paint(self.color_triangle_layer);
+		p.paint(self.color_quad_layer);
+		p.paint(self.canvas);
 		p.show(self.canvas)
 	}
 
