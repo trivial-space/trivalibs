@@ -951,43 +951,20 @@ impl<'a> SingleEffectLayerBuilder<'a> {
 	}
 
 	pub fn create(self) -> Layer {
-		let effect = Effect::new(
-			self.painter,
-			self.shade,
-			crate::effect::EffectProps {
-				bindings: Vec::with_capacity(0),
-				layers: Vec::with_capacity(0),
-				instances: self.effect_instances,
-				blend_state: self.blend_state,
-				dst_mip_level: self.dst_mip_level,
-				src_mip_level: self.src_mip_level,
-			},
-		);
+		let (painter, props) = self.into_layer_props();
+		Layer::new(painter, props)
+	}
 
-		let mut formats = Vec::with_capacity(1);
-		if let Some(format) = self.format {
-			formats.push(format);
-		}
-
-		Layer::new(
-			self.painter,
-			LayerProps {
-				static_texture: false,
-				static_texture_data: None,
-				shapes: Vec::with_capacity(0),
-				effects: vec![effect],
-				bindings: self.effect_bindings,
-				layers: self.effect_layers,
-				width: self.width,
-				height: self.height,
-				formats,
-				clear_color: self.clear_color,
-				depth_test: false,
-				layer_layout: BINDING_LAYER_FRAG,
-				multisampled: false,
-				mips: self.mips,
-			},
-		)
+	/// Creates a layer and immediately initializes its GPU pipelines.
+	///
+	/// Layers created during app initialization are initialized automatically,
+	/// so they can use `create`. Runtime-created layers must either call
+	/// `Layer::init_gpu_pipelines` manually or use this helper instead.
+	pub fn create_and_init(self) -> Layer {
+		let (painter, props) = self.into_layer_props();
+		let layer = Layer::new(painter, props);
+		layer.init_gpu_pipelines(painter);
+		layer
 	}
 
 	// Effect builder methods
@@ -1050,5 +1027,61 @@ impl<'a> SingleEffectLayerBuilder<'a> {
 	pub fn with_mips_max(mut self, max: u32) -> Self {
 		self.mips = Some(MipMapCount::Max(max));
 		self
+	}
+
+	fn into_layer_props(self) -> (&'a mut Painter, LayerProps<'a>) {
+		let SingleEffectLayerBuilder {
+			painter,
+			shade,
+			effect_bindings,
+			effect_layers,
+			effect_instances,
+			blend_state,
+			dst_mip_level,
+			src_mip_level,
+			width,
+			height,
+			format,
+			clear_color,
+			mips,
+		} = self;
+
+		let effect = Effect::new(
+			painter,
+			shade,
+			crate::effect::EffectProps {
+				bindings: Vec::with_capacity(0),
+				layers: Vec::with_capacity(0),
+				instances: effect_instances,
+				blend_state,
+				dst_mip_level,
+				src_mip_level,
+			},
+		);
+
+		let mut formats = Vec::with_capacity(1);
+		if let Some(format) = format {
+			formats.push(format);
+		}
+
+		(
+			painter,
+			LayerProps {
+				static_texture: false,
+				static_texture_data: None,
+				shapes: Vec::with_capacity(0),
+				effects: vec![effect],
+				bindings: effect_bindings,
+				layers: effect_layers,
+				width,
+				height,
+				formats,
+				clear_color,
+				depth_test: false,
+				layer_layout: BINDING_LAYER_FRAG,
+				multisampled: false,
+				mips,
+			},
+		)
 	}
 }
