@@ -1,7 +1,7 @@
 use trivalibs_core::rendering::camera::PerspectiveCamera;
 use trivalibs_painter::{
+	app::{KeyCode, PointerButton},
 	utils::input_state::InputState,
-	winit::{event::MouseButton, keyboard::KeyCode},
 };
 
 pub struct BasicFirstPersonCameraController {
@@ -97,13 +97,18 @@ impl BasicFirstPersonCameraController {
 
 		if input.pressed_keys.contains(&KeyCode::KeyW)
 			|| input.pressed_keys.contains(&KeyCode::ArrowUp)
-			|| (self.holding && !input.pressed_pointer_buttons.contains(&MouseButton::Right))
+			|| (self.holding
+				&& !input
+					.pressed_pointer_buttons
+					.contains(&PointerButton::Secondary))
 		{
 			forward += move_distance;
 		}
 		if input.pressed_keys.contains(&KeyCode::KeyS)
 			|| input.pressed_keys.contains(&KeyCode::ArrowDown)
-			|| input.pressed_pointer_buttons.contains(&MouseButton::Right)
+			|| input
+				.pressed_pointer_buttons
+				.contains(&PointerButton::Secondary)
 		{
 			forward -= move_distance;
 		}

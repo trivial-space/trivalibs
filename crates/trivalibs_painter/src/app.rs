@@ -17,17 +17,12 @@ use winit::{
 	dpi::PhysicalSize,
 	event::{DeviceEvent, DeviceId, ElementState, KeyEvent, WindowEvent},
 	event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
-	keyboard::{KeyCode, PhysicalKey},
+	keyboard::PhysicalKey,
 	window::{Window, WindowId},
 };
 
-#[derive(Debug)]
-pub enum Event<UserEvent> {
-	WindowEvent(WindowEvent),
-	DeviceEvent(DeviceEvent),
-	UserEvent(UserEvent),
-	ShaderReloadEvent,
-}
+// Re-export custom event types
+pub use crate::events::{Event, KeyCode, PointerButton};
 
 pub trait CanvasApp<UserEvent> {
 	fn init(painter: &mut Painter) -> Self;
@@ -63,6 +58,7 @@ pub trait CanvasApp<UserEvent> {
 			frame_time: 0.0,
 			now: Instant::now(),
 			config: AppConfig::default(),
+			last_cursor: None,
 		};
 
 		CanvasAppStarter { runner, event_loop }
@@ -95,6 +91,7 @@ where
 	frame_time: f32,
 	now: Instant,
 	config: AppConfig,
+	last_cursor: Option<(f64, f64)>,
 }
 
 impl<UserEvent, App> CanvasAppRunner<UserEvent, App>
@@ -508,40 +505,96 @@ where
 
 					WindowEvent::CloseRequested => event_loop.exit(),
 
-					WindowEvent::KeyboardInput {
-						event:
-							KeyEvent {
-								state: ElementState::Released,
-								physical_key: PhysicalKey::Code(KeyCode::Space),
-								..
-							},
-						..
-					} => {
-						if self.is_running {
-							self.pause();
+					WindowEvent::CursorMoved { position, .. } => {
+						let x = position.x;
+						let y = position.y;
+						let (delta_x, delta_y) = if let Some((last_x, last_y)) = self.last_cursor {
+							(x - last_x, y - last_y)
 						} else {
-							self.play();
+							(0.0, 0.0)
+						};
+						self.last_cursor = Some((x, y));
+
+						if self.is_running {
+							app.event(
+								Event::PointerMove {
+									x,
+									y,
+									delta_x,
+									delta_y,
+									mouse_lock: false,
+								},
+								painter,
+							);
 						}
 					}
 
-					// TODO: make this configurable
-					#[cfg(not(target_arch = "wasm32"))]
+					WindowEvent::MouseInput { state, button, .. } => {
+						let button = PointerButton::from(button);
+						let (x, y) = self.last_cursor.unwrap_or((0.0, 0.0));
+
+						if self.is_running {
+							match state {
+								ElementState::Pressed => {
+									app.event(Event::PointerDown { button, x, y }, painter);
+								}
+								ElementState::Released => {
+									app.event(Event::PointerUp { button, x, y }, painter);
+								}
+							}
+						}
+					}
+
 					WindowEvent::KeyboardInput {
 						event:
 							KeyEvent {
 								state: ElementState::Released,
-								physical_key: PhysicalKey::Code(KeyCode::Escape),
+								physical_key: PhysicalKey::Code(code),
 								..
 							},
 						..
 					} => {
-						event_loop.exit();
+						let key = KeyCode::from(code);
+
+						// Handle exit with Escape on native
+						#[cfg(not(target_arch = "wasm32"))]
+						if matches!(key, KeyCode::Escape) {
+							event_loop.exit();
+						}
+
+						if self.is_running {
+							app.event(Event::KeyUp { key }, painter);
+						}
+
+						// Handle internal pause/play with Space after event processing
+						if matches!(key, KeyCode::Space) {
+							if self.is_running {
+								self.is_running = false;
+							} else {
+								self.is_running = true;
+								self.now = Instant::now();
+								painter.request_next_frame();
+							}
+						}
 					}
 
-					rest => {
+					WindowEvent::KeyboardInput {
+						event:
+							KeyEvent {
+								state: ElementState::Pressed,
+								physical_key: PhysicalKey::Code(code),
+								..
+							},
+						..
+					} => {
 						if self.is_running {
-							app.event(Event::WindowEvent(rest), painter);
+							let key = KeyCode::from(code);
+							app.event(Event::KeyDown { key }, painter);
 						}
+					}
+
+					_ => {
+						// Ignore other window events (focus, hover, etc.)
 					}
 				};
 			}
@@ -557,7 +610,24 @@ where
 	) {
 		if let WindowState::Initialized(painter, app) = &mut self.state {
 			if self.is_running {
-				app.event(Event::DeviceEvent(event), painter);
+				match event {
+					DeviceEvent::MouseMotion { delta } => {
+						// Raw mouse motion - typically from mouse lock / FPS mode
+						app.event(
+							Event::PointerMove {
+								x: 0.0,
+								y: 0.0,
+								delta_x: delta.0,
+								delta_y: delta.1,
+								mouse_lock: true,
+							},
+							painter,
+						);
+					}
+					_ => {
+						// Ignore other device events for now
+					}
+				}
 			}
 		}
 	}

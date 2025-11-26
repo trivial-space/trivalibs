@@ -2,7 +2,6 @@ use trivalibs::painter::{
 	Painter,
 	app::{CanvasApp, Event},
 	wgpu,
-	winit::event::WindowEvent,
 };
 
 struct App {
@@ -55,14 +54,11 @@ impl CanvasApp<()> for App {
 
 	fn event(&mut self, event: Event<()>, p: &mut Painter) {
 		match event {
-			Event::WindowEvent(WindowEvent::CursorMoved {
-				device_id: _,
-				position,
-			}) => {
+			Event::PointerMove { x, y, .. } => {
 				let size = p.canvas_size();
 				self.color = wgpu::Color {
-					r: position.x / size.width as f64,
-					g: position.y / size.height as f64,
+					r: x / size.width as f64,
+					g: y / size.height as f64,
 					b: 0.3,
 					a: 1.0,
 				};

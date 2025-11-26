@@ -1,25 +1,12 @@
-use trivalibs::{
-	map,
-	painter::{
-		prelude::*,
-		winit::event::{ElementState, MouseButton, WindowEvent},
-	},
-	prelude::*,
-};
-
-#[derive(Copy, Clone)]
-struct Canvas {
-	layer: Layer,
-	animated: bool,
-}
+use trivalibs::{map, painter::prelude::*, prelude::*};
 
 struct App {
 	time: f32,
 	u_size: BindingBuffer<UVec2>,
 	u_time: BindingBuffer<f32>,
 
-	canvases: Vec<Canvas>,
-	current_canvas: usize,
+	layers: Vec<Layer>,
+	current_layer: usize,
 }
 
 impl CanvasApp<()> for App {
@@ -27,7 +14,7 @@ impl CanvasApp<()> for App {
 		let u_size = p.bind_uvec2();
 		let u_time = p.bind_f32();
 
-		let shade_canvas = |p: &mut Painter, animated: bool| {
+		let shade_canvas = |p: &mut Painter| {
 			let s = p
 				.shade_effect()
 				.with_bindings(&[BINDING_BUFFER_FRAG, BINDING_BUFFER_FRAG])
@@ -43,28 +30,28 @@ impl CanvasApp<()> for App {
 				})
 				.create();
 
-			(s, Canvas { layer, animated })
+			(s, layer)
 		};
 
-		let (s, simplex_2d_test) = shade_canvas(p, true);
+		let (s, simplex_2d_test) = shade_canvas(p);
 		load_fragment_shader!(s, p, "./shader/simplex_2d_shader.spv");
 
-		let (s, simplex_3d_test) = shade_canvas(p, true);
+		let (s, simplex_3d_test) = shade_canvas(p);
 		load_fragment_shader!(s, p, "./shader/simplex_3d_shader.spv");
 
-		let (s, simplex_4d_test) = shade_canvas(p, true);
+		let (s, simplex_4d_test) = shade_canvas(p);
 		load_fragment_shader!(s, p, "./shader/simplex_4d_shader.spv");
 
-		let (s, tiling_simplex_test) = shade_canvas(p, true);
+		let (s, tiling_simplex_test) = shade_canvas(p);
 		load_fragment_shader!(s, p, "./shader/tiling_simplex_shader.spv");
 
-		let (s, tiling_noise_2d_test) = shade_canvas(p, true);
+		let (s, tiling_noise_2d_test) = shade_canvas(p);
 		load_fragment_shader!(s, p, "./shader/tiling_noise_2d_shader.spv");
 
-		let (s, tiling_noise_3d_test) = shade_canvas(p, true);
+		let (s, tiling_noise_3d_test) = shade_canvas(p);
 		load_fragment_shader!(s, p, "./shader/tiling_noise_3d_shader.spv");
 
-		let (s, hash_test) = shade_canvas(p, true);
+		let (s, hash_test) = shade_canvas(p);
 		load_fragment_shader!(s, p, "./shader/hash_shader.spv");
 
 		// return App
@@ -74,7 +61,7 @@ impl CanvasApp<()> for App {
 			u_size,
 			u_time,
 
-			canvases: vec![
+			layers: vec![
 				hash_test,
 				simplex_2d_test,
 				simplex_3d_test,
@@ -83,7 +70,7 @@ impl CanvasApp<()> for App {
 				tiling_noise_2d_test,
 				tiling_noise_3d_test,
 			],
-			current_canvas: 0,
+			current_layer: 0,
 		}
 	}
 
@@ -95,35 +82,21 @@ impl CanvasApp<()> for App {
 		self.time += tpf;
 		self.u_time.update(p, self.time);
 
-		let c = &self.canvases[self.current_canvas];
+		let layer = self.layers[self.current_layer];
 
-		p.paint_and_show(c.layer);
+		p.paint_and_show(layer);
 
-		if c.animated {
-			p.request_next_frame();
-		}
+		p.request_next_frame();
 	}
 
-	fn event(&mut self, e: Event<()>, p: &mut Painter) {
-		match e {
-			Event::ShaderReloadEvent => {
-				p.request_next_frame();
+	fn event(&mut self, e: Event<()>, _p: &mut Painter) {
+		if let Event::PointerUp { button, .. } = e {
+			if button == PointerButton::Primary {
+				self.current_layer = (self.current_layer + 1) % self.layers.len();
+			} else {
+				self.current_layer =
+					(self.current_layer + self.layers.len() - 1) % self.layers.len();
 			}
-			Event::WindowEvent(WindowEvent::MouseInput { state, button, .. }) => {
-				if state == ElementState::Released {
-					p.request_next_frame();
-					match button {
-						MouseButton::Left => {
-							self.current_canvas = (self.current_canvas + 1) % self.canvases.len();
-						}
-						_ => {
-							self.current_canvas = (self.current_canvas + self.canvases.len() - 1)
-								% self.canvases.len();
-						}
-					}
-				}
-			}
-			_ => {}
 		}
 	}
 }

@@ -131,7 +131,7 @@ impl CanvasApp<()> for App {
 			canvas,
 			vp_mat,
 			input: default(),
-			cam_controller: BasicFirstPersonCameraController::new(1.0, 3.0),
+			cam_controller: BasicFirstPersonCameraController::new(1.0, 2.0),
 		}
 	}
 

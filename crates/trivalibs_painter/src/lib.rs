@@ -8,6 +8,7 @@ pub mod bind_group;
 pub mod binding;
 pub mod binding_constants;
 pub mod effect;
+pub mod events;
 pub mod form;
 pub mod layer;
 pub(crate) mod pipeline;
@@ -22,7 +23,7 @@ pub(crate) mod window_dimensions;
 
 pub mod prelude {
 	pub use crate::{
-		app::{AppConfig, CanvasApp, Event},
+		app::{AppConfig, CanvasApp, Event, KeyCode, PointerButton},
 		binding::{BindingBuffer, InstanceBinding, Mat3U, Vec3U},
 		binding_constants::*,
 		effect::EffectProps,
