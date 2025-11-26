@@ -34,6 +34,6 @@ pub mod prelude {
 		sampler::{Sampler, SamplerProps},
 		shade::{Shade, ShadeEffectProps, ShadeProps},
 		shape::{Shape, ShapeProps},
-		wgpu::{self, SurfaceError, TextureFormat::*, VertexFormat::*},
+		wgpu::{self, TextureFormat::*, VertexFormat::*},
 	};
 }
