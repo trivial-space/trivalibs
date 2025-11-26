@@ -37,7 +37,7 @@ impl CanvasApp<()> for App {
 			.with_size(4, 4)
 			.create();
 
-		let _ = p.init_and_paint(red_layer);
+		p.init_and_paint(red_layer);
 
 		// Create blue layer - renders solid blue color
 		let blue_layer = p
@@ -46,7 +46,7 @@ impl CanvasApp<()> for App {
 			.with_size(4, 4)
 			.create();
 
-		let _ = p.init_and_paint(blue_layer);
+		p.init_and_paint(blue_layer);
 
 		// Create sampler for texture sampling
 		let sampler = p.sampler_nearest();
@@ -71,7 +71,7 @@ impl CanvasApp<()> for App {
 
 	fn resize(&mut self, _p: &mut Painter, _width: u32, _height: u32) {}
 
-	fn update(&mut self, p: &mut Painter, tpf: f32) {
+	fn frame(&mut self, p: &mut Painter, tpf: f32) {
 		self.time += tpf;
 
 		// Toggle every second
@@ -91,12 +91,10 @@ impl CanvasApp<()> for App {
 			}
 		}
 
-		p.request_next_frame();
-	}
-
-	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
 		// Render and show display layer (which samples from red or blue)
-		p.paint_and_show(self.display_layer)
+		p.paint_and_show(self.display_layer);
+
+		p.request_next_frame();
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

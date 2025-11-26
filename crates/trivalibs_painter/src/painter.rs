@@ -31,6 +31,8 @@ pub struct Painter {
 	pub device: wgpu::Device,
 	pub queue: wgpu::Queue,
 
+	pub surface_error: Option<wgpu::SurfaceError>,
+
 	window: Arc<Window>,
 	pub(crate) forms: Vec<FormStorage>,
 	pub(crate) shades: Vec<ShadeStorage>,
@@ -113,6 +115,7 @@ impl Painter {
 			adapter,
 			device,
 			queue,
+			surface_error: None,
 			window: window.clone(),
 			forms: Vec::with_capacity(8),
 			shades: Vec::with_capacity(8),
@@ -560,12 +563,7 @@ impl Painter {
 	///    Iterate through all instances, setting both bind groups per draw
 	///
 	/// This respects the override hierarchy: Layer → Effect → Instance
-	fn render_effect(
-		&self,
-		effect_index: usize,
-		layer: Layer,
-		skip_source: bool,
-	) -> Result<(), wgpu::SurfaceError> {
+	fn render_effect(&self, effect_index: usize, layer: Layer, skip_source: bool) {
 		let l = &self.layers[layer.0];
 		let effect_data = &l.effects[effect_index];
 		let effect = effect_data.effect;
@@ -694,11 +692,9 @@ impl Painter {
 		}
 
 		self.queue.submit(Some(encoder.finish()));
-
-		Ok(())
 	}
 
-	pub fn paint(&mut self, layer: Layer) -> Result<(), wgpu::SurfaceError> {
+	pub fn paint(&mut self, layer: Layer) {
 		let l = &self.layers[layer.0];
 		let shapes_len = l.shapes.len();
 		let effects_len = l.effects.len();
@@ -783,7 +779,7 @@ impl Painter {
 
 		if effects_len == 0 {
 			l.current_target_texture().update_mips(self);
-			return Ok(());
+			return;
 		}
 
 		if has_shapes {
@@ -796,7 +792,7 @@ impl Painter {
 			let e = &self.effects[effect.0];
 
 			let skip_source_tex = i == 0 && !(has_shapes || e.src_mip_level.is_some());
-			self.render_effect(i, layer, skip_source_tex)?;
+			self.render_effect(i, layer, skip_source_tex);
 
 			if e.dst_mip_level.is_none() {
 				self.layers[layer.0].swap_targets();
@@ -812,19 +808,23 @@ impl Painter {
 				.current_source_texture()
 				.update_mips(self);
 		}
-
-		Ok(())
 	}
 
-	pub fn compose(&mut self, layers: &[Layer]) -> Result<(), wgpu::SurfaceError> {
+	pub fn compose(&mut self, layers: &[Layer]) {
 		for layer in layers {
-			self.paint(*layer)?;
+			self.paint(*layer);
 		}
-		Ok(())
 	}
 
-	pub fn show(&mut self, layer: Layer) -> Result<(), wgpu::SurfaceError> {
-		let frame = self.surface.get_current_texture()?;
+	pub fn show(&mut self, layer: Layer) {
+		let result = self.surface.get_current_texture();
+
+		if result.is_err() {
+			self.surface_error = Some(result.err().unwrap());
+			return;
+		}
+
+		let frame = result.unwrap();
 
 		let view = frame
 			.texture
@@ -864,12 +864,10 @@ impl Painter {
 
 		self.queue.submit(Some(encoder.finish()));
 		frame.present();
-
-		Ok(())
 	}
 
-	pub fn paint_and_show(&mut self, layer: Layer) -> Result<(), wgpu::SurfaceError> {
-		self.paint(layer)?;
+	pub fn paint_and_show(&mut self, layer: Layer) {
+		self.paint(layer);
 		self.show(layer)
 	}
 
@@ -878,9 +876,9 @@ impl Painter {
 	///
 	/// Only needed if the layer was created outsite of CanvasApp::init, or if the layer should be rendered immediately after creation.
 	/// Otherwise, all layers are initialized automatically after CanvasApp::init and before the first CanvasApp::render call.
-	pub fn init_and_paint(&mut self, layer: Layer) -> Result<(), wgpu::SurfaceError> {
+	pub fn init_and_paint(&mut self, layer: Layer) {
 		layer.init_gpu_pipelines(self);
-		self.paint(layer)
+		self.paint(layer);
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]

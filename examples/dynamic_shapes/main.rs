@@ -161,7 +161,7 @@ impl CanvasApp<()> for App {
 
 	fn resize(&mut self, _p: &mut Painter, _width: u32, _height: u32) {}
 
-	fn update(&mut self, p: &mut Painter, tpf: f32) {
+	fn frame(&mut self, p: &mut Painter, tpf: f32) {
 		self.timer += tpf;
 
 		// Every second, pick a random selection of shapes from the pool for both layers
@@ -185,12 +185,11 @@ impl CanvasApp<()> for App {
 
 		// Request continuous rendering
 		p.request_next_frame();
-	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
-		p.paint(self.layer1)?;
-		p.paint(self.layer2)?;
-		p.paint_and_show(self.canvas)
+		// render
+		p.paint(self.layer1);
+		p.paint(self.layer2);
+		p.paint_and_show(self.canvas);
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}

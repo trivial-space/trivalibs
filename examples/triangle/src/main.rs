@@ -1,8 +1,8 @@
 use shader::Vertex;
 use trivalibs::painter::{
+	Painter,
 	app::{CanvasApp, Event},
 	wgpu::{self, include_spirv, util::DeviceExt},
-	Painter,
 };
 use trivalibs::prelude::*;
 
@@ -212,8 +212,8 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn render(&self, p: &mut Painter) -> Result<(), wgpu::SurfaceError> {
-		let frame = p.surface.get_current_texture()?;
+	fn frame(&mut self, p: &mut Painter, _tpf: f32) {
+		let frame = p.surface.get_current_texture().unwrap();
 
 		let view = frame
 			.texture
@@ -246,13 +246,10 @@ impl CanvasApp<()> for App {
 
 		p.queue.submit(Some(encoder.finish()));
 		frame.present();
-
-		Ok(())
 	}
 
 	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 	fn resize(&mut self, _p: &mut Painter, _w: u32, _h: u32) {}
-	fn update(&mut self, _p: &mut Painter, _tpf: f32) {}
 }
 
 pub fn main() {

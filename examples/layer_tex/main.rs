@@ -223,7 +223,7 @@ impl CanvasApp<ResizeEvent> for App {
 		self.tex_cam.set_aspect_ratio(width as f32 / height as f32);
 	}
 
-	fn update(&mut self, p: &mut Painter, tpf: f32) {
+	fn frame(&mut self, p: &mut Painter, tpf: f32) {
 		self.triangle_transform.rotate_y(0.25 * tpf);
 		self.quad_transform.rotate_y(0.3 * tpf);
 
@@ -241,14 +241,12 @@ impl CanvasApp<ResizeEvent> for App {
 		self.tex_quad_mvp
 			.update(p, self.quad_transform.model_view_proj_mat(&self.tex_cam));
 
-		p.request_next_frame();
-	}
+		p.paint(self.color_triangle_layer);
+		p.paint(self.color_quad_layer);
+		p.paint(self.canvas);
+		p.show(self.canvas);
 
-	fn render(&self, p: &mut Painter) -> Result<(), SurfaceError> {
-		p.paint(self.color_triangle_layer)?;
-		p.paint(self.color_quad_layer)?;
-		p.paint(self.canvas)?;
-		p.show(self.canvas)
+		p.request_next_frame();
 	}
 
 	fn event(&mut self, e: Event<ResizeEvent>, p: &mut Painter) {
