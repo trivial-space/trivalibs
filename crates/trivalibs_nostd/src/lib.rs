@@ -16,6 +16,5 @@ pub mod prelude {
 	pub use crate::vec_ext::*;
 
 	#[cfg(target_arch = "spirv")]
-	#[allow(unused_imports)]
-	pub use spirv_std::num_traits::Float;
+	pub use spirv_std::num_traits::*;
 }
