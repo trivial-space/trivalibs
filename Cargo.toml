@@ -37,7 +37,7 @@ glam = { version = "0.30", features = [
 ] }
 winit = "0.30"
 wgpu = { version = "26.0", features = ["spirv"] }
-spirv-std = { git = "https://github.com/Rust-GPU/rust-gpu", rev = "2aa4d4f8a8ba73103501562cfca17b8163e5a887" }
+spirv-std = { git = "https://github.com/Rust-GPU/rust-gpu", rev = "b3eda4df9814b6176d3c0844eb67f70a22ebb378" }
 log = "0.4"
 env_logger = "0.11"
 pollster = "0.4"
@@ -64,4 +64,4 @@ multimodule = true
 
 [workspace.metadata.rust-gpu.install]
 spirv_builder_source = "https://github.com/Rust-GPU/rust-gpu"
-spirv_builder_version = "2aa4d4f8a8ba73103501562cfca17b8163e5a887"
+spirv_builder_version = "b3eda4df9814b6176d3c0844eb67f70a22ebb378"
