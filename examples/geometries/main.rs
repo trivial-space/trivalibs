@@ -21,7 +21,7 @@ pub fn create_plane(width: f32, height: f32, normal: Vec3, center: Vec3) -> Buff
 	let mut geom = MeshGeometry::new();
 	geom.add_face_data(&plane.to_ccw_verts(), face_normal(plane.normal));
 
-	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithVertexNormals)
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithVertexNormal)
 }
 
 pub fn create_box(center: Vec3, size: Vec3) -> BufferedGeometry {
@@ -47,7 +47,7 @@ pub fn create_box(center: Vec3, size: Vec3) -> BufferedGeometry {
 	let bottom = bbox.bottom_face_f(|pos, uvw| vert_pos_uv(pos, vec2(uvw.x, uvw.z)));
 	geom.add_face_data(&bottom.to_ccw_verts(), face_props(bottom.normal, 5));
 
-	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithFaceNormals)
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithFaceNormal)
 }
 
 struct App {

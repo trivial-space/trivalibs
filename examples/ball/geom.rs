@@ -58,7 +58,7 @@ pub fn create_ball_geom() -> BufferedGeometry {
 		vertices.iter().map(|v| vert(v.pos, v.uv, color)).collect()
 	});
 
-	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithVertexNormals)
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithVertexNormal)
 }
 
 #[test]

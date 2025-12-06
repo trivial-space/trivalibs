@@ -1,10 +1,9 @@
-use crate::rendering::mesh_geometry::face_props;
-
-use super::{DEFAULT_MESH_SECTION, MeshGeometry, PositionFaceRef, face_section};
+use super::{
+	DEFAULT_MESH_SECTION, MeshGeometry, PositionFaceRef, face_normal, face_props, face_section,
+};
+use crate::data::Position3D;
 use bytemuck::{Pod, Zeroable};
 use glam::{Vec3, vec3};
-
-use super::Position3D;
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Clone, Copy, Pod, Zeroable)]
@@ -154,8 +153,8 @@ fn new_from_section_resets_sections() {
 		vert(0.0, 1.0, 1.0),
 	];
 
-	geom.add_face_data(&base, face_section(2));
-	geom.add_face_data(&other, face_section(3));
+	geom.add_face_data(base, face_section(2));
+	geom.add_face_data(other, face_section(3));
 
 	let section = geom.new_from_section(3);
 
@@ -185,9 +184,9 @@ fn split_by_sections_produces_separate_meshes() {
 		vert(0.0, 1.0, 2.0),
 	];
 
-	geom.add_face_data(&base, face_section(5));
-	geom.add_face_data(&shifted, face_section(5));
-	geom.add_face_data(&quad, face_section(8));
+	geom.add_face_data(base, face_section(5));
+	geom.add_face_data(shifted, face_section(5));
+	geom.add_face_data(quad, face_section(8));
 
 	let sections = geom.split_by_sections();
 
@@ -218,7 +217,7 @@ fn face_calculate_normal_triangle() {
 	let v2 = vert(1.0, 0.0, 0.0);
 	let v3 = vert(0.0, 1.0, 0.0);
 
-	geom.add_face(&[v1, v2, v3]);
+	geom.add_face([v1, v2, v3]);
 	let face = geom.face(0);
 
 	let normal = face.calculate_normal();
@@ -235,7 +234,7 @@ fn face_calculate_normal_quad() {
 	let v3 = vert(1.0, 1.0, 0.0);
 	let v4 = vert(0.0, 1.0, 0.0);
 
-	geom.add_face(&[v1, v2, v3, v4]);
+	geom.add_face([v1, v2, v3, v4]);
 	let face = geom.face(0);
 
 	let normal = face.calculate_normal();
@@ -251,7 +250,7 @@ fn face_calculate_and_store_normal() {
 	let v2 = vert(1.0, 0.0, 0.0);
 	let v3 = vert(0.0, 1.0, 0.0);
 
-	geom.add_face(&[v1, v2, v3]);
+	geom.add_face([v1, v2, v3]);
 
 	// Initially no normal stored
 	assert_eq!(geom.faces[0].face_normal, None);
@@ -270,7 +269,7 @@ fn map_scale_vertices() {
 	let v2 = vert(1.0, 0.0, 0.0);
 	let v3 = vert(0.0, 1.0, 0.0);
 
-	geom.add_face(&[v1, v2, v3]);
+	geom.add_face([v1, v2, v3]);
 
 	// Scale all vertices by 2
 	let scaled = geom.map(|face| {
@@ -298,7 +297,7 @@ fn map_preserves_face_properties() {
 	let v3 = vert(0.0, 1.0, 0.0);
 
 	let normal = vec3(0.0, 0.0, 1.0);
-	geom.add_face_data(&[v1, v2, v3], face_props(normal, 5));
+	geom.add_face_data([v1, v2, v3], face_props(normal, 5));
 
 	let mapped = geom.map(|face| face.vertices().to_vec());
 
@@ -311,12 +310,12 @@ fn map_preserves_face_properties() {
 #[test]
 fn map_multiple_faces() {
 	let mut geom = MeshGeometry::new();
-	geom.add_face(&[
+	geom.add_face([
 		vert(0.0, 0.0, 0.0),
 		vert(1.0, 0.0, 0.0),
 		vert(0.0, 1.0, 0.0),
 	]);
-	geom.add_face(&[
+	geom.add_face([
 		vert(1.0, 0.0, 0.0),
 		vert(1.0, 1.0, 0.0),
 		vert(0.0, 1.0, 0.0),
@@ -384,10 +383,10 @@ fn map_data_calculate_normal_on_fly() {
 
 		// Create a temporary face to calculate new normal
 		let mut temp_geom = MeshGeometry::new();
-		temp_geom.add_face(&new_verts);
+		temp_geom.add_face(new_verts.as_slice());
 		let new_normal = temp_geom.face(0).calculate_normal();
 
-		(new_verts, super::face_normal(new_normal))
+		(new_verts, face_normal(new_normal))
 	});
 
 	assert_eq!(scaled.face_count(), 1);
@@ -562,17 +561,14 @@ fn flat_map_data_recalculate_normals_per_split() {
 			let tri2 = vec![verts[0], verts[2], verts[3]];
 
 			let mut temp_geom1 = MeshGeometry::new();
-			temp_geom1.add_face(&tri1);
+			temp_geom1.add_face(tri1.as_slice());
 			let normal1 = temp_geom1.face(0).calculate_normal();
 
 			let mut temp_geom2 = MeshGeometry::new();
-			temp_geom2.add_face(&tri2);
+			temp_geom2.add_face(tri2.as_slice());
 			let normal2 = temp_geom2.face(0).calculate_normal();
 
-			vec![
-				(tri1, super::face_normal(normal1)),
-				(tri2, super::face_normal(normal2)),
-			]
+			vec![(tri1, face_normal(normal1)), (tri2, face_normal(normal2))]
 		} else {
 			vec![(verts.to_vec(), Default::default())]
 		}
@@ -595,7 +591,7 @@ fn flat_map_data_filter_and_modify() {
 			vert(1.0, 0.0, 0.0),
 			vert(0.0, 1.0, 0.0),
 		],
-		super::face_section(1),
+		face_section(1),
 	);
 	geom.add_face_data(
 		&[
@@ -603,7 +599,7 @@ fn flat_map_data_filter_and_modify() {
 			vert(1.0, 1.0, 0.0),
 			vert(0.0, 1.0, 0.0),
 		],
-		super::face_section(2),
+		face_section(2),
 	);
 	geom.add_face_data(
 		&[
@@ -611,13 +607,13 @@ fn flat_map_data_filter_and_modify() {
 			vert(3.0, 0.0, 0.0),
 			vert(2.0, 1.0, 0.0),
 		],
-		super::face_section(1),
+		face_section(1),
 	);
 
 	// Keep only section 1 faces and move them to section 10
 	let filtered = geom.flat_map_data(|face| {
 		if face.section == 1 {
-			vec![(face.vertices().to_vec(), super::face_section(10))]
+			vec![(face.vertices().to_vec(), face_section(10))]
 		} else {
 			vec![]
 		}

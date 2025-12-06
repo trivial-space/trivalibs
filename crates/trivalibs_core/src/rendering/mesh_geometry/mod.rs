@@ -1,9 +1,5 @@
 use crate::{
-	data::{
-		Position3D,
-		grid::{CoordOpsFn, Grid},
-		vertex_index::VertIdx3f,
-	},
+	data::{Position3D, vertex_index::VertIdx3f},
 	rendering::BufferedGeometry,
 	rendering::webgl_buffered_geometry::{
 		RenderingPrimitive, VertexFormat, VertexType, WebglBufferedGeometry, WebglVertexData,
@@ -154,10 +150,102 @@ where
 	position_indices: FxHashMap<VertIdx3f, usize>,
 }
 
+pub trait FaceVertexCollection<V> {
+	type IntoIter: Iterator<Item = V>;
+
+	fn into_face_vertices(self) -> Self::IntoIter;
+}
+
+impl<V> FaceVertexCollection<V> for Vec<V> {
+	type IntoIter = std::vec::IntoIter<V>;
+
+	fn into_face_vertices(self) -> Self::IntoIter {
+		self.into_iter()
+	}
+}
+
+impl<V, const N: usize> FaceVertexCollection<V> for [V; N] {
+	type IntoIter = std::array::IntoIter<V, N>;
+
+	fn into_face_vertices(self) -> Self::IntoIter {
+		self.into_iter()
+	}
+}
+
+impl<'a, V: Clone> FaceVertexCollection<V> for &'a [V] {
+	type IntoIter = std::iter::Cloned<std::slice::Iter<'a, V>>;
+
+	fn into_face_vertices(self) -> Self::IntoIter {
+		self.iter().cloned()
+	}
+}
+
+impl<'a, V: Clone> FaceVertexCollection<V> for &'a mut [V] {
+	type IntoIter = std::iter::Cloned<std::slice::Iter<'a, V>>;
+
+	fn into_face_vertices(self) -> Self::IntoIter {
+		self.iter().cloned()
+	}
+}
+
+impl<'a, V: Clone, const N: usize> FaceVertexCollection<V> for &'a [V; N] {
+	type IntoIter = std::iter::Cloned<std::slice::Iter<'a, V>>;
+
+	fn into_face_vertices(self) -> Self::IntoIter {
+		self.as_slice().iter().cloned()
+	}
+}
+
+impl<'a, V: Clone, const N: usize> FaceVertexCollection<V> for &'a mut [V; N] {
+	type IntoIter = std::iter::Cloned<std::slice::Iter<'a, V>>;
+
+	fn into_face_vertices(self) -> Self::IntoIter {
+		self.as_slice().iter().cloned()
+	}
+}
+
 impl<V> MeshGeometry<V>
 where
 	V: Position3D + Clone + Zeroable,
 {
+	pub fn from_faces<Faces, FaceVertices>(faces: Faces) -> Self
+	where
+		Faces: IntoIterator<Item = FaceVertices>,
+		FaceVertices: FaceVertexCollection<V>,
+	{
+		let mut geom = MeshGeometry::new();
+		geom.add_faces(faces);
+		geom
+	}
+
+	pub fn from_faces_data<Faces, FaceVertices>(faces: Faces) -> Self
+	where
+		Faces: IntoIterator<Item = (FaceVertices, FaceProps)>,
+		FaceVertices: FaceVertexCollection<V>,
+	{
+		let mut geom = MeshGeometry::new();
+		geom.add_faces_data(faces);
+		geom
+	}
+
+	pub fn from_face<Vertices>(vertices: Vertices) -> Self
+	where
+		Vertices: FaceVertexCollection<V>,
+	{
+		let mut geom = MeshGeometry::new();
+		geom.add_face(vertices);
+		geom
+	}
+
+	pub fn from_face_data<Vertices>(vertices: Vertices, props: FaceProps) -> Self
+	where
+		Vertices: FaceVertexCollection<V>,
+	{
+		let mut geom = MeshGeometry::new();
+		geom.add_face_data(vertices, props);
+		geom
+	}
+
 	pub fn new() -> Self {
 		Self {
 			positions: Vec::new(),
@@ -229,47 +317,55 @@ where
 		&face.vertices[reference.vertex_slot]
 	}
 
-	pub fn add_face_data(&mut self, vertices: &[V], props: FaceProps) {
-		debug_assert!(vertices.len() == 3 || vertices.len() == 4);
-		let mut vs = Vec::with_capacity(vertices.len());
-		for v in vertices {
-			vs.push(FaceVertex {
-				position_index: self.get_position_index(v.position()),
-				data: v.clone(),
+	pub fn add_face_data<Vertices>(&mut self, vertices: Vertices, props: FaceProps)
+	where
+		Vertices: FaceVertexCollection<V>,
+	{
+		let mut face_vertices = Vec::with_capacity(4);
+		for vertex in vertices.into_face_vertices() {
+			face_vertices.push(FaceVertex {
+				position_index: self.get_position_index(vertex.position()),
+				data: vertex,
 			});
 		}
 
+		debug_assert!(face_vertices.len() == 3 || face_vertices.len() == 4);
+		if face_vertices.len() < 3 || face_vertices.len() > 4 {
+			return;
+		}
+
 		let section_idx = props.section.unwrap_or(DEFAULT_MESH_SECTION);
-		let face = Face::new(vs, props.normal, section_idx);
-
+		let face = Face::new(face_vertices, props.normal, section_idx);
 		let face_idx = self.faces.len();
-
 		self.faces.push(face);
 		self.register_face_refs(face_idx);
 	}
 
-	pub fn add_face(&mut self, verts: &[V]) {
-		self.add_face_data(verts, default())
+	pub fn add_face<Vertices>(&mut self, vertices: Vertices)
+	where
+		Vertices: FaceVertexCollection<V>,
+	{
+		self.add_face_data(vertices, default())
 	}
 
-	pub fn add_grid_ccw_quads_data<A: CoordOpsFn>(&mut self, grid: &Grid<V, A>, props: FaceProps) {
-		for quad in grid.to_ccw_quads() {
-			self.add_face_data(&quad, props);
+	pub fn add_faces_data<Faces, FaceVertices>(&mut self, faces: Faces)
+	where
+		Faces: IntoIterator<Item = (FaceVertices, FaceProps)>,
+		FaceVertices: FaceVertexCollection<V>,
+	{
+		for (vertices, props) in faces {
+			self.add_face_data(vertices, props);
 		}
 	}
 
-	pub fn add_grid_ccw_quads<A: CoordOpsFn>(&mut self, grid: &Grid<V, A>) {
-		self.add_grid_ccw_quads_data(grid, default())
-	}
-
-	pub fn add_grid_cw_quads_data<A: CoordOpsFn>(&mut self, grid: &Grid<V, A>, props: FaceProps) {
-		for quad in grid.to_cw_quads() {
-			self.add_face_data(&quad, props);
+	pub fn add_faces<Faces, FaceVertices>(&mut self, faces: Faces)
+	where
+		Faces: IntoIterator<Item = FaceVertices>,
+		FaceVertices: FaceVertexCollection<V>,
+	{
+		for vertices in faces {
+			self.add_face(vertices);
 		}
-	}
-
-	pub fn add_grid_cw_quads<A: CoordOpsFn>(&mut self, grid: &Grid<V, A>) {
-		self.add_grid_cw_quads_data(grid, default())
 	}
 
 	pub fn new_from_section(&self, section_idx: usize) -> Self {
@@ -292,8 +388,7 @@ where
 				normal: face.face_normal,
 				section: Some(DEFAULT_MESH_SECTION),
 			};
-			let vertices = face.vertices();
-			entry.add_face_data(&vertices, props);
+			entry.add_face_data(face.vertices(), props);
 		}
 		result
 	}
@@ -306,8 +401,9 @@ where
 	{
 		let mut geom = MeshGeometry::new();
 		for face in &self.faces {
+			let vertices = f(face);
 			geom.add_face_data(
-				&f(face),
+				vertices,
 				FaceProps {
 					normal: face.face_normal,
 					section: Some(face.section),
@@ -326,7 +422,7 @@ where
 		let mut geom = MeshGeometry::new();
 		for face in &self.faces {
 			let (new_vertices, props) = f(face);
-			geom.add_face_data(&new_vertices, props);
+			geom.add_face_data(new_vertices, props);
 		}
 		geom
 	}
@@ -346,7 +442,7 @@ where
 				section: Some(face.section),
 			};
 			for new_vertices in new_faces {
-				geom.add_face_data(&new_vertices, props);
+				geom.add_face_data(new_vertices, props);
 			}
 		}
 		geom
@@ -363,7 +459,7 @@ where
 		for face in &self.faces {
 			let new_faces = f(face);
 			for (new_vertices, props) in new_faces {
-				geom.add_face_data(&new_vertices, props);
+				geom.add_face_data(new_vertices, props);
 			}
 		}
 		geom
@@ -437,10 +533,10 @@ pub enum MeshBufferType {
 	FaceVertices,
 	/// Emit per-face vertex data with interpolated vertex normals for smooth shading.
 	/// Assumes provided vertex data might differ even for shared positions.
-	FaceVerticesWithVertexNormals,
+	FaceVerticesWithVertexNormal,
 	/// Emit per-face vertex data with the same normal duplicated per face for flat shading.
 	/// Vertex data might differ for shared positions because normals might be different.
-	FaceVerticesWithFaceNormals,
+	FaceVerticesWithFaceNormal,
 	/// Emit deduped vertex data (no normals) plus an index buffer. Most compact buffer storage.
 	/// Assumes provided vertex data is the same for shared positions.
 	CompactVertices,
@@ -453,8 +549,8 @@ impl MeshBufferType {
 	fn includes_normals(&self) -> bool {
 		matches!(
 			self,
-			MeshBufferType::FaceVerticesWithVertexNormals
-				| MeshBufferType::FaceVerticesWithFaceNormals
+			MeshBufferType::FaceVerticesWithVertexNormal
+				| MeshBufferType::FaceVerticesWithFaceNormal
 				| MeshBufferType::CompactVerticesWithNormal
 		)
 	}
@@ -487,7 +583,7 @@ where
 				}
 			}
 
-			MeshBufferType::FaceVerticesWithVertexNormals => {
+			MeshBufferType::FaceVerticesWithVertexNormal => {
 				let has_quads = self.ensure_face_normals();
 				for face in self.faces.iter() {
 					let index_offset = vertex_count;
@@ -508,7 +604,7 @@ where
 				}
 			}
 
-			MeshBufferType::FaceVerticesWithFaceNormals => {
+			MeshBufferType::FaceVerticesWithFaceNormal => {
 				let has_quads = self.ensure_face_normals();
 				for face in self.faces.iter() {
 					let index_offset = vertex_count;

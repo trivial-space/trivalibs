@@ -46,7 +46,7 @@ pub fn create_ball_geom() -> BufferedGeometry {
 		face.vertices().iter().map(|v| vert(v.pos, color)).collect()
 	});
 
-	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithVertexNormals)
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithVertexNormal)
 }
 
 pub fn create_box_geom() -> BufferedGeometry {
@@ -55,10 +55,9 @@ pub fn create_box_geom() -> BufferedGeometry {
 
 	let add = |geom: &mut MeshGeometry<_>, quad: Quad3D<Vec3>, color: Vec3| {
 		geom.add_face(
-			&quad
-				.to_ccw_verts()
+			quad.to_ccw_verts()
 				.iter()
-				.map(|&pos| vert(pos, color))
+				.map(|pos| vert(*pos, color))
 				.collect::<Vec<_>>(),
 		);
 	};
@@ -70,5 +69,5 @@ pub fn create_box_geom() -> BufferedGeometry {
 	add(&mut geom, box_shape.top_face(), vec3(0.0, 1.0, 1.0));
 	add(&mut geom, box_shape.bottom_face(), vec3(1.0, 0.0, 1.0));
 
-	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithFaceNormals)
+	geom.to_buffered_geometry_by_type(MeshBufferType::FaceVerticesWithFaceNormal)
 }
