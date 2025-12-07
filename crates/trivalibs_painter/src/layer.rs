@@ -800,6 +800,14 @@ impl<'a, 'b> LayerBuilder<'a, 'b> {
 		layer
 	}
 
+	/// Creates a layer, initializes the its gpu pipelines and immediately renders it.
+	pub fn create_and_paint(self) -> Layer {
+		let layer = Layer::new(self.painter, self.props);
+		layer.init_gpu_pipelines(self.painter);
+		self.painter.paint(layer);
+		layer
+	}
+
 	pub fn with_static_texture(mut self) -> Self {
 		self.props.static_texture = true;
 		self
