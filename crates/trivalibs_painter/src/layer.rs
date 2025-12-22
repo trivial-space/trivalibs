@@ -819,8 +819,11 @@ impl<'a, 'b> LayerBuilder<'a, 'b> {
 		self
 	}
 
-	pub fn with_shapes(mut self, shapes: Vec<Shape>) -> Self {
-		self.props.shapes = shapes;
+	pub fn with_shapes<I>(mut self, shapes: I) -> Self
+	where
+		I: IntoIterator<Item = Shape>,
+	{
+		self.props.shapes = shapes.into_iter().collect();
 		self
 	}
 
@@ -829,8 +832,11 @@ impl<'a, 'b> LayerBuilder<'a, 'b> {
 		self
 	}
 
-	pub fn with_effects(mut self, effects: Vec<Effect>) -> Self {
-		self.props.effects = effects;
+	pub fn with_effects<I>(mut self, effects: I) -> Self
+	where
+		I: IntoIterator<Item = Effect>,
+	{
+		self.props.effects = effects.into_iter().collect();
 		self
 	}
 
@@ -839,13 +845,19 @@ impl<'a, 'b> LayerBuilder<'a, 'b> {
 		self
 	}
 
-	pub fn with_bindings(mut self, bindings: Vec<(u32, ValueBinding)>) -> Self {
-		self.props.bindings = bindings;
+	pub fn with_bindings<I>(mut self, bindings: I) -> Self
+	where
+		I: IntoIterator<Item = (u32, ValueBinding)>,
+	{
+		self.props.bindings = bindings.into_iter().collect();
 		self
 	}
 
-	pub fn with_layers(mut self, layers: Vec<(u32, LayerBinding)>) -> Self {
-		self.props.layers = layers;
+	pub fn with_layers<I>(mut self, layers: I) -> Self
+	where
+		I: IntoIterator<Item = (u32, LayerBinding)>,
+	{
+		self.props.layers = layers.into_iter().collect();
 		self
 	}
 
@@ -855,8 +867,11 @@ impl<'a, 'b> LayerBuilder<'a, 'b> {
 		self
 	}
 
-	pub fn with_formats(mut self, formats: Vec<wgpu::TextureFormat>) -> Self {
-		self.props.formats = formats;
+	pub fn with_formats<I>(mut self, formats: I) -> Self
+	where
+		I: IntoIterator<Item = wgpu::TextureFormat>,
+	{
+		self.props.formats = formats.into_iter().collect();
 		self
 	}
 
@@ -977,13 +992,19 @@ impl<'a> SingleEffectLayerBuilder<'a> {
 
 	// Effect builder methods
 
-	pub fn with_bindings(mut self, bindings: Vec<(u32, ValueBinding)>) -> Self {
-		self.effect_bindings = bindings;
+	pub fn with_bindings<I>(mut self, bindings: I) -> Self
+	where
+		I: IntoIterator<Item = (u32, ValueBinding)>,
+	{
+		self.effect_bindings = bindings.into_iter().collect();
 		self
 	}
 
-	pub fn with_layers(mut self, layers: Vec<(u32, LayerBinding)>) -> Self {
-		self.effect_layers = layers;
+	pub fn with_layers<I>(mut self, layers: I) -> Self
+	where
+		I: IntoIterator<Item = (u32, LayerBinding)>,
+	{
+		self.effect_layers = layers.into_iter().collect();
 		self
 	}
 

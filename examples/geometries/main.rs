@@ -62,8 +62,8 @@ struct App {
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let shade = p
-			.shade(&[Float32x3, Float32x3, Float32x2])
-			.with_bindings(&[BINDING_BUFFER_VERT])
+			.shade([Float32x3, Float32x3, Float32x2])
+			.with_bindings([BINDING_BUFFER_VERT])
 			.create();
 		load_vertex_shader!(shade, p, "./shader/ground_vert.spv");
 		load_fragment_shader!(shade, p, "./shader/ground_frag.spv");
@@ -105,7 +105,7 @@ impl CanvasApp<()> for App {
 
 		let canvas = p
 			.layer()
-			.with_shapes(vec![
+			.with_shapes([
 				ground_shape,
 				wall_shape,
 				roof_shape,

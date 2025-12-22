@@ -245,11 +245,11 @@ impl Painter {
 	pub fn shade<Format: Into<AttribsFormat>>(
 		&mut self,
 		attributes: Format,
-	) -> ShadeBuilder<'_, '_, Format> {
+	) -> ShadeBuilder<'_, Format> {
 		ShadeBuilder::new(self, attributes)
 	}
 
-	pub fn shade_effect(&mut self) -> ShadeEffectBuilder<'_, '_> {
+	pub fn shade_effect(&mut self) -> ShadeEffectBuilder<'_> {
 		ShadeEffectBuilder::new(self)
 	}
 
@@ -810,9 +810,12 @@ impl Painter {
 		}
 	}
 
-	pub fn compose(&mut self, layers: &[Layer]) {
+	pub fn compose<I>(&mut self, layers: I)
+	where
+		I: IntoIterator<Item = Layer>,
+	{
 		for layer in layers {
-			self.paint(*layer);
+			self.paint(layer);
 		}
 	}
 

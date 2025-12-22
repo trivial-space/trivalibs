@@ -257,8 +257,11 @@ impl<'a, 'b> FormBuilder<'a, 'b> {
 		f
 	}
 
-	pub fn with_sizes(mut self, sizes: Vec<u64>) -> Self {
-		self.sizes = sizes;
+	pub fn with_sizes<I>(mut self, sizes: I) -> Self
+	where
+		I: IntoIterator<Item = u64>,
+	{
+		self.sizes = sizes.into_iter().collect();
 		self
 	}
 

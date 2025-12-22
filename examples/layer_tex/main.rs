@@ -98,16 +98,16 @@ struct ResizeEvent;
 impl CanvasApp<ResizeEvent> for App {
 	fn init(p: &mut Painter) -> Self {
 		let color_shade = p
-			.shade(&[Float32x3, Float32x2])
-			.with_bindings(&[BINDING_BUFFER_VERT, BINDING_BUFFER_FRAG])
+			.shade([Float32x3, Float32x2])
+			.with_bindings([BINDING_BUFFER_VERT, BINDING_BUFFER_FRAG])
 			.create();
 		load_vertex_shader!(color_shade, p, "./shader/color_vs.spv");
 		load_fragment_shader!(color_shade, p, "./shader/color_fs.spv");
 
 		let tex_shade = p
-			.shade(&[Float32x3, Float32x2])
-			.with_bindings(&[BINDING_BUFFER_VERT, BINDING_SAMPLER_FRAG])
-			.with_layers(&[BINDING_LAYER_FRAG])
+			.shade([Float32x3, Float32x2])
+			.with_bindings([BINDING_BUFFER_VERT, BINDING_SAMPLER_FRAG])
+			.with_layers([BINDING_LAYER_FRAG])
 			.create();
 		load_vertex_shader!(tex_shade, p, "./shader/texture_vs.spv");
 		load_fragment_shader!(tex_shade, p, "./shader/texture_fs.spv");
@@ -186,7 +186,7 @@ impl CanvasApp<ResizeEvent> for App {
 
 		let canvas = p
 			.layer()
-			.with_shapes(vec![tex_quad_shape, tex_triangle_shape])
+			.with_shapes([tex_quad_shape, tex_triangle_shape])
 			.with_clear_color(wgpu::Color::BLACK)
 			.with_depth_test()
 			.with_multisampling()

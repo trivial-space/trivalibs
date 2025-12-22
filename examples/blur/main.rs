@@ -30,13 +30,13 @@ struct App {
 
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
-		let triangle_shade = p.shade(&[Float32x2, Float32x2]).create();
+		let triangle_shade = p.shade([Float32x2, Float32x2]).create();
 		load_vertex_shader!(triangle_shade, p, "./shader/triangle_vs.spv");
 		load_fragment_shader!(triangle_shade, p, "./shader/triangle_fs.spv");
 
 		let blur_shade = p
 			.shade_effect()
-			.with_bindings(&[
+			.with_bindings([
 				BINDING_BUFFER_FRAG,
 				BINDING_BUFFER_FRAG,
 				BINDING_BUFFER_FRAG,
