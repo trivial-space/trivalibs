@@ -41,7 +41,7 @@ impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		// Create a single shade that all shapes will share
 		let shade = p
-			.shade(&[Float32x2])
+			.shade([Float32x2])
 			.with_bindings([BINDING_BUFFER_FRAG, BINDING_BUFFER_FRAG])
 			.create();
 		load_vertex_shader!(shade, p, "./shader/vertex.spv");

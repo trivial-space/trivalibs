@@ -23,7 +23,7 @@ struct App {
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let shade = p
-			.shade(&[Float32x3])
+			.shade([Float32x3])
 			.with_bindings([
 				BINDING_BUFFER_VERT,
 				BINDING_BUFFER_VERT,

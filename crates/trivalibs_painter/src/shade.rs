@@ -114,36 +114,19 @@ impl From<&[wgpu::VertexFormat]> for AttribsFormat {
 	}
 }
 
-impl From<&[wgpu::VertexFormat; 1]> for AttribsFormat {
-	fn from(formats: &[wgpu::VertexFormat; 1]) -> Self {
+// Generic implementation for all array sizes using const generics
+impl<const N: usize> From<[wgpu::VertexFormat; N]> for AttribsFormat {
+	fn from(formats: [wgpu::VertexFormat; N]) -> Self {
 		AttribsFormat::from(formats.as_slice())
 	}
 }
-impl From<&[wgpu::VertexFormat; 2]> for AttribsFormat {
-	fn from(formats: &[wgpu::VertexFormat; 2]) -> Self {
+
+impl<const N: usize> From<&[wgpu::VertexFormat; N]> for AttribsFormat {
+	fn from(formats: &[wgpu::VertexFormat; N]) -> Self {
 		AttribsFormat::from(formats.as_slice())
 	}
 }
-impl From<&[wgpu::VertexFormat; 3]> for AttribsFormat {
-	fn from(formats: &[wgpu::VertexFormat; 3]) -> Self {
-		AttribsFormat::from(formats.as_slice())
-	}
-}
-impl From<&[wgpu::VertexFormat; 4]> for AttribsFormat {
-	fn from(formats: &[wgpu::VertexFormat; 4]) -> Self {
-		AttribsFormat::from(formats.as_slice())
-	}
-}
-impl From<&[wgpu::VertexFormat; 5]> for AttribsFormat {
-	fn from(formats: &[wgpu::VertexFormat; 5]) -> Self {
-		AttribsFormat::from(formats.as_slice())
-	}
-}
-impl From<&[wgpu::VertexFormat; 6]> for AttribsFormat {
-	fn from(formats: &[wgpu::VertexFormat; 6]) -> Self {
-		AttribsFormat::from(formats.as_slice())
-	}
-}
+
 impl From<Vec<wgpu::VertexFormat>> for AttribsFormat {
 	fn from(formats: Vec<wgpu::VertexFormat>) -> Self {
 		AttribsFormat::from(formats.as_slice())

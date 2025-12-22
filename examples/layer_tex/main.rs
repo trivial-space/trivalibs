@@ -98,14 +98,14 @@ struct ResizeEvent;
 impl CanvasApp<ResizeEvent> for App {
 	fn init(p: &mut Painter) -> Self {
 		let color_shade = p
-			.shade(&[Float32x3, Float32x2])
+			.shade([Float32x3, Float32x2])
 			.with_bindings([BINDING_BUFFER_VERT, BINDING_BUFFER_FRAG])
 			.create();
 		load_vertex_shader!(color_shade, p, "./shader/color_vs.spv");
 		load_fragment_shader!(color_shade, p, "./shader/color_fs.spv");
 
 		let tex_shade = p
-			.shade(&[Float32x3, Float32x2])
+			.shade([Float32x3, Float32x2])
 			.with_bindings([BINDING_BUFFER_VERT, BINDING_SAMPLER_FRAG])
 			.with_layers([BINDING_LAYER_FRAG])
 			.create();

@@ -31,7 +31,7 @@ const LIGHTS_COUNT: usize = 10;
 impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let scene_shade = p
-			.shade(&[Float32x3, Float32x3, Float32x3])
+			.shade([Float32x3, Float32x3, Float32x3])
 			.with_bindings([
 				BINDING_BUFFER_VERT,
 				BINDING_BUFFER_VERT,
