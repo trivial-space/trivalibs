@@ -72,7 +72,7 @@ impl CanvasApp<()> for App {
 		// Create shade with vec3 position and vec3 color uniform
 		let shade = p
 			.shade(&[Float32x2])
-			.with_bindings(&[BINDING_BUFFER_FRAG])
+			.with_bindings([BINDING_BUFFER_FRAG])
 			.create();
 
 		// Load shaders

@@ -42,7 +42,7 @@ impl CanvasApp<()> for App {
 		// Create a single shade that all shapes will share
 		let shade = p
 			.shade(&[Float32x2])
-			.with_bindings(&[BINDING_BUFFER_FRAG, BINDING_BUFFER_FRAG])
+			.with_bindings([BINDING_BUFFER_FRAG, BINDING_BUFFER_FRAG])
 			.create();
 		load_vertex_shader!(shade, p, "./shader/vertex.spv");
 		load_fragment_shader!(shade, p, "./shader/fragment.spv");
@@ -112,7 +112,7 @@ impl CanvasApp<()> for App {
 		// Create effect shader for rendering textures
 		let effect_shade = p
 			.shade_effect()
-			.with_bindings(&[BINDING_SAMPLER_FRAG])
+			.with_bindings([BINDING_SAMPLER_FRAG])
 			.with_layer()
 			.create();
 		load_fragment_shader!(effect_shade, p, "./shader/effect_fragment.spv");

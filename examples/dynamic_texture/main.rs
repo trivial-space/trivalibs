@@ -14,15 +14,15 @@ impl CanvasApp<()> for App {
 		// Create color shader for red/blue layers
 		let color_shader = p
 			.shade_effect()
-			.with_bindings(&[BINDING_BUFFER_FRAG])
+			.with_bindings([BINDING_BUFFER_FRAG])
 			.create();
 		load_fragment_shader!(color_shader, p, "./shader/col_fs.spv");
 
 		// Create texture shader for display layer
 		let texture_shader = p
 			.shade_effect()
-			.with_bindings(&[BINDING_SAMPLER_FRAG])
-			.with_layers(&[BINDING_LAYER_FRAG])
+			.with_bindings([BINDING_SAMPLER_FRAG])
+			.with_layers([BINDING_LAYER_FRAG])
 			.create();
 		load_fragment_shader!(texture_shader, p, "./shader/tex_fs.spv");
 

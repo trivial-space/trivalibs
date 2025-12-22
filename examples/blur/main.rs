@@ -36,7 +36,7 @@ impl CanvasApp<()> for App {
 
 		let blur_shade = p
 			.shade_effect()
-			.with_bindings(&[
+			.with_bindings([
 				BINDING_BUFFER_FRAG,
 				BINDING_BUFFER_FRAG,
 				BINDING_BUFFER_FRAG,

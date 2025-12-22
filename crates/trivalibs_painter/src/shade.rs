@@ -19,10 +19,10 @@ pub(crate) struct ShadeStorage {
 	pub layer_bindings_length: usize,
 }
 
-pub struct ShadeProps<'a, Format: Into<AttribsFormat>> {
+pub struct ShadeProps<Format: Into<AttribsFormat>> {
 	pub attributes: Format,
-	pub bindings: &'a [BindingLayout],
-	pub layers: &'a [LayerLayout],
+	pub bindings: Vec<BindingLayout>,
+	pub layers: Vec<LayerLayout>,
 }
 
 fn layouts_from_props(
@@ -59,29 +59,29 @@ fn layouts_from_props(
 	(pipeline_layout, bindings_layout, layer_layout)
 }
 
-impl Default for ShadeProps<'_, AttribsFormat> {
+impl Default for ShadeProps<AttribsFormat> {
 	fn default() -> Self {
 		Self {
 			attributes: AttribsFormat {
 				attributes: vec![],
 				stride: 0,
 			},
-			bindings: &[],
-			layers: &[],
+			bindings: vec![],
+			layers: vec![],
 		}
 	}
 }
 
-pub struct ShadeEffectProps<'a> {
-	pub bindings: &'a [BindingLayout],
-	pub layers: &'a [LayerLayout],
+pub struct ShadeEffectProps {
+	pub bindings: Vec<BindingLayout>,
+	pub layers: Vec<LayerLayout>,
 }
 
-impl Default for ShadeEffectProps<'_> {
+impl Default for ShadeEffectProps {
 	fn default() -> Self {
 		Self {
-			bindings: &[],
-			layers: &[],
+			bindings: vec![],
+			layers: vec![],
 		}
 	}
 }
@@ -168,9 +168,11 @@ impl Shade {
 		props: ShadeProps<Format>,
 	) -> Self {
 		let format = props.attributes.into();
+		let bindings_len = props.bindings.len();
+		let layers_len = props.layers.len();
 
 		let (pipeline_layout, binding_layout, layers_layout) =
-			layouts_from_props(painter, props.bindings, props.layers);
+			layouts_from_props(painter, &props.bindings, &props.layers);
 
 		let s = ShadeStorage {
 			vertex_path: None,
@@ -181,8 +183,8 @@ impl Shade {
 			pipeline_layout,
 			binding_layout,
 			layers_layout,
-			value_bindings_length: props.bindings.len(),
-			layer_bindings_length: props.layers.len(),
+			value_bindings_length: bindings_len,
+			layer_bindings_length: layers_len,
 		};
 
 		let i = painter.shades.len();
@@ -192,8 +194,11 @@ impl Shade {
 	}
 
 	pub fn new_effect(painter: &mut Painter, props: ShadeEffectProps) -> Self {
+		let bindings_len = props.bindings.len();
+		let layers_len = props.layers.len();
+
 		let (pipeline_layout, binding_layout, layers_layout) =
-			layouts_from_props(painter, props.bindings, props.layers);
+			layouts_from_props(painter, &props.bindings, &props.layers);
 
 		let format = vec![].into();
 
@@ -206,8 +211,8 @@ impl Shade {
 			pipeline_layout,
 			binding_layout,
 			layers_layout,
-			value_bindings_length: props.bindings.len(),
-			layer_bindings_length: props.layers.len(),
+			value_bindings_length: bindings_len,
+			layer_bindings_length: layers_len,
 		};
 
 		let i = painter.shades.len();
@@ -253,15 +258,15 @@ impl Shade {
 	}
 }
 
-pub struct ShadeBuilder<'a, 'b, Format>
+pub struct ShadeBuilder<'b, Format>
 where
 	Format: Into<AttribsFormat>,
 {
-	props: ShadeProps<'a, Format>,
+	props: ShadeProps<Format>,
 	painter: &'b mut Painter,
 }
 
-impl<'a, 'b, Format> ShadeBuilder<'a, 'b, Format>
+impl<'b, Format> ShadeBuilder<'b, Format>
 where
 	Format: Into<AttribsFormat>,
 {
@@ -269,8 +274,8 @@ where
 		ShadeBuilder {
 			props: ShadeProps {
 				attributes,
-				bindings: &[],
-				layers: &[],
+				bindings: vec![],
+				layers: vec![],
 			},
 			painter,
 		}
@@ -280,28 +285,34 @@ where
 		Shade::new(self.painter, self.props)
 	}
 
-	pub fn with_bindings(mut self, bindings: &'a [BindingLayout]) -> Self {
-		self.props.bindings = bindings;
+	pub fn with_bindings<I>(mut self, bindings: I) -> Self
+	where
+		I: IntoIterator<Item = BindingLayout>,
+	{
+		self.props.bindings = bindings.into_iter().collect();
 		self
 	}
 
-	pub fn with_layers(mut self, layers: &'a [LayerLayout]) -> Self {
-		self.props.layers = layers;
+	pub fn with_layers<I>(mut self, layers: I) -> Self
+	where
+		I: IntoIterator<Item = LayerLayout>,
+	{
+		self.props.layers = layers.into_iter().collect();
 		self
 	}
 }
 
-pub struct ShadeEffectBuilder<'a, 'b> {
-	props: ShadeEffectProps<'a>,
+pub struct ShadeEffectBuilder<'b> {
+	props: ShadeEffectProps,
 	painter: &'b mut Painter,
 }
 
-impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
+impl<'b> ShadeEffectBuilder<'b> {
 	pub fn new(painter: &'b mut Painter) -> Self {
 		ShadeEffectBuilder {
 			props: ShadeEffectProps {
-				bindings: &[],
-				layers: &[],
+				bindings: vec![],
+				layers: vec![],
 			},
 			painter,
 		}
@@ -311,18 +322,24 @@ impl<'a, 'b> ShadeEffectBuilder<'a, 'b> {
 		Shade::new_effect(self.painter, self.props)
 	}
 
-	pub fn with_bindings(mut self, bindings: &'a [BindingLayout]) -> Self {
-		self.props.bindings = bindings;
+	pub fn with_bindings<I>(mut self, bindings: I) -> Self
+	where
+		I: IntoIterator<Item = BindingLayout>,
+	{
+		self.props.bindings = bindings.into_iter().collect();
 		self
 	}
 
-	pub fn with_layers(mut self, layers: &'a [LayerLayout]) -> Self {
-		self.props.layers = layers;
+	pub fn with_layers<I>(mut self, layers: I) -> Self
+	where
+		I: IntoIterator<Item = LayerLayout>,
+	{
+		self.props.layers = layers.into_iter().collect();
 		self
 	}
 
 	pub fn with_layer(mut self) -> Self {
-		self.props.layers = &[BINDING_LAYER_FRAG];
+		self.props.layers = vec![BINDING_LAYER_FRAG];
 		self
 	}
 }

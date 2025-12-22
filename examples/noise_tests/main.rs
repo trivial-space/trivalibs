@@ -17,7 +17,7 @@ impl CanvasApp<()> for App {
 		let shade_canvas = |p: &mut Painter| {
 			let s = p
 				.shade_effect()
-				.with_bindings(&[BINDING_BUFFER_FRAG, BINDING_BUFFER_FRAG])
+				.with_bindings([BINDING_BUFFER_FRAG, BINDING_BUFFER_FRAG])
 				.create();
 
 			let e = p.effect(s).create();

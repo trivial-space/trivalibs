@@ -32,7 +32,7 @@ impl CanvasApp<()> for App {
 	fn init(p: &mut Painter) -> Self {
 		let scene_shade = p
 			.shade(&[Float32x3, Float32x3, Float32x3])
-			.with_bindings(&[
+			.with_bindings([
 				BINDING_BUFFER_VERT,
 				BINDING_BUFFER_VERT,
 				BINDING_BUFFER_VERT,
@@ -77,8 +77,8 @@ impl CanvasApp<()> for App {
 				b: 0.7,
 				a: 1.0,
 			})
-			.with_shapes(vec![ball_shape, box_shape])
-			.with_formats(vec![Rgba8UnormSrgb, Rgba16Float, Rgba16Float])
+			.with_shapes([ball_shape, box_shape])
+			.with_formats([Rgba8UnormSrgb, Rgba16Float, Rgba16Float])
 			.with_bindings(map! {
 				1 => u_vp_mat.binding(),
 			})
@@ -88,13 +88,13 @@ impl CanvasApp<()> for App {
 
 		let canvas_shade = p
 			.shade_effect()
-			.with_bindings(&[
+			.with_bindings([
 				BINDING_SAMPLER_FRAG,
 				BINDING_BUFFER_FRAG,
 				BINDING_BUFFER_FRAG,
 				BINDING_BUFFER_FRAG,
 			])
-			.with_layers(&[BINDING_LAYER_FRAG, BINDING_LAYER_FRAG, BINDING_LAYER_FRAG])
+			.with_layers([BINDING_LAYER_FRAG, BINDING_LAYER_FRAG, BINDING_LAYER_FRAG])
 			.create();
 		load_fragment_shader!(canvas_shade, p, "./shader/light_fs.spv");
 
@@ -117,7 +117,7 @@ impl CanvasApp<()> for App {
 					..default()
 				}
 			})
-			.collect::<Vec<_>>();
+			.collect();
 
 		let cam_pos = vec3(0.0, 5.0, 0.0);
 		let cam_pos_u = p.bind_const_vec3(cam_pos);

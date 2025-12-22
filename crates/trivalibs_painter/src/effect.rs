@@ -103,13 +103,19 @@ impl<'a> EffectBuilder<'a> {
 		Effect::new(self.painter, self.shade, self.props)
 	}
 
-	pub fn with_bindings(mut self, bindings: Vec<(u32, ValueBinding)>) -> Self {
-		self.props.bindings = bindings;
+	pub fn with_bindings<I>(mut self, bindings: I) -> Self
+	where
+		I: IntoIterator<Item = (u32, ValueBinding)>,
+	{
+		self.props.bindings = bindings.into_iter().collect();
 		self
 	}
 
-	pub fn with_layers(mut self, layers: Vec<(u32, LayerBinding)>) -> Self {
-		self.props.layers = layers;
+	pub fn with_layers<I>(mut self, layers: I) -> Self
+	where
+		I: IntoIterator<Item = (u32, LayerBinding)>,
+	{
+		self.props.layers = layers.into_iter().collect();
 		self
 	}
 
