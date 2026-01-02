@@ -26,9 +26,9 @@ pub use crate::events::{Event, KeyCode, PointerButton};
 
 pub trait CanvasApp<UserEvent> {
 	fn init(painter: &mut Painter) -> Self;
-	fn resize(&mut self, painter: &mut Painter, width: u32, height: u32);
 	fn frame(&mut self, painter: &mut Painter, tpf: f32);
-	fn event(&mut self, event: Event<UserEvent>, painter: &mut Painter);
+	fn resize(&mut self, _painter: &mut Painter, _width: u32, _height: u32) {}
+	fn event(&mut self, _event: Event<UserEvent>, _painter: &mut Painter) {}
 
 	fn create() -> CanvasAppStarter<UserEvent, Self>
 	where

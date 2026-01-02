@@ -1,7 +1,7 @@
 use shader::Vertex;
 use trivalibs::painter::{
 	Painter,
-	app::{CanvasApp, Event},
+	app::CanvasApp,
 	wgpu::{self, include_spirv, util::DeviceExt},
 };
 use trivalibs::prelude::*;
@@ -247,9 +247,6 @@ impl CanvasApp<()> for App {
 		p.queue.submit(Some(encoder.finish()));
 		frame.present();
 	}
-
-	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
-	fn resize(&mut self, _p: &mut Painter, _w: u32, _h: u32) {}
 }
 
 pub fn main() {

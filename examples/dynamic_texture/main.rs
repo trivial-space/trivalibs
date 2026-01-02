@@ -69,8 +69,6 @@ impl CanvasApp<()> for App {
 		}
 	}
 
-	fn resize(&mut self, _p: &mut Painter, _width: u32, _height: u32) {}
-
 	fn frame(&mut self, p: &mut Painter, tpf: f32) {
 		self.time += tpf;
 
@@ -96,8 +94,6 @@ impl CanvasApp<()> for App {
 
 		p.request_next_frame();
 	}
-
-	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {

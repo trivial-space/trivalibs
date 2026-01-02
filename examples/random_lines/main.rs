@@ -136,9 +136,6 @@ impl CanvasApp<()> for App {
 		// Request continuous rendering
 		p.request_next_frame();
 	}
-
-	fn resize(&mut self, _p: &mut Painter, _width: u32, _height: u32) {}
-	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {

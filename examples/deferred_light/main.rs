@@ -207,8 +207,6 @@ impl CanvasApp<()> for App {
 		p.paint(self.canvas);
 		p.show(self.canvas)
 	}
-
-	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {

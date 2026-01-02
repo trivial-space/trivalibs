@@ -130,8 +130,6 @@ impl CanvasApp<()> for App {
 		p.request_next_frame();
 		p.paint_and_show(self.canvas)
 	}
-
-	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {
