@@ -37,7 +37,7 @@ struct App {
 
 const POOL_SIZE: usize = 30;
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		// Create a single shade that all shapes will share
 		let shade = p

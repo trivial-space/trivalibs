@@ -24,7 +24,7 @@ use winit::{
 // Re-export custom event types
 pub use crate::events::{Event, KeyCode, PointerButton};
 
-pub trait CanvasApp<UserEvent> {
+pub trait CanvasApp<UserEvent = ()> {
 	fn init(painter: &mut Painter) -> Self;
 	fn frame(&mut self, painter: &mut Painter, tpf: f32);
 	fn resize(&mut self, _painter: &mut Painter, _width: u32, _height: u32) {}

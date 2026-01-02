@@ -30,7 +30,7 @@ struct App {
 	diffuse_bind_group: wgpu::BindGroup,
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		// Initialize the app
 

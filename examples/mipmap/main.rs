@@ -11,7 +11,7 @@ struct App {
 	canvas: Layer,
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		let image_shade = p
 			.shade_effect()

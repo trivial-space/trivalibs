@@ -8,7 +8,7 @@ struct App {
 	color: wgpu::Color,
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(_p: &mut Painter) -> Self {
 		Self {
 			color: wgpu::Color {

@@ -60,7 +60,7 @@ fn generate_all_lines() -> Vec<Vec<Vec2>> {
 	all_lines
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		// Generate initial geometry - each line gets its own buffer
 		let initial_lines = generate_all_lines();

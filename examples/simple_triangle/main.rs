@@ -20,7 +20,7 @@ struct App {
 	canvas: Layer,
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		let shade = p
 			.shade([Float32x3])

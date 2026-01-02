@@ -9,7 +9,7 @@ struct App {
 	last_toggle_time: f32,
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		// Create color shader for red/blue layers
 		let color_shader = p

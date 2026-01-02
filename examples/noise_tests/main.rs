@@ -9,7 +9,7 @@ struct App {
 	current_layer: usize,
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		let u_size = p.bind_uvec2();
 		let u_time = p.bind_f32();

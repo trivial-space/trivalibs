@@ -28,7 +28,7 @@ struct App {
 	size: BindingBuffer<Vec2>,
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		let triangle_shade = p.shade([Float32x2, Float32x2]).create();
 		load_vertex_shader!(triangle_shade, p, "./shader/triangle_vs.spv");
