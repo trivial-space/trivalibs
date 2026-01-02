@@ -7,6 +7,7 @@ pub mod wasm_helpers;
 
 pub use bytemuck;
 pub use glam;
+pub use serde;
 
 pub mod prelude {
 	pub use crate::data::*;

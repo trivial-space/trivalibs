@@ -7,6 +7,8 @@ pub mod app;
 pub mod bind_group;
 pub mod binding;
 pub mod binding_constants;
+#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
+pub(crate) mod dev_state;
 pub mod effect;
 pub mod events;
 pub mod form;

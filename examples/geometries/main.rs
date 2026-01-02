@@ -5,7 +5,7 @@ use trivalibs::{
 	prelude::*,
 	rendering::{
 		BufferedGeometry,
-		camera::{CamProps, PerspectiveCamera},
+		camera::{CamProps, CameraDevState, PerspectiveCamera},
 		mesh_geometry::{
 			MeshBufferType, MeshGeometry, face_normal, face_props,
 			utils::{Vert3dUv, vert_pos_uv},
@@ -13,6 +13,13 @@ use trivalibs::{
 		shapes::{cuboid::Cuboid, quad::Quad3D},
 	},
 };
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Default)]
+struct AppState {
+	camera: CameraDevState,
+}
 
 pub fn create_plane(width: f32, height: f32, normal: Vec3, center: Vec3) -> BufferedGeometry {
 	let plane: Quad3D<Vert3dUv> =
@@ -59,7 +66,7 @@ struct App {
 	cam_controller: BasicFirstPersonCameraController,
 }
 
-impl CanvasApp for App {
+impl CanvasApp<(), AppState> for App {
 	fn init(p: &mut Painter) -> Self {
 		let shade = p
 			.shade([Float32x3, Float32x3, Float32x2])
@@ -154,6 +161,16 @@ impl CanvasApp for App {
 	fn event(&mut self, e: Event<()>, _p: &mut Painter) {
 		self.input.process_event(e);
 	}
+
+	fn save_dev_state(&self) -> AppState {
+		AppState {
+			camera: self.cam.to_dev_state(),
+		}
+	}
+
+	fn load_dev_state(&mut self, state: AppState) {
+		self.cam.from_dev_state(&state.camera);
+	}
 }
 
 pub fn main() {
@@ -162,6 +179,8 @@ pub fn main() {
 			show_fps: true,
 			use_vsync: true,
 			remember_window_dimensions: true,
+			dev_state_key: "trivalibs_examples_geometries",
+			reload_dev_state: true,
 			..default()
 		})
 		.start();

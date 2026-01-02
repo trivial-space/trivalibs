@@ -1,9 +1,12 @@
-use crate::{math::transform::Transform, utils::default};
-use glam::{vec3, Mat4, Quat, Vec2, Vec3, Vec3Swizzles, Vec4};
-use serde::Serialize;
+use crate::{
+	math::transform::Transform,
+	serde::{Deserialize, Serialize},
+	utils::default,
+};
+use glam::{Mat4, Quat, Vec2, Vec3, Vec3Swizzles, Vec4, vec3};
 use std::f32::consts::{FRAC_PI_2, TAU};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct PerspectiveCamera {
 	fov: f32,
 	aspect_ratio: f32,
@@ -18,6 +21,13 @@ pub struct PerspectiveCamera {
 
 	calculate_planes: bool,
 	calculate_near_far_planes: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CameraDevState {
+	pub rot_horizontal: f32,
+	pub rot_vertical: f32,
+	pub translation: Vec3,
 }
 
 impl Default for PerspectiveCamera {
@@ -252,6 +262,23 @@ impl PerspectiveCamera {
 		} else {
 			None
 		}
+	}
+
+	pub fn to_dev_state(&self) -> CameraDevState {
+		CameraDevState {
+			rot_horizontal: self.rot_horizontal,
+			rot_vertical: self.rot_vertical,
+			translation: self.translation,
+		}
+	}
+
+	pub fn from_dev_state(&mut self, state: &CameraDevState) {
+		self.set(CamProps {
+			rot_horizontal: Some(state.rot_horizontal),
+			rot_vertical: Some(state.rot_vertical),
+			translation: Some(state.translation),
+			..default()
+		});
 	}
 
 	// TODO: Implement screen_to_world_ray and ndc_to_world_ray

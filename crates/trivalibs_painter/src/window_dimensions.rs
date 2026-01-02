@@ -14,22 +14,27 @@ pub struct WindowDimensions {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl WindowDimensions {
-	pub fn get_state_path() -> PathBuf {
+	pub fn get_state_path(key: &str) -> PathBuf {
 		let mut path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
 		path.push("rust-graphics");
-		path.push("window-state.json");
+		if key.is_empty() {
+			path.push("window-state.json"); // Global, backward compatible
+		} else {
+			path.push("dev-state");
+			path.push(format!("{}-window.json", key)); // Per-app
+		}
 		path
 	}
 
-	pub fn load() -> Option<Self> {
-		let path = Self::get_state_path();
+	pub fn load(key: &str) -> Option<Self> {
+		let path = Self::get_state_path(key);
 		fs::read_to_string(path)
 			.ok()
 			.and_then(|json| serde_json::from_str(&json).ok())
 	}
 
-	pub fn save(&self) -> std::io::Result<()> {
-		let path = Self::get_state_path();
+	pub fn save(&self, key: &str) -> std::io::Result<()> {
+		let path = Self::get_state_path(key);
 		fs::create_dir_all(path.parent().unwrap())?;
 		let json = serde_json::to_string(self)?;
 		fs::write(path, json)
@@ -42,8 +47,8 @@ impl WindowDimensions {
 		}
 	}
 
-	pub fn cleanup() -> std::io::Result<()> {
-		let path = Self::get_state_path();
+	pub fn cleanup(key: &str) -> std::io::Result<()> {
+		let path = Self::get_state_path(key);
 		if path.exists() {
 			fs::remove_file(path)?;
 		}

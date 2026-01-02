@@ -2365,6 +2365,7 @@ dependencies = [
  "log",
  "png",
  "pollster",
+ "serde",
  "trivalibs",
  "trivalibs-core",
  "trivalibs-nostd",

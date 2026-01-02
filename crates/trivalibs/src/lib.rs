@@ -1,4 +1,6 @@
-pub use trivalibs_core::{bytemuck, data, glam, hashmap, macros, map, math, rendering, utils};
+pub use trivalibs_core::{
+	bytemuck, data, glam, hashmap, macros, map, math, rendering, serde, utils,
+};
 
 pub mod painter {
 	pub use trivalibs_painter::*;

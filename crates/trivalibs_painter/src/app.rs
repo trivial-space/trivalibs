@@ -7,6 +7,7 @@ use notify::Watcher;
 #[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use trivalibs_core::serde;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::spawn_local;
 use web_time::Instant;
@@ -24,13 +25,28 @@ use winit::{
 // Re-export custom event types
 pub use crate::events::{Event, KeyCode, PointerButton};
 
-pub trait CanvasApp<UserEvent = ()> {
+pub trait CanvasApp<UserEvent = (), DevState = ()> {
 	fn init(painter: &mut Painter) -> Self;
 	fn frame(&mut self, painter: &mut Painter, tpf: f32);
 	fn resize(&mut self, _painter: &mut Painter, _width: u32, _height: u32) {}
 	fn event(&mut self, _event: Event<UserEvent>, _painter: &mut Painter) {}
 
-	fn create() -> CanvasAppStarter<UserEvent, Self>
+	/// Captures current state for persistence. Return default value to skip saving.
+	fn save_dev_state(&self) -> DevState
+	where
+		DevState: serde::Serialize + Default,
+	{
+		Default::default()
+	}
+
+	/// Restores state after init(). Called only if state exists and loads successfully.
+	fn load_dev_state(&mut self, _state: DevState)
+	where
+		DevState: for<'de> serde::Deserialize<'de>,
+	{
+	}
+
+	fn create() -> CanvasAppStarter<UserEvent, Self, DevState>
 	where
 		Self: Sized,
 	{
@@ -65,11 +81,11 @@ pub trait CanvasApp<UserEvent = ()> {
 	}
 }
 
-enum WindowState<UserEvent, App: CanvasApp<UserEvent>> {
+enum WindowState<UserEvent, App: CanvasApp<UserEvent, DevState>, DevState> {
 	Uninitialized,
 	Initializing,
 	Initialized(Painter, App),
-	_PHANTOM(std::marker::PhantomData<UserEvent>),
+	_PHANTOM(std::marker::PhantomData<(UserEvent, DevState)>),
 }
 
 pub enum CustomEvent<UserEvent> {
@@ -78,12 +94,12 @@ pub enum CustomEvent<UserEvent> {
 	ReloadShaders(String),
 }
 
-pub struct CanvasAppRunner<UserEvent, App>
+pub struct CanvasAppRunner<UserEvent, App, DevState = ()>
 where
 	UserEvent: 'static,
-	App: CanvasApp<UserEvent>,
+	App: CanvasApp<UserEvent, DevState>,
 {
-	state: WindowState<UserEvent, App>,
+	state: WindowState<UserEvent, App, DevState>,
 	event_loop_proxy: EventLoopProxy<CustomEvent<UserEvent>>,
 	is_running: bool,
 	is_resizing: bool,
@@ -94,10 +110,10 @@ where
 	last_cursor: Option<(f64, f64)>,
 }
 
-impl<UserEvent, App> CanvasAppRunner<UserEvent, App>
+impl<UserEvent, App, DevState> CanvasAppRunner<UserEvent, App, DevState>
 where
 	UserEvent: 'static,
-	App: CanvasApp<UserEvent>,
+	App: CanvasApp<UserEvent, DevState>,
 {
 	pub fn pause(&mut self) {
 		self.is_running = false;
@@ -137,6 +153,8 @@ pub struct AppConfig {
 	pub features: Option<wgpu::Features>,
 	#[cfg(target_arch = "wasm32")]
 	pub canvas: Option<web_sys::HtmlCanvasElement>,
+	pub dev_state_key: &'static str,
+	pub reload_dev_state: bool,
 }
 
 impl Default for AppConfig {
@@ -148,23 +166,26 @@ impl Default for AppConfig {
 			features: None,
 			#[cfg(target_arch = "wasm32")]
 			canvas: None,
+			dev_state_key: "",
+			reload_dev_state: false,
 		}
 	}
 }
 
-pub struct CanvasAppStarter<UserEvent, App>
+pub struct CanvasAppStarter<UserEvent, App, DevState = ()>
 where
 	UserEvent: 'static,
-	App: CanvasApp<UserEvent>,
+	App: CanvasApp<UserEvent, DevState>,
 {
-	runner: CanvasAppRunner<UserEvent, App>,
+	runner: CanvasAppRunner<UserEvent, App, DevState>,
 	event_loop: EventLoop<CustomEvent<UserEvent>>,
 }
 
-impl<UserEvent, App> CanvasAppStarter<UserEvent, App>
+impl<UserEvent, App, DevState> CanvasAppStarter<UserEvent, App, DevState>
 where
 	UserEvent: std::marker::Send,
-	App: CanvasApp<UserEvent> + std::marker::Send + 'static,
+	App: CanvasApp<UserEvent, DevState> + std::marker::Send + 'static,
+	DevState: serde::Serialize + for<'de> serde::Deserialize<'de> + Default + 'static,
 {
 	pub fn config(mut self, config: AppConfig) -> Self {
 		self.runner.config = config;
@@ -250,9 +271,37 @@ where
 	}
 }
 
-impl<UserEvent, App> ApplicationHandler<CustomEvent<UserEvent>> for CanvasAppRunner<UserEvent, App>
+impl<UserEvent, App, DevState> CanvasAppRunner<UserEvent, App, DevState>
 where
-	App: CanvasApp<UserEvent>,
+	App: CanvasApp<UserEvent, DevState>,
+	DevState: serde::Serialize + for<'de> serde::Deserialize<'de> + Default,
+{
+	/// Saves dev state if enabled. Called before exiting the application.
+	fn save_dev_state_before_exit(config: &AppConfig, app: &App) {
+		#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
+		{
+			if config.reload_dev_state && !config.dev_state_key.is_empty() {
+				let state = app.save_dev_state();
+				match serde_json::to_value(&state) {
+					Ok(json) => {
+						if let Err(e) =
+							crate::dev_state::DevState::save(config.dev_state_key, &json)
+						{
+							log::warn!("Failed to save dev state: {}", e);
+						}
+					}
+					Err(e) => log::warn!("Failed to serialize dev state: {}", e),
+				}
+			}
+		}
+	}
+}
+
+impl<UserEvent, App, DevState> ApplicationHandler<CustomEvent<UserEvent>>
+	for CanvasAppRunner<UserEvent, App, DevState>
+where
+	App: CanvasApp<UserEvent, DevState>,
+	DevState: serde::Serialize + for<'de> serde::Deserialize<'de> + Default,
 {
 	// This is a common indicator that you can create a window.
 	fn resumed(&mut self, event_loop: &ActiveEventLoop) {
@@ -268,7 +317,7 @@ where
 				// Load and apply saved window state
 				#[cfg(not(target_arch = "wasm32"))]
 				if self.config.remember_window_dimensions {
-					if let Some(state) = WindowDimensions::load() {
+					if let Some(state) = WindowDimensions::load(self.config.dev_state_key) {
 						window_attributes = window_attributes
 							.with_inner_size(PhysicalSize::new(state.size.0, state.size.1));
 						window_attributes = window_attributes.with_position(PhysicalPosition::new(
@@ -277,7 +326,7 @@ where
 						));
 					}
 				} else {
-					let _ = WindowDimensions::cleanup();
+					let _ = WindowDimensions::cleanup(self.config.dev_state_key);
 				}
 
 				#[cfg(target_arch = "wasm32")]
@@ -381,6 +430,32 @@ where
 
 				let size = painter.canvas_size();
 				app.resize(&mut painter, size.width, size.height);
+
+				// Try to restore dev state if enabled
+				#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
+				{
+					if !self.config.dev_state_key.is_empty() {
+						if self.config.reload_dev_state {
+							// Load JSON and deserialize to app's DevState type
+							if let Some(json) = crate::dev_state::DevState::load::<serde_json::Value>(
+								self.config.dev_state_key,
+							) {
+								// Try to deserialize into the app's state type
+								match serde_json::from_value(json) {
+									Ok(state) => app.load_dev_state(state),
+									Err(e) => log::warn!("Failed to deserialize dev state: {}", e),
+								}
+							}
+						} else {
+							if let Err(e) =
+								crate::dev_state::DevState::cleanup(self.config.dev_state_key)
+							{
+								log::warn!("Failed to cleanup dev state: {}", e);
+							}
+						}
+					}
+				}
+
 				painter.request_next_frame();
 				self.state = WindowState::Initialized(painter, app);
 			}
@@ -432,7 +507,7 @@ where
 									new_size,
 									window.outer_position().unwrap_or_default(),
 								);
-								let _ = dim.save();
+								let _ = dim.save(self.config.dev_state_key);
 							}
 						}
 					}
@@ -443,7 +518,7 @@ where
 						if self.config.remember_window_dimensions {
 							let dim =
 								WindowDimensions::from_window(window.inner_size(), new_position);
-							let _ = dim.save();
+							let _ = dim.save(self.config.dev_state_key);
 						}
 					}
 
@@ -484,6 +559,7 @@ where
 									// The system is out of memory, we should probably quit
 									wgpu::SurfaceError::OutOfMemory => {
 										log::error!("OutOfMemory");
+										Self::save_dev_state_before_exit(&self.config, app);
 										event_loop.exit();
 									}
 
@@ -503,7 +579,10 @@ where
 						}
 					}
 
-					WindowEvent::CloseRequested => event_loop.exit(),
+					WindowEvent::CloseRequested => {
+						Self::save_dev_state_before_exit(&self.config, app);
+						event_loop.exit()
+					}
 
 					WindowEvent::CursorMoved { position, .. } => {
 						let x = position.x;
@@ -559,6 +638,7 @@ where
 						// Handle exit with Escape on native
 						#[cfg(not(target_arch = "wasm32"))]
 						if matches!(key, KeyCode::Escape) {
+							Self::save_dev_state_before_exit(&self.config, app);
 							event_loop.exit();
 						}
 
