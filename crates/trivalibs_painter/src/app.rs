@@ -277,15 +277,15 @@ where
 	DevState: serde::Serialize + for<'de> serde::Deserialize<'de> + Default,
 {
 	/// Saves dev state if enabled. Called before exiting the application.
-	fn save_dev_state_before_exit(config: &AppConfig, app: &App) {
+	fn save_dev_state_before_exit(_config: &AppConfig, _app: &App) {
 		#[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 		{
-			if config.reload_dev_state && !config.dev_state_key.is_empty() {
-				let state = app.save_dev_state();
+			if _config.reload_dev_state && !_config.dev_state_key.is_empty() {
+				let state = _app.save_dev_state();
 				match serde_json::to_value(&state) {
 					Ok(json) => {
 						if let Err(e) =
-							crate::dev_state::DevState::save(config.dev_state_key, &json)
+							crate::dev_state::DevState::save(_config.dev_state_key, &json)
 						{
 							log::warn!("Failed to save dev state: {}", e);
 						}
@@ -466,14 +466,11 @@ where
 					}
 				}
 			}
-			CustomEvent::ReloadShaders(path) => {
-				#[cfg(target_arch = "wasm32")]
-				let _ = path; // Use the path if needed
-				#[cfg(not(target_arch = "wasm32"))]
-				#[cfg(debug_assertions)]
+			CustomEvent::ReloadShaders(_path) => {
+				#[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
 				{
 					if let WindowState::Initialized(painter, app) = &mut self.state {
-						painter.reload_shader(path);
+						painter.reload_shader(_path);
 						app.event(Event::ShaderReloadEvent, painter);
 						app.frame(painter, 0.0);
 					}
