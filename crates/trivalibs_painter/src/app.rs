@@ -7,7 +7,6 @@ use notify::Watcher;
 #[cfg(all(debug_assertions, not(target_arch = "wasm32")))]
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use trivalibs_core::serde;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::spawn_local;
 use web_time::Instant;

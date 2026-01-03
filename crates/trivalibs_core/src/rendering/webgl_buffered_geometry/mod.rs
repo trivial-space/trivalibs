@@ -1,5 +1,5 @@
-use crate::serde::Serialize;
 use bytemuck::Pod;
+use serde::Serialize;
 use serde_repr::Serialize_repr;
 
 /// Sync with WebGL type values.

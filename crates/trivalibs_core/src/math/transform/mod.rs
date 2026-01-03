@@ -1,5 +1,5 @@
-use crate::serde::Serialize;
 use glam::{Affine3A, Mat3, Mat4, Quat, Vec3};
+use serde::Serialize;
 use std::ops::Mul;
 
 /// Describe the position of an entity.

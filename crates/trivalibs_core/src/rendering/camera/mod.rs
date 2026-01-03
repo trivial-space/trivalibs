@@ -1,9 +1,6 @@
-use crate::{
-	math::transform::Transform,
-	serde::{Deserialize, Serialize},
-	utils::default,
-};
+use crate::{math::transform::Transform, utils::default};
 use glam::{Mat4, Quat, Vec2, Vec3, Vec3Swizzles, Vec4, vec3};
+use serde::{Deserialize, Serialize};
 use std::f32::consts::{FRAC_PI_2, TAU};
 
 #[derive(Debug, Clone)]
