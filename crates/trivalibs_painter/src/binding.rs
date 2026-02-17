@@ -73,6 +73,7 @@ impl Buffer {
 	}
 }
 
+#[derive(Clone, Copy)]
 pub struct BindingBuffer<T> {
 	buffer: Buffer,
 	t: std::marker::PhantomData<T>,
