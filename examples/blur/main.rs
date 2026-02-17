@@ -28,7 +28,7 @@ struct App {
 	size: BindingBuffer<Vec2>,
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		let triangle_shade = p.shade([Float32x2, Float32x2]).create();
 		load_vertex_shader!(triangle_shade, p, "./shader/triangle_vs.spv");
@@ -130,8 +130,6 @@ impl CanvasApp<()> for App {
 		p.request_next_frame();
 		p.paint_and_show(self.canvas)
 	}
-
-	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {

@@ -11,7 +11,7 @@ struct App {
 	canvas: Layer,
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		let image_shade = p
 			.shade_effect()
@@ -109,8 +109,6 @@ impl CanvasApp<()> for App {
 
 		p.request_next_frame();
 	}
-
-	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {

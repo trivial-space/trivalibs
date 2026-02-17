@@ -1,3 +1,5 @@
+use wgpu::TextureFormat;
+
 use crate::{
 	Painter,
 	bind_group::{BindGroup, LayerBindGroupData},
@@ -880,6 +882,14 @@ impl<'a, 'b> LayerBuilder<'a, 'b> {
 		self
 	}
 
+	pub fn with_float16_format(self) -> Self {
+		self.with_format(TextureFormat::Rgba16Float)
+	}
+
+	pub fn with_float32_format(self) -> Self {
+		self.with_format(TextureFormat::Rgba32Float)
+	}
+
 	pub fn with_clear_color(mut self, color: wgpu::Color) -> Self {
 		self.props.clear_color = Some(color);
 		self
@@ -1040,6 +1050,16 @@ impl<'a> SingleEffectLayerBuilder<'a> {
 
 	pub fn with_format(mut self, format: wgpu::TextureFormat) -> Self {
 		self.format = Some(format);
+		self
+	}
+
+	pub fn with_float16_format(mut self) -> Self {
+		self.format = Some(wgpu::TextureFormat::Rgba16Float);
+		self
+	}
+
+	pub fn with_float32_format(mut self) -> Self {
+		self.format = Some(wgpu::TextureFormat::Rgba32Float);
 		self
 	}
 

@@ -884,7 +884,7 @@ impl Painter {
 		self.paint(layer);
 	}
 
-	#[cfg(not(target_arch = "wasm32"))]
+	#[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
 	pub(crate) fn reload_shader(&mut self, path: String) {
 		println!("Reloading shader: {}", path);
 		let shade_indices = self

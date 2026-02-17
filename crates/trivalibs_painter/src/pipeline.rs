@@ -1,7 +1,7 @@
 use trivalibs_core::utils::default;
-use wgpu::{util::make_spirv, ColorTargetState};
+use wgpu::{ColorTargetState, util::make_spirv};
 
-use crate::{effect::Effect, layer::Layer, shape::Shape, Painter};
+use crate::{Painter, effect::Effect, layer::Layer, shape::Shape};
 
 pub(crate) struct PipelineStorage {
 	pub pipeline: wgpu::RenderPipeline,
@@ -176,7 +176,7 @@ impl PipelineStorage {
 		}
 	}
 
-	#[cfg(not(target_arch = "wasm32"))]
+	#[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
 	pub(crate) fn recreate(self, painter: &Painter) -> Self {
 		if let Some(layer) = self.layer {
 			if let Some(effect) = self.effect {

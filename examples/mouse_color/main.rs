@@ -8,7 +8,7 @@ struct App {
 	color: wgpu::Color,
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(_p: &mut Painter) -> Self {
 		Self {
 			color: wgpu::Color {
@@ -67,8 +67,6 @@ impl CanvasApp<()> for App {
 			_ => {}
 		}
 	}
-
-	fn resize(&mut self, _p: &mut Painter, _w: u32, _h: u32) {}
 }
 
 pub fn main() {

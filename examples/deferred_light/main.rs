@@ -28,7 +28,7 @@ struct App {
 
 const LIGHTS_COUNT: usize = 10;
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		let scene_shade = p
 			.shade([Float32x3, Float32x3, Float32x3])
@@ -207,8 +207,6 @@ impl CanvasApp<()> for App {
 		p.paint(self.canvas);
 		p.show(self.canvas)
 	}
-
-	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {

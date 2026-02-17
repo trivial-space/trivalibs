@@ -60,7 +60,7 @@ fn generate_all_lines() -> Vec<Vec<Vec2>> {
 	all_lines
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		// Generate initial geometry - each line gets its own buffer
 		let initial_lines = generate_all_lines();
@@ -136,9 +136,6 @@ impl CanvasApp<()> for App {
 		// Request continuous rendering
 		p.request_next_frame();
 	}
-
-	fn resize(&mut self, _p: &mut Painter, _width: u32, _height: u32) {}
-	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {

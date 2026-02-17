@@ -21,7 +21,7 @@ struct App {
 	norm: BindingBuffer<Mat3U>,
 }
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		let tex_bytes = include_bytes!("./texture.png");
 		let mut reader = png::Decoder::new(std::io::Cursor::new(tex_bytes))
@@ -115,8 +115,6 @@ impl CanvasApp<()> for App {
 
 		p.request_next_frame();
 	}
-
-	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {

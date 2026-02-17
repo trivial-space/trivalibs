@@ -27,7 +27,7 @@ struct App {
 
 const TRIANGLE_COUNT: usize = 1100;
 
-impl CanvasApp<()> for App {
+impl CanvasApp for App {
 	fn init(p: &mut Painter) -> Self {
 		let mut triangles = Vec::with_capacity(TRIANGLE_COUNT);
 
@@ -127,8 +127,6 @@ impl CanvasApp<()> for App {
 
 		p.paint_and_show(self.canvas);
 	}
-
-	fn event(&mut self, _e: Event<()>, _p: &mut Painter) {}
 }
 
 pub fn main() {
